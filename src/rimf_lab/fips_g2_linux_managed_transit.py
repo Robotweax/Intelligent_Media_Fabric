@@ -419,11 +419,9 @@ def run_fips_g2_linux_managed_transit(
 
         phase = "multihop-icmpv6"
         destination = statuses[2]["ipv6_addr"]
-        for size, count, label in (
-            (32, 3, "small"),
-            (1155, 2, "effective-MTU-boundary"),
-        ):
-            _run(
+
+        def multihop_route_ready():
+            result = _run(
                 [
                     "ip",
                     "netns",
@@ -432,16 +430,44 @@ def run_fips_g2_linux_managed_transit(
                     "ping",
                     "-6",
                     "-c",
-                    str(count),
+                    "1",
                     "-W",
-                    "10",
+                    "2",
                     "-s",
-                    str(size),
+                    "32",
                     destination,
                 ],
-                label=f"{label} multihop ICMPv6 probe",
-                timeout=45,
+                label="multihop route-discovery probe",
+                timeout=5,
+                check=False,
             )
+            return result.returncode == 0
+
+        _wait_for(
+            multihop_route_ready,
+            label="FIPS multihop route discovery and first ICMPv6 reply",
+            timeout=45,
+            interval=1,
+        )
+        _run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                node_a_namespace,
+                "ping",
+                "-6",
+                "-c",
+                "2",
+                "-W",
+                "10",
+                "-s",
+                "1155",
+                destination,
+            ],
+            label="effective-MTU-boundary multihop ICMPv6 probe",
+            timeout=30,
+        )
 
         phase = "multihop-payload-identity"
         ready_path = work / "payload-server.ready"
