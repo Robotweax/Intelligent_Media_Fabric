@@ -387,7 +387,7 @@ def run_fips_g2_linux_direct(
         if not isinstance(peer_b, str) or not peer_b.startswith("npub1"):
             raise QualificationError("node B did not expose a valid public identity")
 
-        phase = "authenticated-link"
+        phase = "connect-acknowledgement"
         connect_result = _json_command(
             [
                 str(fipsctl_binary),
@@ -405,6 +405,8 @@ def run_fips_g2_linux_direct(
         ):
             raise QualificationError("FIPS control returned an invalid connect acknowledgement")
 
+        phase = "peer-link-convergence"
+
         def connected_statuses():
             current = [status(0), status(1)]
             if all(
@@ -417,8 +419,20 @@ def run_fips_g2_linux_direct(
         statuses = _wait_for(
             connected_statuses, label="authenticated two-node link", timeout=30
         )
-        if any(item.get("estimated_mesh_size", 0) < 2 for item in statuses):
-            raise QualificationError("estimated mesh size did not reach two")
+
+        phase = "mesh-size-convergence"
+
+        def converged_mesh_statuses():
+            current = [status(0), status(1)]
+            if all(item.get("estimated_mesh_size", 0) >= 2 for item in current):
+                return current
+            return None
+
+        statuses = _wait_for(
+            converged_mesh_statuses, label="estimated mesh size of two", timeout=30
+        )
+
+        phase = "mmp-observation"
 
         def measured_peer_views():
             current = [

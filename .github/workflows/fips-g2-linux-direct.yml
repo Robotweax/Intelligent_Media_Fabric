@@ -51,6 +51,15 @@ jobs:
             --component clippy \
             --no-self-update
 
+      - name: Restore or save pinned FIPS build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-fips-v0.4.2/target
+          key: ${{ runner.os }}-fips-v0.4.2-rust-1.94.1-6a3016555299
+
       - name: Build pinned FIPS binaries
         working-directory: ${{ env.FIPS_SOURCE }}
         run: cargo build --release --locked --bin fips --bin fipsctl

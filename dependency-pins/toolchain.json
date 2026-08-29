@@ -23,6 +23,11 @@
         "repository": "https://github.com/actions/upload-artifact.git",
         "major": "v4",
         "commit": "ea165f8d65b6e75b540449e92b4886f43607fa02"
+      },
+      {
+        "repository": "https://github.com/actions/cache.git",
+        "major": "v4",
+        "commit": "0057852bfaa89a56745cba8c7296529d2fc39830"
       }
     ]
   }
