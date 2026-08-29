@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/scenario-v1.json",
+  "title": "Robotweax Intelligent Media Fabric qualification scenario",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scenario_id",
+    "classification",
+    "execution_enabled",
+    "repetitions",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "scenario_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "description": {"type": "string"},
+    "classification": {"enum": ["harness-only", "experiment"]},
+    "execution_enabled": {"type": "boolean"},
+    "gate_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^G[0-9]+(?:-[A-Z])?$"},
+      "uniqueItems": true
+    },
+    "repetitions": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["case_id", "command", "timeout_seconds", "expected_exit_code"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"},
+          "command": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"}
+          },
+          "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+          "expected_exit_code": {"type": "integer", "minimum": 0, "maximum": 255},
+          "environment": {
+            "type": "object",
+            "additionalProperties": {"type": "string"}
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

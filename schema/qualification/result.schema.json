@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/result-v1.json",
+  "title": "Robotweax Intelligent Media Fabric qualification result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "status",
+    "classification",
+    "scenario",
+    "provenance",
+    "platform",
+    "started_at",
+    "finished_at",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "format": "uuid"},
+    "status": {"enum": ["passed", "failed"]},
+    "classification": {"enum": ["harness-only", "experiment"]},
+    "scenario": {
+      "type": "object",
+      "required": ["id", "sha256", "repetitions", "gate_ids"],
+      "properties": {
+        "id": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "repetitions": {"type": "integer", "minimum": 1},
+        "gate_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "project_revision",
+        "project_tree_state",
+        "baselines_sha256",
+        "toolchain_sha256"
+      ],
+      "properties": {
+        "project_revision": {"type": "string"},
+        "project_tree_state": {"enum": ["clean", "dirty", "unavailable"]},
+        "baselines_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "toolchain_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "platform": {
+      "type": "object",
+      "required": ["system", "release", "machine", "python"],
+      "properties": {
+        "system": {"type": "string"},
+        "release": {"type": "string"},
+        "machine": {"type": "string"},
+        "python": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id",
+          "repetition",
+          "status",
+          "command_sha256",
+          "started_at",
+          "finished_at",
+          "elapsed_ms",
+          "timed_out",
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "properties": {
+          "case_id": {"type": "string"},
+          "repetition": {"type": "integer", "minimum": 1},
+          "status": {"enum": ["passed", "failed"]},
+          "command_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "started_at": {"type": "string", "format": "date-time"},
+          "finished_at": {"type": "string", "format": "date-time"},
+          "elapsed_ms": {"type": "number", "minimum": 0},
+          "timed_out": {"type": "boolean"},
+          "exit_code": {"type": ["integer", "null"]},
+          "error": {"type": ["string", "null"]},
+          "stdout": {"$ref": "#/$defs/streamDigest"},
+          "stderr": {"$ref": "#/$defs/streamDigest"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "streamDigest": {
+      "type": "object",
+      "required": ["bytes", "sha256"],
+      "properties": {
+        "bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

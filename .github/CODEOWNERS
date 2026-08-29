@@ -1,0 +1,4 @@
+# An enforceable user or team owner is a Phase 0 governance decision.
+# Do not add an invented owner: repository administrators must replace this
+# comment with an approved @user or @Robotweax/team before branch protection
+# requires CODEOWNERS review.

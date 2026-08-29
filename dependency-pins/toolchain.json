@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-29",
+  "python": {
+    "minimum": "3.11",
+    "runtime_version_recorded_per_result": true
+  },
+  "ci": {
+    "runner": "ubuntu-24.04",
+    "retained_evidence_environment": false,
+    "actions": [
+      {
+        "repository": "https://github.com/actions/checkout.git",
+        "major": "v4",
+        "commit": "11d5960a326750d5838078e36cf38b85af677262"
+      },
+      {
+        "repository": "https://github.com/actions/setup-python.git",
+        "major": "v5",
+        "commit": "a26af69be951a213d495a4c3e4e4022e16d87065"
+      }
+    ]
+  }
+}

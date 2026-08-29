@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-29",
+  "dependencies": [
+    {
+      "id": "robotweax-srt",
+      "repository": "https://github.com/Robotweax/srt.git",
+      "commit": "e3d61f77e852001224b6586c63bcff46a3200223",
+      "role": "media-transport",
+      "integration": "external-public-api",
+      "evidence_class": "public-contract-baseline"
+    },
+    {
+      "id": "robotweax-srt-telemetry",
+      "repository": "https://github.com/Robotweax/srt_telemetry.git",
+      "commit": "9c49648dda59231f3c1bd8dfa4fc9fbeea1eceb2",
+      "role": "srt-observation",
+      "integration": "external-versioned-c-abi",
+      "evidence_class": "pre-alpha-candidate"
+    },
+    {
+      "id": "fips-release-candidate",
+      "repository": "https://github.com/jmcorgan/fips.git",
+      "version": "v0.4.2",
+      "commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
+      "role": "secure-network-overlay",
+      "integration": "external-daemon-fips0",
+      "evidence_class": "upstream-maintenance-release-candidate"
+    },
+    {
+      "id": "fips-development-candidate",
+      "repository": "https://github.com/jmcorgan/fips.git",
+      "version": "v0.5.0-dev-assessment",
+      "commit": "6b6d2a8df9fb6c6d5c2d1ba9e17e7bd0347dae73",
+      "role": "secure-network-overlay",
+      "integration": "external-daemon-fips0",
+      "evidence_class": "pinned-development-candidate"
+    }
+  ]
+}

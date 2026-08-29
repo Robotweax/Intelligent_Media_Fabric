@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "scenario_id": "rimf-harness-smoke-v1",
+  "description": "Exercises runner success and bounded digest recording; not transport evidence.",
+  "classification": "harness-only",
+  "execution_enabled": true,
+  "gate_ids": ["G0-B"],
+  "repetitions": 2,
+  "cases": [
+    {
+      "case_id": "bounded-stdout",
+      "command": ["python3", "-c", "print('harness-smoke-output')"],
+      "timeout_seconds": 10,
+      "expected_exit_code": 0
+    },
+    {
+      "case_id": "expected-nonzero",
+      "command": ["python3", "-c", "raise SystemExit(7)"],
+      "timeout_seconds": 10,
+      "expected_exit_code": 7
+    }
+  ]
+}

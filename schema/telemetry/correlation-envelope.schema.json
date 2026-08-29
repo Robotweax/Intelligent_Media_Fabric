@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/telemetry/correlation-envelope-v1.json",
+  "title": "Media Fabric correlation envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "source",
+    "observed_at",
+    "monotonic_ns",
+    "route_epoch",
+    "quality",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_id": {"type": "string", "format": "uuid"},
+    "source": {"enum": ["srt", "fips", "os", "media-validator", "fabric"]},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "monotonic_ns": {"type": "integer", "minimum": 0},
+    "route_epoch": {"type": "integer", "minimum": 0},
+    "tenant_id": {"type": ["string", "null"]},
+    "device_id": {"type": ["string", "null"]},
+    "stream_id": {"type": ["string", "null"]},
+    "quality": {
+      "type": "object",
+      "required": ["availability", "confidence", "reason"],
+      "properties": {
+        "availability": {"enum": ["available", "partial", "unavailable"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "reason": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "payload": {"type": "object"}
+  },
+  "additionalProperties": false
+}

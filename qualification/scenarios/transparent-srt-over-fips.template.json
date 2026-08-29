@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "scenario_id": "transparent-srt-over-fips-template-v1",
+  "description": "Non-executable template. Replace commands only after the binaries and pilot profile are pinned.",
+  "classification": "experiment",
+  "execution_enabled": false,
+  "gate_ids": ["G1", "G2", "G3"],
+  "repetitions": 3,
+  "cases": [
+    {
+      "case_id": "direct-srt-control",
+      "command": ["REPLACE_WITH_PINNED_DIRECT_SRT_RUNNER"],
+      "timeout_seconds": 300,
+      "expected_exit_code": 0
+    },
+    {
+      "case_id": "srt-over-fips0",
+      "command": ["REPLACE_WITH_PINNED_SRT_OVER_FIPS_RUNNER"],
+      "timeout_seconds": 300,
+      "expected_exit_code": 0
+    }
+  ]
+}
