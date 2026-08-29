@@ -142,3 +142,11 @@ separate observation/probe research. G2 remains open until retained Linux eviden
 
 SRT-over-FIPS performance and continuity remain G3 evidence and must not be inferred from this WP1
 assessment.
+
+## Linux direct progress update
+
+The [FIPS G2 Linux direct qualification](fips-g2-linux-direct-2026-08-29.md) subsequently completed
+the two-node direct-`fips0` slice: both TUN devices were active at MTU 1280, exact IPv6/UDP payloads
+crossed the overlay through the 1203-byte effective IPv6 boundary, FSP sessions were visible, and
+disconnect plus privileged teardown completed. G2 remains `in-progress` for NAT/relay classes,
+above-boundary MTU behavior, failure/restart cases, and impaired-network qualification.

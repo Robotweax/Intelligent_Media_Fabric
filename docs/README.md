@@ -21,6 +21,7 @@
 - [Evidence Lab](qualification/evidence-lab.md)
 - [Gate registry](qualification/gate-registry.md)
 - [FIPS WP1 assessment](qualification/fips-wp1-assessment-2026-08-29.md)
+- [FIPS G2 Linux direct qualification](qualification/fips-g2-linux-direct-2026-08-29.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT
