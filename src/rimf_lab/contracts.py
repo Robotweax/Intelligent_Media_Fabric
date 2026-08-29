@@ -395,6 +395,8 @@ def validate_fips_g2_linux_direct_result(data: Any) -> None:
         "configured_tun_mtu": 1280,
         "configured_udp_mtu": 1280,
     }
+    if set(topology) != set(expected_topology):
+        raise ContractError("FIPS G2 result.topology contains unexpected fields")
     for field, expected in expected_topology.items():
         if topology.get(field) != expected:
             raise ContractError(f"topology.{field} must be {expected!r}")
@@ -496,6 +498,79 @@ def validate_fips_g2_linux_direct_result(data: Any) -> None:
         raise ContractError("FIPS G2 result limitations must be a non-empty string array")
 
 
+def validate_fips_g2_linux_nat_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux NAT result")
+    if root.get("evidence_type") != "fips-g2-linux-nat":
+        raise ContractError("FIPS G2 NAT result evidence_type is invalid")
+
+    topology = _require_object(root.get("topology"), "FIPS G2 NAT result.topology")
+    expected_topology = {
+        "node_count": 2,
+        "namespace_count": 3,
+        "isolation": "linux-network-namespaces",
+        "underlay": "routed-two-segment-ipv4-udp",
+        "nat": "one-sided-snat",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    if set(topology) != set(expected_topology):
+        raise ContractError("FIPS G2 NAT result.topology contains unexpected fields")
+    for field, expected in expected_topology.items():
+        if topology.get(field) != expected:
+            raise ContractError(f"topology.{field} must be {expected!r}")
+
+    observations = _require_object(root.get("observations"), "FIPS G2 NAT result.observations")
+    expected_observation_fields = {
+        "directional_reachability",
+        "nat",
+        "nodes",
+        "connection",
+        "mmp",
+        "icmpv6",
+        "payload_identity",
+        "fsp_session_counts",
+        "disconnect",
+    }
+    if set(observations) != expected_observation_fields:
+        raise ContractError("FIPS G2 NAT result.observations contains unexpected fields")
+    directional = _require_object(
+        observations.get("directional_reachability"),
+        "observations.directional_reachability",
+    )
+    if directional != {
+        "node_a_to_node_b_new_flow_blocked": True,
+        "node_b_to_node_a_new_flow_allowed": True,
+        "stateful_return_path_only": True,
+    }:
+        raise ContractError("observations.directional_reachability is invalid")
+
+    nat = _require_object(observations.get("nat"), "observations.nat")
+    if nat != {
+        "mode": "one-sided-snat",
+        "private_initiator": "node-b",
+        "public_node_observed_translated_source": True,
+        "private_source_address_not_retained": True,
+    }:
+        raise ContractError("observations.nat is invalid")
+
+    direct_shape = dict(root)
+    direct_shape["evidence_type"] = "fips-g2-linux-direct"
+    direct_shape["topology"] = {
+        "node_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv4-udp",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    direct_observations = dict(observations)
+    direct_observations.pop("directional_reachability", None)
+    direct_observations.pop("nat", None)
+    direct_shape["observations"] = direct_observations
+    validate_fips_g2_linux_direct_result(direct_shape)
+
+
 def _iter_repository_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file() or any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
@@ -562,6 +637,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_source_assessment(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-direct":
                 validate_fips_g2_linux_direct_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-nat":
+                validate_fips_g2_linux_nat_result(retained)
             else:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:

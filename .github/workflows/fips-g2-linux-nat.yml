@@ -1,0 +1,118 @@
+name: FIPS G2 Linux NAT Qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fips-g2-linux-nat
+  cancel-in-progress: false
+
+env:
+  FIPS_COMMIT: 487fa86f65794071e3b91313c298d4f09b98b7fe
+  FIPS_CARGO_LOCK_SHA256: 6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83
+  FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
+  RESULT_PATH: artifacts/fips-g2-linux-nat-result.json
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      FIPS_SOURCE: /tmp/rimf-fips-v0.4.2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install bounded Linux NAT test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            iproute2 \
+            iptables \
+            iputils-ping \
+            libdbus-1-dev \
+            pkg-config
+
+      - name: Prepare immutable FIPS source and toolchain
+        run: |
+          git init "$FIPS_SOURCE"
+          git -C "$FIPS_SOURCE" remote add origin https://github.com/jmcorgan/fips.git
+          git -C "$FIPS_SOURCE" fetch --depth=1 origin "$FIPS_COMMIT"
+          git -C "$FIPS_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$FIPS_SOURCE" rev-parse HEAD)" = "$FIPS_COMMIT"
+          printf '%s  %s\n' "$FIPS_CARGO_LOCK_SHA256" "$FIPS_SOURCE/Cargo.lock" |
+            sha256sum --check --strict
+          printf '%s  %s\n' "$FIPS_RUST_TOOLCHAIN_SHA256" "$FIPS_SOURCE/rust-toolchain.toml" |
+            sha256sum --check --strict
+          rustup toolchain install 1.94.1 \
+            --profile minimal \
+            --component rustfmt \
+            --component clippy \
+            --no-self-update
+
+      - name: Restore pinned FIPS build cache
+        id: fips-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-fips-v0.4.2/target
+          key: ${{ runner.os }}-fips-v0.4.2-rust-1.94.1-6a3016555299
+
+      - name: Build pinned FIPS binaries
+        working-directory: ${{ env.FIPS_SOURCE }}
+        run: cargo build --release --locked --bin fips --bin fipsctl
+
+      - name: Save pinned FIPS build cache
+        if: steps.fips-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-fips-v0.4.2/target
+          key: ${{ steps.fips-cache.outputs.cache-primary-key }}
+
+      - name: Run privileged three-namespace NAT qualification
+        run: |
+          mkdir -p artifacts
+          sudo env \
+            "PATH=$PATH" \
+            "PYTHONPATH=$GITHUB_WORKSPACE/src" \
+            python3 -m rimf_lab run-fips-g2-linux-nat \
+              --fips-source "$FIPS_SOURCE" \
+              --fips "$FIPS_SOURCE/target/release/fips" \
+              --fipsctl "$FIPS_SOURCE/target/release/fipsctl" \
+              --output "$GITHUB_WORKSPACE/$RESULT_PATH" \
+              --project-revision "$GITHUB_SHA"
+          sudo chown "$(id -u):$(id -g)" "$RESULT_PATH"
+
+      - name: Validate qualification result
+        run: |
+          PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-nat "$RESULT_PATH"
+
+      - name: Publish bounded job summary
+        if: success()
+        run: |
+          {
+            echo "## FIPS G2 Linux NAT qualification"
+            echo
+            echo "- Status: $(jq -r '.status' "$RESULT_PATH")"
+            echo "- FIPS revision: $(jq -r '.provenance.fips_commit' "$RESULT_PATH")"
+            echo "- Directional boundary proven: $(jq -r '[.observations.directional_reachability[]] | all' "$RESULT_PATH")"
+            echo "- Translated source observed: $(jq -r '.observations.nat.public_node_observed_translated_source' "$RESULT_PATH")"
+            echo "- Payload sizes: $(jq -r '[.observations.payload_identity.records[].bytes] | join(", ")' "$RESULT_PATH") bytes"
+            echo "- Teardown complete: $(jq -r '[.cleanup[]] | all' "$RESULT_PATH")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reviewed-shape result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fips-g2-linux-nat-${{ github.run_id }}
+          path: ${{ env.RESULT_PATH }}
+          if-no-files-found: warn
+          retention-days: 14

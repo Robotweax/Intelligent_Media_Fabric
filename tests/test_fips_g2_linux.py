@@ -4,12 +4,17 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
-from rimf_lab.contracts import ContractError, validate_fips_g2_linux_direct_result
+from rimf_lab.contracts import (
+    ContractError,
+    validate_fips_g2_linux_direct_result,
+    validate_fips_g2_linux_nat_result,
+)
 from rimf_lab.fips_g2_linux import (
     mesh_size_converged,
     render_config,
     valid_connect_acknowledgement,
 )
+from rimf_lab.fips_g2_linux_nat import translated_peer_observed
 from rimf_lab.payload_probe import deterministic_payload
 
 
@@ -107,6 +112,34 @@ def valid_result():
     }
 
 
+def valid_nat_result():
+    result = deepcopy(valid_result())
+    result["evidence_type"] = "fips-g2-linux-nat"
+    result["topology"] = {
+        "node_count": 2,
+        "namespace_count": 3,
+        "isolation": "linux-network-namespaces",
+        "underlay": "routed-two-segment-ipv4-udp",
+        "nat": "one-sided-snat",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    result["observations"]["directional_reachability"] = {
+        "node_a_to_node_b_new_flow_blocked": True,
+        "node_b_to_node_a_new_flow_allowed": True,
+        "stateful_return_path_only": True,
+    }
+    result["observations"]["nat"] = {
+        "mode": "one-sided-snat",
+        "private_initiator": "node-b",
+        "public_node_observed_translated_source": True,
+        "private_source_address_not_retained": True,
+    }
+    result["limitations"] = ["One-sided SNAT only."]
+    return result
+
+
 class PayloadProbeTests(unittest.TestCase):
     def test_payload_is_deterministic_and_exact_length(self):
         first = deterministic_payload(1155)
@@ -172,6 +205,35 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         result["cleanup"]["namespaces_removed"] = False
         with self.assertRaisesRegex(ContractError, "namespaces_removed"):
             validate_fips_g2_linux_direct_result(result)
+
+    def test_recognizes_translated_ipv4_peer_endpoint(self):
+        view = {"peers": [{"transport_addr": "10.204.0.254:42123"}]}
+        self.assertTrue(translated_peer_observed(view, "10.204.0.254"))
+        self.assertFalse(translated_peer_observed(view, "10.205.0.2"))
+        self.assertFalse(translated_peer_observed({"peers": []}, "10.204.0.254"))
+
+    def test_accepts_complete_nat_result(self):
+        validate_fips_g2_linux_nat_result(valid_nat_result())
+
+    def test_rejects_nat_result_without_directional_boundary(self):
+        result = valid_nat_result()
+        result["observations"]["directional_reachability"][
+            "node_a_to_node_b_new_flow_blocked"
+        ] = False
+        with self.assertRaisesRegex(ContractError, "directional_reachability"):
+            validate_fips_g2_linux_nat_result(result)
+
+    def test_rejects_nat_result_without_translated_peer_observation(self):
+        result = valid_nat_result()
+        result["observations"]["nat"]["public_node_observed_translated_source"] = False
+        with self.assertRaisesRegex(ContractError, "observations.nat"):
+            validate_fips_g2_linux_nat_result(result)
+
+    def test_rejects_nat_result_with_raw_endpoint_extension(self):
+        result = valid_nat_result()
+        result["observations"]["nat"]["translated_endpoint"] = "10.204.0.254:2121"
+        with self.assertRaisesRegex(ContractError, "observations.nat"):
+            validate_fips_g2_linux_nat_result(result)
 
 
 if __name__ == "__main__":
