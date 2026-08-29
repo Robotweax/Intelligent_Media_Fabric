@@ -5,7 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from rimf_lab.contracts import ContractError, validate_fips_g2_linux_direct_result
-from rimf_lab.fips_g2_linux import render_config
+from rimf_lab.fips_g2_linux import render_config, valid_connect_acknowledgement
 from rimf_lab.payload_probe import deterministic_payload
 
 
@@ -123,6 +123,24 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         self.assertNotIn("nsec", config)
         self.assertIn('name: "fips0"', config)
         self.assertEqual(config.count("mtu: 1280"), 2)
+
+    def test_accepts_actual_release_connect_acknowledgement_shape(self):
+        peer = "npub1test"
+        address = "10.203.0.2:2121"
+        self.assertTrue(
+            valid_connect_acknowledgement(
+                {"npub": peer, "address": address, "transport": "udp"},
+                peer,
+                address,
+            )
+        )
+        self.assertFalse(
+            valid_connect_acknowledgement(
+                {"connected": True, "npub": peer},
+                peer,
+                address,
+            )
+        )
 
     def test_accepts_complete_result(self):
         validate_fips_g2_linux_direct_result(valid_result())

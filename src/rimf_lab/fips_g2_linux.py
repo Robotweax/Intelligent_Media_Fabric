@@ -72,6 +72,14 @@ peers: []
 """
 
 
+def valid_connect_acknowledgement(result: dict, peer: str, address: str) -> bool:
+    return (
+        result.get("npub") == peer
+        and result.get("address") == address
+        and result.get("transport") == "udp"
+    )
+
+
 def _run(
     command: list[str],
     *,
@@ -392,8 +400,10 @@ def run_fips_g2_linux_direct(
             ],
             label="connect node A to node B",
         )
-        if connect_result.get("connected") is not True:
-            raise QualificationError("FIPS control did not acknowledge connect")
+        if not valid_connect_acknowledgement(
+            connect_result, peer_b, f"{underlay_addresses[1]}:2121"
+        ):
+            raise QualificationError("FIPS control returned an invalid connect acknowledgement")
 
         def connected_statuses():
             current = [status(0), status(1)]
