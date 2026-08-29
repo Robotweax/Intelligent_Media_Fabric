@@ -5,7 +5,11 @@ from copy import deepcopy
 from pathlib import Path
 
 from rimf_lab.contracts import ContractError, validate_fips_g2_linux_direct_result
-from rimf_lab.fips_g2_linux import render_config, valid_connect_acknowledgement
+from rimf_lab.fips_g2_linux import (
+    mesh_size_converged,
+    render_config,
+    valid_connect_acknowledgement,
+)
 from rimf_lab.payload_probe import deterministic_payload
 
 
@@ -139,6 +143,18 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
                 {"connected": True, "npub": peer},
                 peer,
                 address,
+            )
+        )
+
+    def test_mesh_size_waits_through_null_observation(self):
+        self.assertFalse(
+            mesh_size_converged(
+                [{"estimated_mesh_size": None}, {"estimated_mesh_size": 2}]
+            )
+        )
+        self.assertTrue(
+            mesh_size_converged(
+                [{"estimated_mesh_size": 2}, {"estimated_mesh_size": 2}]
             )
         )
 

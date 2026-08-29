@@ -80,6 +80,14 @@ def valid_connect_acknowledgement(result: dict, peer: str, address: str) -> bool
     )
 
 
+def mesh_size_converged(statuses: list[dict]) -> bool:
+    mesh_sizes = [item.get("estimated_mesh_size") for item in statuses]
+    return all(
+        isinstance(size, int) and not isinstance(size, bool) and size >= 2
+        for size in mesh_sizes
+    )
+
+
 def _run(
     command: list[str],
     *,
@@ -218,6 +226,7 @@ def _safe_failure_result(
     phase: str,
     project_revision: str,
     cleanup: dict,
+    error: Exception,
 ) -> dict:
     return {
         "schema_version": 1,
@@ -230,6 +239,8 @@ def _safe_failure_result(
         "finished_at": finished_at,
         "project_revision": project_revision,
         "failure_phase": phase,
+        "failure_class": type(error).__name__,
+        "failure_detail": IDENTITY_RE.sub("<redacted-identity>", str(error))[:512],
         "cleanup": cleanup,
     }
 
@@ -424,7 +435,7 @@ def run_fips_g2_linux_direct(
 
         def converged_mesh_statuses():
             current = [status(0), status(1)]
-            if all(item.get("estimated_mesh_size", 0) >= 2 for item in current):
+            if mesh_size_converged(current):
                 return current
             return None
 
@@ -689,6 +700,7 @@ def run_fips_g2_linux_direct(
             phase=phase_at_failure,
             project_revision=project_revision,
             cleanup=cleanup,
+            error=error,
         )
         _write_result(output, result)
         raise QualificationError(f"G2 direct qualification failed during {phase_at_failure}") from error
