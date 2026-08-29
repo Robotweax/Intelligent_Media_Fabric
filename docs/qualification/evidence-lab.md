@@ -81,3 +81,20 @@ Successful output must pass
 `schema/qualification/fips-g2-linux-direct-result.schema.json` and the repository contract before
 it can be reviewed for retention. The workflow artifact expires after 14 days; it is not retained
 evidence merely because the workflow passed.
+
+## Privileged FIPS G2 Linux one-sided NAT runner
+
+The manually dispatched `FIPS G2 Linux NAT Qualification` workflow extends the direct runner with
+a third router namespace and two IPv4 segments. A default-deny forwarding policy permits new flows
+from private node B to public node A, permits only stateful return traffic in the other direction,
+and applies SNAT at the outside interface. Before starting FIPS, the runner proves that A cannot
+open a new flow to B and B can reach A.
+
+B must initiate the authenticated FIPS UDP link. The runner then requires A's peer view to observe
+the translated source endpoint and repeats the direct runner's TUN, MTU, MMP, ICMPv6, deterministic
+payload, FSP, disconnect, and teardown assertions. The retained result contains only booleans for
+the directional and translated-path observations; it excludes identities and underlay endpoints.
+
+Successful output must pass
+`schema/qualification/fips-g2-linux-nat-result.schema.json` and the repository contract. This test
+does not claim STUN, hole punching, symmetric-NAT, discovery, or relay qualification.

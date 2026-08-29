@@ -150,3 +150,9 @@ the two-node direct-`fips0` slice: both TUN devices were active at MTU 1280, exa
 crossed the overlay through the 1203-byte effective IPv6 boundary, FSP sessions were visible, and
 disconnect plus privileged teardown completed. G2 remains `in-progress` for NAT/relay classes,
 above-boundary MTU behavior, failure/restart cases, and impaired-network qualification.
+
+The [one-sided NAT qualification](fips-g2-linux-nat-2026-08-29.md) subsequently proved a
+private-originated authenticated UDP link through stateful SNAT, including public-side observation
+of the translated peer endpoint and the same exact-payload and teardown checks. G2 remains
+`in-progress` for relay-assisted and broader traversal, above-boundary MTU behavior,
+failure/restart and reconvergence cases, and impaired-network qualification.

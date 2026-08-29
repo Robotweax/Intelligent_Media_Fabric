@@ -66,10 +66,12 @@ It does not pass G2 as a whole and is not G3 media evidence. The following remai
 
 1. payload behavior one byte above the effective boundary, including explicit ICMPv6 Packet Too Big
    observation rather than silent loss;
-2. NATed direct and relay-assisted connectivity classes;
+2. broader NAT traversal and relay-assisted connectivity classes;
 3. link-dead timeout, daemon restart, and route-reconvergence behavior;
 4. loss, delay, reordering, queue, and resource bounds; and
 5. Robotweax SRT payload and downstream media timing over the qualified `fips0` path.
 
-The next G2 increment should add a third namespace acting as a NAT boundary and retain the same
-identity, MTU, observation, and teardown guarantees before any SRT workload is introduced.
+The subsequent
+[one-sided NAT qualification](fips-g2-linux-nat-2026-08-29.md) added a third router namespace and
+retained the same identity, MTU, observation, and teardown guarantees. Relay-assisted connectivity
+and broader traversal mechanisms remain before any SRT workload is introduced.

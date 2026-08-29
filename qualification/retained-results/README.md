@@ -7,8 +7,14 @@ It is partial G2 evidence, not SRT-over-FIPS qualification.
 
 The
 [FIPS G2 Linux direct result](2026-08-29-fips-g2-linux-direct-x86_64.json) adds retained two-node
-`fips0`, effective-MTU payload identity, FSP observation, disconnect, and teardown evidence. G2
-remains in progress because NAT, relay, failure, and impaired-network classes are not covered.
+`fips0`, effective-MTU payload identity, FSP observation, disconnect, and teardown evidence.
+
+The
+[FIPS G2 Linux one-sided NAT result](2026-08-29-fips-g2-linux-nat-x86_64.json) adds a third router
+namespace, a proven stateful directional boundary, private-originated SNAT connectivity, and a
+public-side translated-peer observation without retaining endpoints. G2 remains in progress because
+relay-assisted and broader NAT traversal, above-boundary MTU, failure/restart, reconvergence, and
+impaired-network classes are not covered.
 
 Do not commit generated output automatically. A retained result must pass review for provenance,
 reproducibility, secrets, privacy, customer payload, size, licensing, and evidence classification.
@@ -22,4 +28,7 @@ PYTHONPATH=src python3 -m rimf_lab validate-fips-assessment \
 
 PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-direct \
   qualification/retained-results/2026-08-29-fips-g2-linux-direct-x86_64.json
+
+PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-nat \
+  qualification/retained-results/2026-08-29-fips-g2-linux-nat-x86_64.json
 ```
