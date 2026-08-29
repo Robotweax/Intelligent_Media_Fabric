@@ -346,6 +346,156 @@ def validate_fips_source_assessment(data: Any) -> None:
         raise ContractError("limitations must be a non-empty string array")
 
 
+def validate_fips_g2_linux_direct_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux direct result")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-direct":
+        raise ContractError("FIPS G2 result evidence_type is invalid")
+    if root.get("status") != "passed" or root.get("classification") != "experiment":
+        raise ContractError("FIPS G2 retained result must be a passed experiment")
+    if root.get("gate_ids") != ["G2"]:
+        raise ContractError("FIPS G2 result gate_ids must be exactly ['G2']")
+    for field in ("run_id", "started_at", "finished_at"):
+        _require_string(root.get(field), f"FIPS G2 result.{field}")
+
+    provenance = _require_object(root.get("provenance"), "FIPS G2 result.provenance")
+    for field in ("project_revision", "fips_commit"):
+        commit = _require_string(provenance.get(field), f"provenance.{field}")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"provenance.{field} must be a full lowercase Git commit")
+    if provenance.get("fips_source_tree_state") != "clean":
+        raise ContractError("provenance.fips_source_tree_state must be clean")
+    for field in (
+        "cargo_lock_sha256",
+        "rust_toolchain_sha256",
+        "fips_binary_sha256",
+        "fipsctl_binary_sha256",
+    ):
+        digest = _require_string(provenance.get(field), f"provenance.{field}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"provenance.{field} is invalid")
+    repository = _require_string(provenance.get("fips_repository"), "provenance.fips_repository")
+    if repository != "https://github.com/jmcorgan/fips.git":
+        raise ContractError("provenance.fips_repository is invalid")
+    _require_string(provenance.get("reported_version"), "provenance.reported_version")
+
+    platform_data = _require_object(root.get("platform"), "FIPS G2 result.platform")
+    if platform_data.get("system") != "Linux":
+        raise ContractError("FIPS G2 retained result must come from Linux")
+    for field in ("release", "machine", "python"):
+        _require_string(platform_data.get(field), f"platform.{field}")
+
+    topology = _require_object(root.get("topology"), "FIPS G2 result.topology")
+    expected_topology = {
+        "node_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv4-udp",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    for field, expected in expected_topology.items():
+        if topology.get(field) != expected:
+            raise ContractError(f"topology.{field} must be {expected!r}")
+
+    observations = _require_object(root.get("observations"), "FIPS G2 result.observations")
+    nodes = observations.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 2:
+        raise ContractError("observations.nodes must contain exactly two nodes")
+    if {node.get("node") for node in nodes if isinstance(node, dict)} != {"a", "b"}:
+        raise ContractError("observations.nodes must identify node a and node b")
+    for index, raw_node in enumerate(nodes):
+        node = _require_object(raw_node, f"observations.nodes[{index}]")
+        expected_node = {
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": 1203,
+        }
+        for field, expected in expected_node.items():
+            if node.get(field) != expected:
+                raise ContractError(f"observations.nodes[{index}].{field} is invalid")
+
+    connection = _require_object(observations.get("connection"), "observations.connection")
+    expected_connection = {
+        "control_acknowledged": True,
+        "authenticated_peers_per_node": 1,
+        "links_per_node": 1,
+        "estimated_mesh_size": 2,
+        "transport": "udp",
+    }
+    for field, expected in expected_connection.items():
+        if connection.get(field) != expected:
+            raise ContractError(f"observations.connection.{field} is invalid")
+
+    mmp = observations.get("mmp")
+    if not isinstance(mmp, list) or len(mmp) != 2:
+        raise ContractError("observations.mmp must contain exactly two nodes")
+    for index, raw_mmp in enumerate(mmp):
+        item = _require_object(raw_mmp, f"observations.mmp[{index}]")
+        if item.get("mode") != "full" or item.get("srtt_ms_observed") is not True:
+            raise ContractError(f"observations.mmp[{index}] is incomplete")
+        for field in ("loss_rate", "etx"):
+            value = item.get(field)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+                raise ContractError(f"observations.mmp[{index}].{field} is invalid")
+
+    icmpv6 = _require_object(observations.get("icmpv6"), "observations.icmpv6")
+    if (
+        icmpv6.get("passed") is not True
+        or icmpv6.get("small_payload_bytes") != 32
+        or icmpv6.get("effective_mtu_boundary_payload_bytes") != 1155
+        or icmpv6.get("echo_requests_per_size") != 2
+    ):
+        raise ContractError("observations.icmpv6 is invalid")
+
+    payload = _require_object(observations.get("payload_identity"), "observations.payload_identity")
+    if payload.get("protocol") != "udp-over-ipv6-over-fips0":
+        raise ContractError("observations.payload_identity.protocol is invalid")
+    if payload.get("all_exact_echo") is not True:
+        raise ContractError("observations.payload_identity must report exact echo")
+    records = payload.get("records")
+    if not isinstance(records, list) or [item.get("bytes") for item in records] != [1, 1024, 1155]:
+        raise ContractError("observations.payload_identity.records has invalid sizes")
+    for index, raw_record in enumerate(records):
+        record = _require_object(raw_record, f"payload record {index}")
+        digest = _require_string(record.get("sha256"), f"payload record {index}.sha256")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest) or record.get("exact_echo") is not True:
+            raise ContractError(f"payload record {index} is invalid")
+
+    session_counts = observations.get("fsp_session_counts")
+    if (
+        not isinstance(session_counts, list)
+        or len(session_counts) != 2
+        or any(not isinstance(value, int) or isinstance(value, bool) or value < 1 for value in session_counts)
+    ):
+        raise ContractError("observations.fsp_session_counts is invalid")
+
+    disconnect = _require_object(observations.get("disconnect"), "observations.disconnect")
+    if disconnect != {
+        "control_acknowledged": True,
+        "peers_per_node_after": 0,
+        "links_per_node_after": 0,
+    }:
+        raise ContractError("observations.disconnect is invalid")
+
+    cleanup = _require_object(root.get("cleanup"), "FIPS G2 result.cleanup")
+    for field in (
+        "daemons_stopped",
+        "namespaces_removed",
+        "ephemeral_identity_directory_removed",
+    ):
+        if cleanup.get(field) is not True:
+            raise ContractError(f"cleanup.{field} must be true")
+
+    limitations = root.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item for item in limitations
+    ):
+        raise ContractError("FIPS G2 result limitations must be a non-empty string array")
+
+
 def _iter_repository_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file() or any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
@@ -410,6 +560,8 @@ def validate_repository(root: Path) -> None:
             retained = _require_object(load_json(path), str(path.relative_to(root)))
             if retained.get("evidence_type") == "fips-source-assessment":
                 validate_fips_source_assessment(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-direct":
+                validate_fips_g2_linux_direct_result(retained)
             else:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:
