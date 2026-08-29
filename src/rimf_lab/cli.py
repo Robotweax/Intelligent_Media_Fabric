@@ -8,6 +8,7 @@ from .contracts import (
     ContractError,
     load_json,
     validate_fips_g2_linux_direct_result,
+    validate_fips_g2_linux_managed_transit_result,
     validate_fips_g2_linux_nat_result,
     validate_fips_source_assessment,
     validate_repository,
@@ -15,6 +16,7 @@ from .contracts import (
     validate_scenario,
 )
 from .fips_g2_linux import QualificationError, run_fips_g2_linux_direct
+from .fips_g2_linux_managed_transit import run_fips_g2_linux_managed_transit
 from .fips_g2_linux_nat import run_fips_g2_linux_nat
 from .runner import run_scenario
 
@@ -49,6 +51,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     fips_g2_nat_result_parser.add_argument("path", type=Path)
 
+    fips_g2_transit_result_parser = subparsers.add_parser(
+        "validate-fips-g2-linux-managed-transit",
+        help="validate a retained Linux managed-transit FIPS result",
+    )
+    fips_g2_transit_result_parser.add_argument("path", type=Path)
+
     fips_g2_run_parser = subparsers.add_parser(
         "run-fips-g2-linux-direct", help="run the privileged Linux two-node FIPS qualification"
     )
@@ -66,6 +74,16 @@ def _parser() -> argparse.ArgumentParser:
     fips_g2_nat_run_parser.add_argument("--fipsctl", type=Path, required=True)
     fips_g2_nat_run_parser.add_argument("--output", type=Path, required=True)
     fips_g2_nat_run_parser.add_argument("--project-revision", required=True)
+
+    fips_g2_transit_run_parser = subparsers.add_parser(
+        "run-fips-g2-linux-managed-transit",
+        help="run the privileged Linux three-node FIPS transit qualification",
+    )
+    fips_g2_transit_run_parser.add_argument("--fips-source", type=Path, required=True)
+    fips_g2_transit_run_parser.add_argument("--fips", type=Path, required=True)
+    fips_g2_transit_run_parser.add_argument("--fipsctl", type=Path, required=True)
+    fips_g2_transit_run_parser.add_argument("--output", type=Path, required=True)
+    fips_g2_transit_run_parser.add_argument("--project-revision", required=True)
 
     run_parser = subparsers.add_parser("run", help="run an enabled, reviewed scenario")
     run_parser.add_argument("--scenario", type=Path, required=True)
@@ -95,6 +113,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-fips-g2-linux-nat":
             validate_fips_g2_linux_nat_result(load_json(args.path))
             print(f"FIPS G2 Linux NAT validation: OK ({args.path})")
+        elif args.command == "validate-fips-g2-linux-managed-transit":
+            validate_fips_g2_linux_managed_transit_result(load_json(args.path))
+            print(f"FIPS G2 Linux managed-transit validation: OK ({args.path})")
         elif args.command == "run-fips-g2-linux-direct":
             result = run_fips_g2_linux_direct(
                 fips_source=args.fips_source,
@@ -113,6 +134,15 @@ def main(argv: list[str] | None = None) -> int:
                 project_revision=args.project_revision,
             )
             print(f"FIPS G2 Linux NAT: {result['status']} ({args.output})")
+        elif args.command == "run-fips-g2-linux-managed-transit":
+            result = run_fips_g2_linux_managed_transit(
+                fips_source=args.fips_source,
+                fips_binary=args.fips,
+                fipsctl_binary=args.fipsctl,
+                output=args.output,
+                project_revision=args.project_revision,
+            )
+            print(f"FIPS G2 Linux managed transit: {result['status']} ({args.output})")
         elif args.command == "run":
             result = run_scenario(args.scenario, args.output, args.root)
             print(f"run {result['run_id']}: {result['status']} ({result['classification']})")

@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/fips-g2-linux-managed-transit-result-v1.json",
+  "title": "RIMF FIPS G2 Linux managed-transit qualification result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "run_id",
+    "status",
+    "classification",
+    "gate_ids",
+    "started_at",
+    "finished_at",
+    "provenance",
+    "platform",
+    "topology",
+    "observations",
+    "cleanup",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_type": {"const": "fips-g2-linux-managed-transit"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "status": {"const": "passed"},
+    "classification": {"const": "experiment"},
+    "gate_ids": {"const": ["G2"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "provenance": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/provenance"
+    },
+    "platform": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/platform"
+    },
+    "topology": {
+      "type": "object",
+      "required": [
+        "node_count",
+        "namespace_count",
+        "authenticated_link_count",
+        "isolation",
+        "underlay",
+        "path_role",
+        "public_discovery",
+        "nostr_relay",
+        "tun_name",
+        "configured_tun_mtu",
+        "configured_udp_mtu"
+      ],
+      "properties": {
+        "node_count": {"const": 3},
+        "namespace_count": {"const": 3},
+        "authenticated_link_count": {"const": 2},
+        "isolation": {"const": "linux-network-namespaces"},
+        "underlay": {"const": "two-segment-line-ipv4-udp"},
+        "path_role": {"const": "managed-fips-transit"},
+        "public_discovery": {"const": false},
+        "nostr_relay": {"const": false},
+        "tun_name": {"const": "fips0"},
+        "configured_tun_mtu": {"const": 1280},
+        "configured_udp_mtu": {"const": 1280}
+      },
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "object",
+      "required": [
+        "underlay_exclusion",
+        "line_topology",
+        "nodes",
+        "mmp",
+        "icmpv6",
+        "payload_identity",
+        "transit_forwarding",
+        "disconnect"
+      ],
+      "properties": {
+        "underlay_exclusion": {
+          "type": "object",
+          "required": [
+            "endpoint_direct_ipv4_forwarding_disabled",
+            "endpoint_direct_ipv4_probe_blocked"
+          ],
+          "properties": {
+            "endpoint_direct_ipv4_forwarding_disabled": {"const": true},
+            "endpoint_direct_ipv4_probe_blocked": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "line_topology": {
+          "type": "object",
+          "required": [
+            "control_connects_acknowledged",
+            "authenticated_peer_counts",
+            "authenticated_link_counts",
+            "estimated_mesh_size",
+            "endpoint_direct_peer_absent",
+            "transport"
+          ],
+          "properties": {
+            "control_connects_acknowledged": {"const": 2},
+            "authenticated_peer_counts": {"const": [1, 2, 1]},
+            "authenticated_link_counts": {"const": [1, 2, 1]},
+            "estimated_mesh_size": {"const": 3},
+            "endpoint_direct_peer_absent": {"const": true},
+            "transport": {"const": "udp"}
+          },
+          "additionalProperties": false
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/node"}
+        },
+        "mmp": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/mmp"}
+        },
+        "icmpv6": {
+          "type": "object",
+          "required": [
+            "path",
+            "small_payload_bytes",
+            "effective_mtu_boundary_payload_bytes",
+            "passed"
+          ],
+          "properties": {
+            "path": {"const": "endpoint-a-via-managed-transit-r-to-endpoint-b"},
+            "small_payload_bytes": {"const": 32},
+            "effective_mtu_boundary_payload_bytes": {"const": 1155},
+            "passed": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "payload_identity": {
+          "type": "object",
+          "required": ["protocol", "records", "all_exact_echo"],
+          "properties": {
+            "protocol": {"const": "udp-over-ipv6-over-fips0-multihop"},
+            "records": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "$ref": "fips-g2-linux-direct-result.schema.json#/$defs/payloadRecord"
+              }
+            },
+            "all_exact_echo": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "transit_forwarding": {
+          "type": "object",
+          "required": [
+            "forwarded_packets",
+            "forwarded_bytes",
+            "endpoint_fsp_session_counts",
+            "transit_fsp_session_count",
+            "payload_opaque_to_transit_by_protocol_contract"
+          ],
+          "properties": {
+            "forwarded_packets": {"type": "integer", "minimum": 1},
+            "forwarded_bytes": {"type": "integer", "minimum": 1},
+            "endpoint_fsp_session_counts": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {"type": "integer", "minimum": 1}
+            },
+            "transit_fsp_session_count": {"const": 0},
+            "payload_opaque_to_transit_by_protocol_contract": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "disconnect": {
+          "type": "object",
+          "required": [
+            "control_acknowledgements",
+            "peers_per_node_after",
+            "links_per_node_after"
+          ],
+          "properties": {
+            "control_acknowledgements": {"const": 2},
+            "peers_per_node_after": {"const": [0, 0, 0]},
+            "links_per_node_after": {"const": [0, 0, 0]}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanup": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/cleanup"
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": [
+        "node",
+        "role",
+        "tun_state",
+        "tun_name",
+        "kernel_tun_mtu",
+        "effective_ipv6_mtu"
+      ],
+      "properties": {
+        "node": {"enum": ["a", "r", "b"]},
+        "role": {"enum": ["endpoint", "managed-transit"]},
+        "tun_state": {"const": "active"},
+        "tun_name": {"const": "fips0"},
+        "kernel_tun_mtu": {"const": 1280},
+        "effective_ipv6_mtu": {"const": 1203}
+      },
+      "additionalProperties": false
+    },
+    "mmp": {
+      "type": "object",
+      "required": ["node", "link_ordinal", "mode", "loss_rate", "etx", "srtt_ms_observed"],
+      "properties": {
+        "node": {"enum": ["a", "r", "b"]},
+        "link_ordinal": {"type": "integer", "minimum": 1, "maximum": 2},
+        "mode": {"const": "full"},
+        "loss_rate": {"type": "number", "minimum": 0},
+        "etx": {"type": "number", "minimum": 0},
+        "srtt_ms_observed": {"const": true}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

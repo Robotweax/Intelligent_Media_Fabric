@@ -7,6 +7,7 @@ from pathlib import Path
 from rimf_lab.contracts import (
     ContractError,
     validate_fips_g2_linux_direct_result,
+    validate_fips_g2_linux_managed_transit_result,
     validate_fips_g2_linux_nat_result,
 )
 from rimf_lab.fips_g2_linux import (
@@ -15,6 +16,10 @@ from rimf_lab.fips_g2_linux import (
     valid_connect_acknowledgement,
 )
 from rimf_lab.fips_g2_linux_nat import translated_peer_observed
+from rimf_lab.fips_g2_linux_managed_transit import (
+    forwarding_counters,
+    line_peer_relationships,
+)
 from rimf_lab.payload_probe import deterministic_payload
 
 
@@ -140,6 +145,89 @@ def valid_nat_result():
     return result
 
 
+def valid_managed_transit_result():
+    result = deepcopy(valid_result())
+    result["evidence_type"] = "fips-g2-linux-managed-transit"
+    result["topology"] = {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    digest = "a" * 64
+    result["observations"] = {
+        "underlay_exclusion": {
+            "endpoint_direct_ipv4_forwarding_disabled": True,
+            "endpoint_direct_ipv4_probe_blocked": True,
+        },
+        "line_topology": {
+            "control_connects_acknowledged": 2,
+            "authenticated_peer_counts": [1, 2, 1],
+            "authenticated_link_counts": [1, 2, 1],
+            "estimated_mesh_size": 3,
+            "endpoint_direct_peer_absent": True,
+            "transport": "udp",
+        },
+        "nodes": [
+            {
+                "node": node,
+                "role": "managed-transit" if node == "r" else "endpoint",
+                "tun_state": "active",
+                "tun_name": "fips0",
+                "kernel_tun_mtu": 1280,
+                "effective_ipv6_mtu": 1203,
+            }
+            for node in ("a", "r", "b")
+        ],
+        "mmp": [
+            {
+                "node": node,
+                "link_ordinal": ordinal,
+                "mode": "full",
+                "loss_rate": 0.0,
+                "etx": 1.0,
+                "srtt_ms_observed": True,
+            }
+            for node, ordinal in (("a", 1), ("r", 1), ("r", 2), ("b", 1))
+        ],
+        "icmpv6": {
+            "path": "endpoint-a-via-managed-transit-r-to-endpoint-b",
+            "small_payload_bytes": 32,
+            "effective_mtu_boundary_payload_bytes": 1155,
+            "passed": True,
+        },
+        "payload_identity": {
+            "protocol": "udp-over-ipv6-over-fips0-multihop",
+            "records": [
+                {"bytes": size, "sha256": digest, "exact_echo": True}
+                for size in (1, 1024, 1155)
+            ],
+            "all_exact_echo": True,
+        },
+        "transit_forwarding": {
+            "forwarded_packets": 10,
+            "forwarded_bytes": 4096,
+            "endpoint_fsp_session_counts": [1, 1],
+            "transit_fsp_session_count": 0,
+            "payload_opaque_to_transit_by_protocol_contract": True,
+        },
+        "disconnect": {
+            "control_acknowledgements": 2,
+            "peers_per_node_after": [0, 0, 0],
+            "links_per_node_after": [0, 0, 0],
+        },
+    }
+    result["limitations"] = ["Static managed transit only."]
+    return result
+
+
 class PayloadProbeTests(unittest.TestCase):
     def test_payload_is_deterministic_and_exact_length(self):
         first = deterministic_payload(1155)
@@ -234,6 +322,40 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         result["observations"]["nat"]["translated_endpoint"] = "10.204.0.254:2121"
         with self.assertRaisesRegex(ContractError, "observations.nat"):
             validate_fips_g2_linux_nat_result(result)
+
+    def test_recognizes_exact_three_node_line_relationships(self):
+        identities = ["npub1a", "npub1r", "npub1b"]
+        views = [
+            {"peers": [{"npub": "npub1r"}]},
+            {"peers": [{"npub": "npub1b"}, {"npub": "npub1a"}]},
+            {"peers": [{"npub": "npub1r"}]},
+        ]
+        self.assertTrue(line_peer_relationships(views, identities))
+        views[0]["peers"].append({"npub": "npub1b"})
+        self.assertFalse(line_peer_relationships(views, identities))
+
+    def test_extracts_transit_forwarding_counters(self):
+        self.assertEqual(
+            forwarding_counters(
+                {"forwarding": {"forwarded_packets": 9, "forwarded_bytes": 2048}}
+            ),
+            (9, 2048),
+        )
+
+    def test_accepts_complete_managed_transit_result(self):
+        validate_fips_g2_linux_managed_transit_result(valid_managed_transit_result())
+
+    def test_rejects_managed_transit_without_forwarding(self):
+        result = valid_managed_transit_result()
+        result["observations"]["transit_forwarding"]["forwarded_packets"] = 0
+        with self.assertRaisesRegex(ContractError, "forwarded_packets"):
+            validate_fips_g2_linux_managed_transit_result(result)
+
+    def test_rejects_managed_transit_that_terminates_fsp(self):
+        result = valid_managed_transit_result()
+        result["observations"]["transit_forwarding"]["transit_fsp_session_count"] = 1
+        with self.assertRaisesRegex(ContractError, "transit role"):
+            validate_fips_g2_linux_managed_transit_result(result)
 
 
 if __name__ == "__main__":

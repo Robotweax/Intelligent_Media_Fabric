@@ -571,6 +571,186 @@ def validate_fips_g2_linux_nat_result(data: Any) -> None:
     validate_fips_g2_linux_direct_result(direct_shape)
 
 
+def validate_fips_g2_linux_managed_transit_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux managed-transit result")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 managed-transit result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-managed-transit":
+        raise ContractError("FIPS G2 managed-transit result evidence_type is invalid")
+    if root.get("status") != "passed" or root.get("classification") != "experiment":
+        raise ContractError("FIPS G2 managed-transit retained result must be a passed experiment")
+    if root.get("gate_ids") != ["G2"]:
+        raise ContractError("FIPS G2 managed-transit result gate_ids must be exactly ['G2']")
+    for field in ("run_id", "started_at", "finished_at"):
+        _require_string(root.get(field), f"FIPS G2 managed-transit result.{field}")
+
+    provenance = _require_object(root.get("provenance"), "managed-transit provenance")
+    for field in ("project_revision", "fips_commit"):
+        commit = _require_string(provenance.get(field), f"provenance.{field}")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"provenance.{field} must be a full lowercase Git commit")
+    if provenance.get("fips_source_tree_state") != "clean":
+        raise ContractError("provenance.fips_source_tree_state must be clean")
+    for field in (
+        "cargo_lock_sha256",
+        "rust_toolchain_sha256",
+        "fips_binary_sha256",
+        "fipsctl_binary_sha256",
+    ):
+        digest = _require_string(provenance.get(field), f"provenance.{field}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"provenance.{field} is invalid")
+    if provenance.get("fips_repository") != "https://github.com/jmcorgan/fips.git":
+        raise ContractError("provenance.fips_repository is invalid")
+    _require_string(provenance.get("reported_version"), "provenance.reported_version")
+
+    platform_data = _require_object(root.get("platform"), "managed-transit platform")
+    if platform_data.get("system") != "Linux":
+        raise ContractError("managed-transit retained result must come from Linux")
+    for field in ("release", "machine", "python"):
+        _require_string(platform_data.get(field), f"platform.{field}")
+
+    topology = _require_object(root.get("topology"), "managed-transit topology")
+    expected_topology = {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    if topology != expected_topology:
+        raise ContractError("FIPS G2 managed-transit topology is invalid")
+
+    observations = _require_object(root.get("observations"), "managed-transit observations")
+    if set(observations) != {
+        "underlay_exclusion",
+        "line_topology",
+        "nodes",
+        "mmp",
+        "icmpv6",
+        "payload_identity",
+        "transit_forwarding",
+        "disconnect",
+    }:
+        raise ContractError("managed-transit observations contain unexpected fields")
+    if observations.get("underlay_exclusion") != {
+        "endpoint_direct_ipv4_forwarding_disabled": True,
+        "endpoint_direct_ipv4_probe_blocked": True,
+    }:
+        raise ContractError("observations.underlay_exclusion is invalid")
+    if observations.get("line_topology") != {
+        "control_connects_acknowledged": 2,
+        "authenticated_peer_counts": [1, 2, 1],
+        "authenticated_link_counts": [1, 2, 1],
+        "estimated_mesh_size": 3,
+        "endpoint_direct_peer_absent": True,
+        "transport": "udp",
+    }:
+        raise ContractError("observations.line_topology is invalid")
+
+    nodes = observations.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 3:
+        raise ContractError("observations.nodes must contain exactly three nodes")
+    expected_nodes = (("a", "endpoint"), ("r", "managed-transit"), ("b", "endpoint"))
+    for index, (raw_node, (node_name, role)) in enumerate(zip(nodes, expected_nodes)):
+        node = _require_object(raw_node, f"observations.nodes[{index}]")
+        if node != {
+            "node": node_name,
+            "role": role,
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": 1203,
+        }:
+            raise ContractError(f"observations.nodes[{index}] is invalid")
+
+    mmp = observations.get("mmp")
+    if not isinstance(mmp, list) or len(mmp) != 4:
+        raise ContractError("observations.mmp must contain four direct-link views")
+    if [(item.get("node"), item.get("link_ordinal")) for item in mmp if isinstance(item, dict)] != [
+        ("a", 1),
+        ("r", 1),
+        ("r", 2),
+        ("b", 1),
+    ]:
+        raise ContractError("observations.mmp node/link ordering is invalid")
+    for index, raw_mmp in enumerate(mmp):
+        item = _require_object(raw_mmp, f"observations.mmp[{index}]")
+        if item.get("mode") != "full" or item.get("srtt_ms_observed") is not True:
+            raise ContractError(f"observations.mmp[{index}] is incomplete")
+        for field in ("loss_rate", "etx"):
+            value = item.get(field)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+                raise ContractError(f"observations.mmp[{index}].{field} is invalid")
+
+    if observations.get("icmpv6") != {
+        "path": "endpoint-a-via-managed-transit-r-to-endpoint-b",
+        "small_payload_bytes": 32,
+        "effective_mtu_boundary_payload_bytes": 1155,
+        "passed": True,
+    }:
+        raise ContractError("observations.icmpv6 is invalid")
+
+    payload = _require_object(observations.get("payload_identity"), "payload identity")
+    if (
+        payload.get("protocol") != "udp-over-ipv6-over-fips0-multihop"
+        or payload.get("all_exact_echo") is not True
+    ):
+        raise ContractError("observations.payload_identity is invalid")
+    records = payload.get("records")
+    if not isinstance(records, list) or [item.get("bytes") for item in records] != [1, 1024, 1155]:
+        raise ContractError("observations.payload_identity.records has invalid sizes")
+    for index, raw_record in enumerate(records):
+        record = _require_object(raw_record, f"payload record {index}")
+        digest = _require_string(record.get("sha256"), f"payload record {index}.sha256")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest) or record.get("exact_echo") is not True:
+            raise ContractError(f"payload record {index} is invalid")
+
+    transit = _require_object(observations.get("transit_forwarding"), "transit forwarding")
+    for field in ("forwarded_packets", "forwarded_bytes"):
+        value = transit.get(field)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ContractError(f"observations.transit_forwarding.{field} must be positive")
+    session_counts = transit.get("endpoint_fsp_session_counts")
+    if (
+        not isinstance(session_counts, list)
+        or len(session_counts) != 2
+        or any(not isinstance(value, int) or isinstance(value, bool) or value < 1 for value in session_counts)
+    ):
+        raise ContractError("observations.transit_forwarding endpoint sessions are invalid")
+    if (
+        transit.get("transit_fsp_session_count") != 0
+        or transit.get("payload_opaque_to_transit_by_protocol_contract") is not True
+    ):
+        raise ContractError("observations.transit_forwarding transit role is invalid")
+
+    if observations.get("disconnect") != {
+        "control_acknowledgements": 2,
+        "peers_per_node_after": [0, 0, 0],
+        "links_per_node_after": [0, 0, 0],
+    }:
+        raise ContractError("observations.disconnect is invalid")
+
+    cleanup = _require_object(root.get("cleanup"), "managed-transit cleanup")
+    if cleanup != {
+        "daemons_stopped": True,
+        "namespaces_removed": True,
+        "ephemeral_identity_directory_removed": True,
+    }:
+        raise ContractError("managed-transit cleanup is incomplete")
+    limitations = root.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item for item in limitations
+    ):
+        raise ContractError("managed-transit limitations must be a non-empty string array")
+
+
 def _iter_repository_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file() or any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
@@ -639,6 +819,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_g2_linux_direct_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-nat":
                 validate_fips_g2_linux_nat_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-managed-transit":
+                validate_fips_g2_linux_managed_transit_result(retained)
             else:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:
