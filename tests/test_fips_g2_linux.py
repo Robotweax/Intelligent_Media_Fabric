@@ -175,6 +175,11 @@ def valid_managed_transit_result():
             "endpoint_direct_peer_absent": True,
             "transport": "udp",
         },
+        "identity_resolution": {
+            "mechanism": "local-fips-dns-npub",
+            "endpoint_remote_identities_registered": True,
+            "public_discovery_used": False,
+        },
         "nodes": [
             {
                 "node": node,
@@ -248,6 +253,12 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         self.assertNotIn("nsec", config)
         self.assertIn('name: "fips0"', config)
         self.assertEqual(config.count("mtu: 1280"), 2)
+
+    def test_config_can_enable_loopback_only_fips_dns(self):
+        config = render_config(
+            Path("/tmp/rimf/control.sock"), "10.203.0.1", dns_enabled=True
+        )
+        self.assertIn('dns:\n  enabled: true\n  bind_addr: "::1"\n  port: 5354', config)
 
     def test_accepts_actual_release_connect_acknowledgement_shape(self):
         peer = "npub1test"

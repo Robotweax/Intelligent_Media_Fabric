@@ -631,6 +631,7 @@ def validate_fips_g2_linux_managed_transit_result(data: Any) -> None:
     if set(observations) != {
         "underlay_exclusion",
         "line_topology",
+        "identity_resolution",
         "nodes",
         "mmp",
         "icmpv6",
@@ -653,6 +654,12 @@ def validate_fips_g2_linux_managed_transit_result(data: Any) -> None:
         "transport": "udp",
     }:
         raise ContractError("observations.line_topology is invalid")
+    if observations.get("identity_resolution") != {
+        "mechanism": "local-fips-dns-npub",
+        "endpoint_remote_identities_registered": True,
+        "public_discovery_used": False,
+    }:
+        raise ContractError("observations.identity_resolution is invalid")
 
     nodes = observations.get("nodes")
     if not isinstance(nodes, list) or len(nodes) != 3:

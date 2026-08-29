@@ -69,6 +69,7 @@
       "required": [
         "underlay_exclusion",
         "line_topology",
+        "identity_resolution",
         "nodes",
         "mmp",
         "icmpv6",
@@ -106,6 +107,20 @@
             "estimated_mesh_size": {"const": 3},
             "endpoint_direct_peer_absent": {"const": true},
             "transport": {"const": "udp"}
+          },
+          "additionalProperties": false
+        },
+        "identity_resolution": {
+          "type": "object",
+          "required": [
+            "mechanism",
+            "endpoint_remote_identities_registered",
+            "public_discovery_used"
+          ],
+          "properties": {
+            "mechanism": {"const": "local-fips-dns-npub"},
+            "endpoint_remote_identities_registered": {"const": true},
+            "public_discovery_used": {"const": false}
           },
           "additionalProperties": false
         },

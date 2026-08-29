@@ -46,7 +46,14 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def render_config(control_socket: Path, bind_address: str) -> str:
+def render_config(
+    control_socket: Path, bind_address: str, *, dns_enabled: bool = False
+) -> str:
+    dns_config = (
+        '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
+        if dns_enabled
+        else "  enabled: false"
+    )
     return f"""node:
   identity:
     persistent: false
@@ -61,7 +68,7 @@ tun:
   mtu: {TUN_MTU}
 
 dns:
-  enabled: false
+{dns_config}
 
 transports:
   udp:

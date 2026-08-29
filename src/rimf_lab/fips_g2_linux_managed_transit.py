@@ -117,7 +117,7 @@ def run_fips_g2_linux_managed_transit(
         raise QualificationError("the G2 managed-transit runner requires root")
     if not COMMIT_RE.fullmatch(project_revision):
         raise QualificationError("project revision must be a full lowercase Git commit")
-    for utility in ("git", "ip", "ping", "sysctl"):
+    for utility in ("dig", "git", "ip", "ping", "sysctl"):
         if shutil.which(utility) is None:
             raise QualificationError(f"required utility is unavailable: {utility}")
 
@@ -170,7 +170,9 @@ def run_fips_g2_linux_managed_transit(
             node_dir.mkdir(mode=0o700)
         bind_addresses = (NODE_A_ADDRESS, "0.0.0.0", NODE_B_ADDRESS)
         for config, socket_path, address in zip(configs, sockets, bind_addresses):
-            config.write_text(render_config(socket_path, address), encoding="utf-8")
+            config.write_text(
+                render_config(socket_path, address, dns_enabled=True), encoding="utf-8"
+            )
             config.chmod(0o600)
 
         for namespace in namespaces:
@@ -417,6 +419,73 @@ def run_fips_g2_linux_managed_transit(
                     }
                 )
 
+        phase = "endpoint-identity-resolution"
+
+        def resolve_remote_identity(
+            namespace: str, remote_identity: str, expected_address: str
+        ) -> None:
+            query = _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    namespace,
+                    "dig",
+                    "@::1",
+                    "-p",
+                    "5354",
+                    f"{remote_identity}.fips",
+                    "AAAA",
+                    "+short",
+                ],
+                label="local FIPS DNS identity resolution",
+                timeout=10,
+            )
+            answers: set[str] = set()
+            for line in query.stdout.splitlines():
+                try:
+                    answers.add(str(ipaddress.IPv6Address(line.strip())))
+                except ipaddress.AddressValueError:
+                    continue
+            if str(ipaddress.IPv6Address(expected_address)) not in answers:
+                raise QualificationError(
+                    "local FIPS DNS did not return the expected remote overlay address"
+                )
+
+        resolve_remote_identity(
+            node_a_namespace, identities[2], statuses[2]["ipv6_addr"]
+        )
+        resolve_remote_identity(
+            node_b_namespace, identities[0], statuses[0]["ipv6_addr"]
+        )
+
+        def endpoint_identity_caches_ready():
+            endpoint_a_cache = control(0, "show", "identity-cache")
+            endpoint_b_cache = control(2, "show", "identity-cache")
+            endpoint_a_entries = endpoint_a_cache.get("entries")
+            endpoint_b_entries = endpoint_b_cache.get("entries")
+            if not isinstance(endpoint_a_entries, list) or not isinstance(
+                endpoint_b_entries, list
+            ):
+                return None
+            if not any(
+                isinstance(item, dict) and item.get("npub") == identities[2]
+                for item in endpoint_a_entries
+            ):
+                return None
+            if not any(
+                isinstance(item, dict) and item.get("npub") == identities[0]
+                for item in endpoint_b_entries
+            ):
+                return None
+            return True
+
+        _wait_for(
+            endpoint_identity_caches_ready,
+            label="endpoint remote-identity cache registration",
+            timeout=10,
+        )
+
         phase = "multihop-icmpv6"
         destination = statuses[2]["ipv6_addr"]
 
@@ -600,6 +669,11 @@ def run_fips_g2_linux_managed_transit(
                 "endpoint_direct_peer_absent": True,
                 "transport": "udp",
             },
+            "identity_resolution": {
+                "mechanism": "local-fips-dns-npub",
+                "endpoint_remote_identities_registered": True,
+                "public_discovery_used": False,
+            },
             "nodes": node_observations,
             "mmp": mmp_observations,
             "icmpv6": {
@@ -705,7 +779,7 @@ def run_fips_g2_linux_managed_transit(
         "observations": observations,
         "cleanup": cleanup,
         "limitations": [
-            "A static, explicitly connected three-node FIPS line was exercised; Nostr discovery, a Nostr signaling relay, and NAT traversal were not part of this run.",
+            "A static, explicitly connected three-node FIPS line was exercised; endpoint identities were registered through each endpoint's loopback-only FIPS DNS responder, while Nostr discovery, a Nostr signaling relay, and NAT traversal were not part of this run.",
             "The managed transit node was not impaired, restarted, removed, or compared with an alternate route.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
             "Payload opacity at the transit node follows the pinned FIPS protocol contract; this runner did not capture or cryptographically inspect transit packets.",
