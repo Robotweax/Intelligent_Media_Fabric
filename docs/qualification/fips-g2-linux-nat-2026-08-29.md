@@ -67,6 +67,8 @@ port remapping, discovery, and relays were not exercised. G2 also remains open f
 one-byte-above-boundary behavior, link-dead and restart cases, reconvergence, impaired networks, and resource
 bounds. SRT-over-FIPS media correctness and continuity remain G3 work.
 
-The next connectivity increment should exercise a pinned relay-assisted path without enabling
-public discovery, then compare its authenticated peer/link observations and cleanup contract with
-the retained direct and one-sided-NAT records.
+The subsequent
+[managed-transit qualification](fips-g2-linux-managed-transit-2026-08-30.md) exercised a pinned
+three-node A–R–B FIPS data path without public discovery and compared its authenticated peer/link,
+payload, session, forwarding-counter, and cleanup contract with the retained direct and NAT records.
+That result is distinct from Nostr signaling-relay and NAT-traversal qualification.

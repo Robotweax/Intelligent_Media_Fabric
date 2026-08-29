@@ -9,7 +9,7 @@
 - device identity and private keys;
 - tenant and stream authorization policy;
 - contribution-media payload and timing;
-- FIPS peer, route, relay, and discovery metadata;
+- FIPS peer, route, managed-transit, and discovery/Nostr-relay metadata;
 - SRT session metadata and telemetry;
 - desired-state bundles and operator actions;
 - retained qualification evidence; and
@@ -20,7 +20,7 @@
 ```text
 Internet / untrusted underlay
         |
-FIPS peer and relay boundary
+FIPS peer and managed-transit boundary
         |
 Host network namespace and fips0
         |
@@ -44,13 +44,13 @@ authorization decision.
 | Unauthenticated Internet source | traffic injection, scanning, resource exhaustion | FIPS authentication, firewalling, bounded queues, rate limits |
 | Unauthorized FIPS node | peer access mistaken for media authorization | default-deny Robotweax policy, explicit service and stream grants |
 | Compromised authorized peer | payload injection, topology discovery | least privilege, revocation, stream-scoped authorization, audit events |
-| Malicious transit relay | metadata observation, replay, drop, delay | end-to-end cryptographic guarantees, replay tests, relay treated as untrusted |
+| Malicious managed FIPS transit node | metadata observation, replay, drop, delay | end-to-end cryptographic guarantees, replay tests, transit node treated as untrusted |
 | Local unprivileged process | control-socket abuse, metadata access | dedicated service users, filesystem permissions, socket ownership |
 | Local privileged operator | key extraction, policy override | hardware-backed keys where possible, audited break-glass procedure |
 | Compromised control plane | malicious desired state across fleet | signed bundles, RBAC, MFA, staged rollout, last-known-good rollback |
 | Stolen device key | durable impersonation | rotation, revocation, bounded credential lifetime, incident procedure |
 | Manipulated policy bundle | cross-tenant or stream access | signature, version, issuer, audience, expiry, anti-rollback checks |
-| Discovery or relay replay | stale or attacker-selected connectivity | freshness bounds, sequence/event identity, route epochs |
+| Discovery or Nostr-relay replay | stale or attacker-selected connectivity | freshness bounds, sequence/event identity, route epochs |
 | Cross-tenant confusion | disclosure or unauthorized publication | tenant IDs in every authorization decision, negative isolation tests |
 | Media traffic exhaustion | queue growth, latency collapse, host starvation | queue high-water marks, admission control, bounded recording, stop gates |
 | Evidence poisoning | false Go decision | immutable provenance, scenario digest, independent downstream validation |

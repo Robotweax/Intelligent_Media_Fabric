@@ -66,7 +66,7 @@ It does not pass G2 as a whole and is not G3 media evidence. The following remai
 
 1. payload behavior one byte above the effective boundary, including explicit ICMPv6 Packet Too Big
    observation rather than silent loss;
-2. broader NAT traversal and relay-assisted connectivity classes;
+2. broader NAT traversal and public/private discovery classes;
 3. link-dead timeout, daemon restart, and route-reconvergence behavior;
 4. loss, delay, reordering, queue, and resource bounds; and
 5. Robotweax SRT payload and downstream media timing over the qualified `fips0` path.
@@ -74,4 +74,9 @@ It does not pass G2 as a whole and is not G3 media evidence. The following remai
 The subsequent
 [one-sided NAT qualification](fips-g2-linux-nat-2026-08-29.md) added a third router namespace and
 retained the same identity, MTU, observation, and teardown guarantees. Relay-assisted connectivity
-and broader traversal mechanisms remain before any SRT workload is introduced.
+and broader traversal mechanisms remained before any SRT workload was introduced.
+
+The later
+[managed-transit qualification](fips-g2-linux-managed-transit-2026-08-30.md) also proved exact
+endpoint payload forwarding through a third authenticated FIPS node without a direct endpoint link.
+It is data-plane transit evidence, not Nostr signaling-relay or public-discovery evidence.

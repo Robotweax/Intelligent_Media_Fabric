@@ -29,6 +29,19 @@ Side-channel observation only during the first phases:
        Correlation envelope + retained evidence
 ```
 
+## Relay terminology
+
+Three distinct roles must not be collapsed into one generic "relay":
+
+- a Nostr relay carries discovery and signaling metadata; it is not the FIPS media data path;
+- a managed FIPS transit node is an authenticated overlay peer that forwards encrypted FIPS
+  packets between endpoint peers; and
+- a NAT gateway or traversal service changes underlay reachability and endpoint visibility.
+
+Each role requires separate topology, security, and qualification evidence. The retained
+[managed-transit qualification](../qualification/fips-g2-linux-managed-transit-2026-08-30.md)
+exercises only the second role.
+
 ## Initial integration
 
 Phase 1 uses an external, pinned FIPS daemon and its `fips0` interface. Robotweax SRT communicates

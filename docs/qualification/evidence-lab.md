@@ -98,3 +98,26 @@ the directional and translated-path observations; it excludes identities and und
 Successful output must pass
 `schema/qualification/fips-g2-linux-nat-result.schema.json` and the repository contract. This test
 does not claim STUN, hole punching, symmetric-NAT, discovery, or relay qualification.
+
+## Privileged FIPS G2 Linux managed-transit runner
+
+The manually dispatched `FIPS G2 Linux Managed Transit Qualification` workflow creates three FIPS
+nodes in a line across two IPv4 segments. Endpoint A and endpoint B each authenticate only to
+managed transit node R. IPv4 forwarding on R is disabled, a direct endpoint underlay probe must
+fail, and the authenticated peer/link counts must remain `[1, 2, 1]` with no direct A–B peer.
+
+Each endpoint resolves the other endpoint's identity through its own FIPS DNS responder bound only
+to `::1:5354`. This warms the identity cache needed for multihop route discovery without enabling
+public discovery. The runner then requires:
+
+- full MMP and SRTT visibility on all four adjacent-link views;
+- ICMPv6 delivery at 32 and 1155 payload bytes from A through R to B;
+- exact UDP echo at 1, 1024, and 1155 payload bytes;
+- positive FIPS forwarding packet and byte counters at R;
+- at least one FSP session at each endpoint and zero terminated FSP sessions at R; and
+- acknowledged disconnects, empty peer/link sets, and complete namespace and process teardown.
+
+Successful output must pass
+`schema/qualification/fips-g2-linux-managed-transit-result.schema.json` and the repository
+contract. This qualifies a static managed FIPS data-plane transit path. It does not qualify a Nostr
+signaling relay, public discovery, NAT traversal, relay selection, failure behavior, or SRT media.

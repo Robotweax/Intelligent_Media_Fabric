@@ -135,7 +135,7 @@ separate observation/probe research. G2 remains open until retained Linux eviden
 2. bidirectional payload identity across the TUN path;
 3. FSP session and control-observation agreement;
 4. packet-size boundaries below, at, and above the conservative inner MTU;
-5. at least direct, NATed, and relay-assisted connectivity classes;
+5. at least direct, NATed, and managed-FIPS-transit connectivity classes;
 6. explicit connect, disconnect, link-dead, and daemon-restart behavior;
 7. bounded logs, source/artifact provenance, and missing-metric representation; and
 8. teardown proving no residual namespace, route, process, or credential material.
@@ -148,11 +148,20 @@ assessment.
 The [FIPS G2 Linux direct qualification](fips-g2-linux-direct-2026-08-29.md) subsequently completed
 the two-node direct-`fips0` slice: both TUN devices were active at MTU 1280, exact IPv6/UDP payloads
 crossed the overlay through the 1203-byte effective IPv6 boundary, FSP sessions were visible, and
-disconnect plus privileged teardown completed. G2 remains `in-progress` for NAT/relay classes,
-above-boundary MTU behavior, failure/restart cases, and impaired-network qualification.
+disconnect plus privileged teardown completed. At that point, G2 remained `in-progress` for NAT and
+managed-transit classes, above-boundary MTU behavior, failure/restart cases, and impaired-network
+qualification. The NAT and managed-transit updates below supersede the first two remaining items.
 
 The [one-sided NAT qualification](fips-g2-linux-nat-2026-08-29.md) subsequently proved a
 private-originated authenticated UDP link through stateful SNAT, including public-side observation
 of the translated peer endpoint and the same exact-payload and teardown checks. G2 remains
-`in-progress` for relay-assisted and broader traversal, above-boundary MTU behavior,
-failure/restart and reconvergence cases, and impaired-network qualification.
+`in-progress` for managed transit, broader traversal, above-boundary MTU behavior, failure/restart
+and reconvergence cases, and impaired-network qualification.
+
+The [managed-transit qualification](fips-g2-linux-managed-transit-2026-08-30.md) subsequently
+proved exact A-to-B endpoint payloads across a static authenticated A–R–B FIPS line, with no direct
+endpoint peer or ordinary IPv4 forwarding path. R reported positive forwarding counters while FSP
+sessions terminated only at A and B. This completes the static managed-transit class, but it is not
+Nostr signaling-relay or public-discovery evidence. G2 remains `in-progress` for broader NAT and
+discovery classes, above-boundary MTU behavior, failure/restart and reconvergence cases, impaired
+networks, and resource bounds.
