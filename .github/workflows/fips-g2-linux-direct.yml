@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      FIPS_SOURCE: ${{ runner.temp }}/fips-v0.4.2
+      FIPS_SOURCE: /tmp/rimf-fips-v0.4.2
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
