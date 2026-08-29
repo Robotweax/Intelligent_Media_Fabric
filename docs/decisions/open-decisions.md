@@ -7,7 +7,6 @@ replaced with an implicit implementation default.
 | ID | Decision | Blocks | Closure |
 | --- | --- | --- | --- |
 | OD-01 | Pilot contribution workflow and downstream interruption budget | G3 | Product input plus calibrated direct baseline |
-| OD-02 | FIPS `v0.4.2`, pinned development candidate, or both | Phase 1 baseline | WP1 comparison and ADR |
 | OD-03 | First Robotweax SRT crypto profile | G3 | Security/performance experiment and ADR |
 | OD-04 | Conservative MTU and media-payload profile | G3 | Packet-budget qualification |
 | OD-05 | Simpler secure-network comparison baseline | Go/Pivot | Architecture ADR |
@@ -23,6 +22,6 @@ replaced with an implicit implementation default.
 
 ## Immediate order
 
-WP1 can begin with both pinned FIPS candidates, so OD-02 does not need an unsupported guess. OD-01,
-OD-03, OD-04, and OD-14 must close before G3 can pass. OD-12 must close before an external
-contributor or distributable artifact is accepted.
+OD-02 is closed by [ADR-0003](0003-fips-phase1-baseline.md) after the WP1 comparison. OD-01, OD-03,
+OD-04, and OD-14 must close before G3 can pass. OD-12 must close before an external contributor or
+distributable artifact is accepted.

@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/fips-source-assessment-v1.json",
+  "title": "RIMF FIPS source, build, test, and runtime-smoke assessment",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "assessment_id",
+    "observed_on",
+    "gate_ids",
+    "platform",
+    "toolchain",
+    "candidates",
+    "runtime_smoke",
+    "decision",
+    "findings",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_type": {"const": "fips-source-assessment"},
+    "assessment_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "observed_on": {"type": "string", "format": "date"},
+    "gate_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^G[0-9]+(?:-[A-Z])?$"}
+    },
+    "platform": {
+      "type": "object",
+      "required": ["system", "release", "machine", "target"],
+      "properties": {
+        "system": {"type": "string"},
+        "release": {"type": "string"},
+        "machine": {"type": "string"},
+        "target": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "toolchain": {
+      "type": "object",
+      "required": ["rustc", "cargo", "host", "rustup_installer_sha256"],
+      "properties": {
+        "rustc": {"type": "string"},
+        "cargo": {"type": "string"},
+        "host": {"type": "string"},
+        "rustup_installer_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/candidate"}
+    },
+    "runtime_smoke": {"$ref": "#/$defs/runtimeSmoke"},
+    "decision": {
+      "type": "object",
+      "required": ["status", "primary_candidate_id", "development_candidate_disposition", "rationale"],
+      "properties": {
+        "status": {"const": "accepted"},
+        "primary_candidate_id": {"type": "string"},
+        "development_candidate_disposition": {"type": "string"},
+        "rationale": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "findings": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object",
+      "required": ["name", "sha256", "bytes", "reported_version", "target"],
+      "properties": {
+        "name": {"type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "reported_version": {"type": "string"},
+        "target": {"type": "string"},
+        "platform_note": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "testAttempt": {
+      "type": "object",
+      "required": ["scope", "status", "passed", "failed", "ignored"],
+      "properties": {
+        "scope": {"type": "string"},
+        "status": {"enum": ["passed", "failed"]},
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "ignored": {"type": "integer", "minimum": 0},
+        "failure": {"type": "string"},
+        "observation": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "id",
+        "repository",
+        "version",
+        "commit",
+        "source_tree_state",
+        "cargo_lock_sha256",
+        "rust_toolchain_sha256",
+        "build",
+        "tests",
+        "control_surface",
+        "assessment"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "repository": {"type": "string", "pattern": "^https://github\\.com/.+\\.git$"},
+        "version": {"type": "string"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_tree_state": {"const": "clean"},
+        "cargo_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "rust_toolchain_sha256": {"$ref": "#/$defs/sha256"},
+        "build": {
+          "type": "object",
+          "required": ["command", "status", "locked", "profile", "artifacts"],
+          "properties": {
+            "command": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "status": {"const": "passed"},
+            "locked": {"const": true},
+            "profile": {"type": "string"},
+            "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/artifact"}}
+          },
+          "additionalProperties": false
+        },
+        "tests": {
+          "type": "object",
+          "required": ["command", "attempts"],
+          "properties": {
+            "command": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "attempts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/testAttempt"}}
+          },
+          "additionalProperties": false
+        },
+        "control_surface": {
+          "type": "object",
+          "required": ["read_commands", "mutation_commands", "missing_for_route_control"],
+          "properties": {
+            "read_commands": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+            "mutation_commands": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+            "missing_for_route_control": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string"},
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "assessment": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "runtimeSmoke": {
+      "type": "object",
+      "required": [
+        "candidate_id",
+        "status",
+        "topology",
+        "transport",
+        "tun_enabled",
+        "dns_enabled",
+        "connected_peer_count",
+        "connected_link_count",
+        "estimated_mesh_size",
+        "mmp_mode",
+        "loss_rate",
+        "effective_ipv6_mtu",
+        "fsp_session_count",
+        "disconnect_acknowledged",
+        "peers_after_disconnect"
+      ],
+      "properties": {
+        "candidate_id": {"type": "string"},
+        "status": {"const": "passed"},
+        "topology": {"type": "string"},
+        "transport": {"const": "udp-loopback"},
+        "tun_enabled": {"const": false},
+        "dns_enabled": {"const": false},
+        "connected_peer_count": {"const": 1},
+        "connected_link_count": {"const": 1},
+        "estimated_mesh_size": {"type": "integer", "minimum": 2},
+        "mmp_mode": {"type": "string"},
+        "loss_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "srtt_ms_observed": {"type": "boolean"},
+        "effective_ipv6_mtu": {"type": "integer", "minimum": 576},
+        "fsp_session_count": {"type": "integer", "minimum": 0},
+        "disconnect_acknowledged": {"const": true},
+        "peers_after_disconnect": {"const": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

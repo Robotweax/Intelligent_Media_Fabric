@@ -25,7 +25,8 @@
       "commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
       "role": "secure-network-overlay",
       "integration": "external-daemon-fips0",
-      "evidence_class": "upstream-maintenance-release-candidate"
+      "evidence_class": "phase-1-primary-baseline",
+      "selection_adr": "ADR-0003"
     },
     {
       "id": "fips-development-candidate",
@@ -34,7 +35,8 @@
       "commit": "6b6d2a8df9fb6c6d5c2d1ba9e17e7bd0347dae73",
       "role": "secure-network-overlay",
       "integration": "external-daemon-fips0",
-      "evidence_class": "pinned-development-candidate"
+      "evidence_class": "observation-probe-research-only",
+      "selection_adr": "ADR-0003"
     }
   ]
 }

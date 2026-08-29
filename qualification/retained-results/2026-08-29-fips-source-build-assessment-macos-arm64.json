@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "evidence_type": "fips-source-assessment",
+  "assessment_id": "fips-wp1-source-build-macos-arm64-2026-08-29",
+  "observed_on": "2026-08-29",
+  "gate_ids": ["G2"],
+  "platform": {
+    "system": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "target": "aarch64-apple-darwin"
+  },
+  "toolchain": {
+    "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+    "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
+    "host": "aarch64-apple-darwin",
+    "rustup_installer_sha256": "6c30b75a75b28a96fd913a037c8581b580080b6ee9b8169a3c0feb1af7fe8caf"
+  },
+  "candidates": [
+    {
+      "id": "fips-release-v0.4.2",
+      "repository": "https://github.com/jmcorgan/fips.git",
+      "version": "v0.4.2",
+      "commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
+      "source_tree_state": "clean",
+      "cargo_lock_sha256": "6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83",
+      "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3",
+      "build": {
+        "command": ["cargo", "build", "--release", "--locked"],
+        "status": "passed",
+        "locked": true,
+        "profile": "release",
+        "artifacts": [
+          {
+            "name": "fips",
+            "sha256": "4632ca8264495a90a729f8abc9acaa90e87f2f4e3f07f6e253d8d77d81909b2d",
+            "bytes": 15168672,
+            "reported_version": "0.4.2 (rev 487fa86f65)",
+            "target": "aarch64-apple-darwin"
+          },
+          {
+            "name": "fipsctl",
+            "sha256": "b819a93b243f6f9c3093a1e5ca9c2b4745092804c297e0f4b991365db5cd605b",
+            "bytes": 1414816,
+            "reported_version": "0.4.2 (rev 487fa86f65)",
+            "target": "aarch64-apple-darwin"
+          },
+          {
+            "name": "fipstop",
+            "sha256": "74a925b9a5536eb0c2ad6f0b0b369c5cb90362cb3b2a5669eb62fefbf4b44cb4",
+            "bytes": 2364064,
+            "reported_version": "0.4.2 (rev 487fa86f65)",
+            "target": "aarch64-apple-darwin"
+          },
+          {
+            "name": "fips-gateway",
+            "sha256": "fd477ab3e17a0e51c055872241960a79e1029905406e903aa80aa6ff70c153ec",
+            "bytes": 405744,
+            "reported_version": "0.4.2 (rev 487fa86f65)",
+            "target": "aarch64-apple-darwin",
+            "platform_note": "The executable is a non-Linux stub; nftables gateway behavior was not exercised."
+          }
+        ]
+      },
+      "tests": {
+        "command": ["cargo", "test", "--locked"],
+        "attempts": [
+          {
+            "scope": "full workspace",
+            "status": "passed",
+            "passed": 1646,
+            "failed": 0,
+            "ignored": 6,
+            "observation": "Three non-fatal compiler warnings occurred in Nostr-related test code."
+          }
+        ]
+      },
+      "control_surface": {
+        "read_commands": [
+          "show_acl",
+          "show_bloom",
+          "show_cache",
+          "show_connections",
+          "show_gateway",
+          "show_identity_cache",
+          "show_links",
+          "show_listening_sockets",
+          "show_mappings",
+          "show_metrics",
+          "show_mmp",
+          "show_peers",
+          "show_routing",
+          "show_sessions",
+          "show_stats_all_history",
+          "show_stats_history",
+          "show_stats_history_all_peers",
+          "show_stats_list",
+          "show_stats_peers",
+          "show_status",
+          "show_transports",
+          "show_tree"
+        ],
+        "mutation_commands": ["connect", "disconnect"],
+        "missing_for_route_control": [
+          "disjoint-path selection",
+          "multipath mutation",
+          "route pinning",
+          "route-selection mutation"
+        ]
+      },
+      "assessment": "Selected as the Phase 1 transparent fips0 baseline."
+    },
+    {
+      "id": "fips-development-6b6d2a8",
+      "repository": "https://github.com/jmcorgan/fips.git",
+      "version": "0.5.0-dev",
+      "commit": "6b6d2a8df9fb6c6d5c2d1ba9e17e7bd0347dae73",
+      "source_tree_state": "clean",
+      "cargo_lock_sha256": "509836507693f8213905e2eb4b8e4828a726b891b8e36372be729a1fdd3efc4b",
+      "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3",
+      "build": {
+        "command": ["cargo", "build", "--release", "--locked"],
+        "status": "passed",
+        "locked": true,
+        "profile": "release",
+        "artifacts": [
+          {
+            "name": "fips",
+            "sha256": "7ad0759053d8b4c611e1f1878f75262e8512da2949cea57e4945ab3e6edb89a0",
+            "bytes": 16039872,
+            "reported_version": "0.5.0-dev (rev 6b6d2a8df9)",
+            "target": "aarch64-apple-darwin"
+          },
+          {
+            "name": "fipsctl",
+            "sha256": "4b9ea00284375152052944df629fd72a08298606725bc7ae28f5323073018596",
+            "bytes": 1493184,
+            "reported_version": "0.5.0-dev (rev 6b6d2a8df9)",
+            "target": "aarch64-apple-darwin"
+          },
+          {
+            "name": "fipstop",
+            "sha256": "78f2346aab06fbeaf8422bb98f7e9bd1b1b1cedd15ec308eb2fad321fc92f88a",
+            "bytes": 2364016,
+            "reported_version": "0.5.0-dev (rev 6b6d2a8df9)",
+            "target": "aarch64-apple-darwin"
+          },
+          {
+            "name": "fips-gateway",
+            "sha256": "7fb7bdba9f094744859d0917782f0edf79c843cf67ecd4f66a4620296455eabb",
+            "bytes": 405744,
+            "reported_version": "0.5.0-dev (rev 6b6d2a8df9)",
+            "target": "aarch64-apple-darwin",
+            "platform_note": "The executable is a non-Linux stub; nftables gateway behavior was not exercised."
+          }
+        ]
+      },
+      "tests": {
+        "command": ["cargo", "test", "--locked"],
+        "attempts": [
+          {
+            "scope": "first full workspace attempt",
+            "status": "failed",
+            "passed": 2132,
+            "failed": 1,
+            "ignored": 5,
+            "failure": "native::tests::an_arrival_reaches_the_listener_descriptor_with_its_flow_and_what_it_held"
+          },
+          {
+            "scope": "isolated rerun of the failed native test",
+            "status": "passed",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "observation": "The isolated rerun passed, so the first failure is classified as intermittent rather than deterministic."
+          },
+          {
+            "scope": "second full workspace attempt",
+            "status": "passed",
+            "passed": 2225,
+            "failed": 0,
+            "ignored": 6
+          }
+        ]
+      },
+      "control_surface": {
+        "read_commands": [
+          "profile_tick_status",
+          "show_acl",
+          "show_bloom",
+          "show_cache",
+          "show_connections",
+          "show_gateway",
+          "show_identity_cache",
+          "show_links",
+          "show_listening_sockets",
+          "show_mappings",
+          "show_metrics",
+          "show_mmp",
+          "show_native_flows",
+          "show_peers",
+          "show_routing",
+          "show_sessions",
+          "show_stats_all_history",
+          "show_stats_history",
+          "show_stats_history_all_peers",
+          "show_stats_list",
+          "show_stats_peers",
+          "show_status",
+          "show_transports",
+          "show_tree"
+        ],
+        "mutation_commands": [
+          "connect",
+          "disconnect",
+          "probe_cancel",
+          "probe_poll",
+          "probe_start",
+          "profile_tick_off",
+          "profile_tick_on"
+        ],
+        "missing_for_route_control": [
+          "disjoint-path selection",
+          "multipath mutation",
+          "route pinning",
+          "route-selection mutation"
+        ]
+      },
+      "assessment": "Retained as an observation and probe research candidate only; not the Phase 1 data-plane baseline."
+    }
+  ],
+  "runtime_smoke": {
+    "candidate_id": "fips-release-v0.4.2",
+    "status": "passed",
+    "topology": "two local daemons with persistent identities and explicit control sockets",
+    "transport": "udp-loopback",
+    "tun_enabled": false,
+    "dns_enabled": false,
+    "connected_peer_count": 1,
+    "connected_link_count": 1,
+    "estimated_mesh_size": 2,
+    "mmp_mode": "full",
+    "loss_rate": 0.0,
+    "srtt_ms_observed": true,
+    "effective_ipv6_mtu": 1203,
+    "fsp_session_count": 0,
+    "disconnect_acknowledged": true,
+    "peers_after_disconnect": 0
+  },
+  "decision": {
+    "status": "accepted",
+    "primary_candidate_id": "fips-release-v0.4.2",
+    "development_candidate_disposition": "research-only for observation/probe feasibility until separately qualified",
+    "rationale": [
+      "The maintenance release built reproducibly from a clean pinned source tree and passed its full locked test suite on the assessment host.",
+      "Its daemon/control boundary supports the intended transparent fips0 integration without adopting an experimental application API.",
+      "The development candidate is a broad change set, exposes an experimental native API without reliability semantics, and produced one intermittent native-API test failure."
+    ]
+  },
+  "findings": [
+    "Both pinned candidates build with the exact repository-pinned Rust 1.94.1 toolchain and locked dependency graphs.",
+    "Both candidates expose read-rich control telemetry but no registered route pinning, route-selection, disjoint-path, or multipath mutation command.",
+    "The release candidate established and authenticated a two-node UDP loopback link, reported full MMP measurements, and acknowledged a clean disconnect.",
+    "The default configured TUN MTU is 1280 and the reported effective inner IPv6 MTU is 1203 after 77 bytes of FIPS IPv6 overhead.",
+    "The development native API is experimental, disabled by default, lacks acknowledgement, retransmission, ordering, and flow-control semantics, and has a platform-contract ambiguity in its documentation."
+  ],
+  "limitations": [
+    "This evidence was collected on macOS ARM64; it does not qualify Linux TUN creation, fips0 packet forwarding, nftables, or gateway behavior.",
+    "The loopback smoke did not exercise NAT traversal, relay discovery, wide-area loss, reordering, or route reconvergence.",
+    "No FSP application payload was sent, so session_count remained zero.",
+    "No SRT media stream, payload-integrity validator, downstream media timing, CPU budget, or failover budget was exercised.",
+    "G2 remains in progress until the Linux two-node, TUN, NAT, MTU, and control-observation matrix is retained."
+  ]
+}

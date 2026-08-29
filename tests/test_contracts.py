@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import unittest
+from copy import deepcopy
+from pathlib import Path
 
 from rimf_lab.contracts import (
     ContractError,
+    load_json,
     validate_baselines,
+    validate_fips_source_assessment,
     validate_scenario,
     validate_toolchain,
 )
@@ -126,6 +130,37 @@ class ToolchainContractTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ContractError, "40 lowercase hex"):
             validate_toolchain(data)
+
+
+class FipsAssessmentContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.assessment = load_json(
+            Path(__file__).parents[1]
+            / "qualification/retained-results/2026-08-29-fips-source-build-assessment-macos-arm64.json"
+        )
+
+    def test_accepts_retained_wp1_assessment(self):
+        validate_fips_source_assessment(self.assessment)
+
+    def test_rejects_unassessed_primary_candidate(self):
+        data = deepcopy(self.assessment)
+        data["decision"]["primary_candidate_id"] = "not-assessed"
+        with self.assertRaisesRegex(ContractError, "not an assessed candidate"):
+            validate_fips_source_assessment(data)
+
+    def test_rejects_candidate_without_passing_test_attempt(self):
+        data = deepcopy(self.assessment)
+        data["candidates"][0]["tests"]["attempts"][0]["status"] = "failed"
+        data["candidates"][0]["tests"]["attempts"][0]["failed"] = 1
+        with self.assertRaisesRegex(ContractError, "requires a passing full test attempt"):
+            validate_fips_source_assessment(data)
+
+    def test_rejects_runtime_smoke_that_enables_tun(self):
+        data = deepcopy(self.assessment)
+        data["runtime_smoke"]["tun_enabled"] = True
+        with self.assertRaisesRegex(ContractError, "tun_enabled"):
+            validate_fips_source_assessment(data)
 
 
 if __name__ == "__main__":

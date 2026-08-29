@@ -7,6 +7,7 @@ from pathlib import Path
 from .contracts import (
     ContractError,
     load_json,
+    validate_fips_source_assessment,
     validate_repository,
     validate_result,
     validate_scenario,
@@ -29,6 +30,11 @@ def _parser() -> argparse.ArgumentParser:
     result_parser = subparsers.add_parser("validate-result", help="validate a generated result")
     result_parser.add_argument("path", type=Path)
 
+    fips_parser = subparsers.add_parser(
+        "validate-fips-assessment", help="validate a retained FIPS source/build assessment"
+    )
+    fips_parser.add_argument("path", type=Path)
+
     run_parser = subparsers.add_parser("run", help="run an enabled, reviewed scenario")
     run_parser.add_argument("--scenario", type=Path, required=True)
     run_parser.add_argument("--output", type=Path, required=True)
@@ -48,6 +54,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-result":
             validate_result(load_json(args.path))
             print(f"result validation: OK ({args.path})")
+        elif args.command == "validate-fips-assessment":
+            validate_fips_source_assessment(load_json(args.path))
+            print(f"FIPS assessment validation: OK ({args.path})")
         elif args.command == "run":
             result = run_scenario(args.scenario, args.output, args.root)
             print(f"run {result['run_id']}: {result['status']} ({result['classification']})")

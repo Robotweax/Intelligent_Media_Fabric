@@ -236,6 +236,116 @@ def validate_result(data: Any) -> None:
                 raise ContractError(f"result.cases[{index}].{stream_name}.sha256 is invalid")
 
 
+def validate_fips_source_assessment(data: Any) -> None:
+    root = _require_object(data, "FIPS source assessment")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS assessment schema_version must be 1")
+    if root.get("evidence_type") != "fips-source-assessment":
+        raise ContractError("FIPS assessment evidence_type is invalid")
+
+    assessment_id = _require_string(root.get("assessment_id"), "assessment_id")
+    if not SCENARIO_ID_RE.fullmatch(assessment_id):
+        raise ContractError("assessment_id has an invalid format")
+    observed_on = _require_string(root.get("observed_on"), "observed_on")
+    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", observed_on):
+        raise ContractError("observed_on must use YYYY-MM-DD")
+
+    gate_ids = root.get("gate_ids")
+    if not isinstance(gate_ids, list) or not gate_ids:
+        raise ContractError("gate_ids must be a non-empty array")
+    if any(not isinstance(gate_id, str) or not GATE_RE.fullmatch(gate_id) for gate_id in gate_ids):
+        raise ContractError("gate_ids contains an invalid gate identifier")
+
+    toolchain = _require_object(root.get("toolchain"), "toolchain")
+    for field in ("rustc", "cargo", "host"):
+        _require_string(toolchain.get(field), f"toolchain.{field}")
+
+    candidates = root.get("candidates")
+    if not isinstance(candidates, list) or len(candidates) < 2:
+        raise ContractError("candidates must contain at least two entries")
+    candidate_ids: set[str] = set()
+    for index, raw_candidate in enumerate(candidates):
+        candidate = _require_object(raw_candidate, f"candidates[{index}]")
+        candidate_id = _require_string(candidate.get("id"), f"candidates[{index}].id")
+        if not ID_RE.fullmatch(candidate_id) or candidate_id in candidate_ids:
+            raise ContractError(f"candidates[{index}].id is invalid or duplicated")
+        candidate_ids.add(candidate_id)
+        repository = _require_string(candidate.get("repository"), f"candidates[{index}].repository")
+        if not repository.startswith("https://github.com/") or not repository.endswith(".git"):
+            raise ContractError(f"candidate {candidate_id} must use a canonical HTTPS Git URL")
+        commit = _require_string(candidate.get("commit"), f"candidates[{index}].commit")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"candidate {candidate_id} commit must be 40 lowercase hex digits")
+        if candidate.get("source_tree_state") != "clean":
+            raise ContractError(f"candidate {candidate_id} source_tree_state must be clean")
+        for field in ("cargo_lock_sha256", "rust_toolchain_sha256"):
+            digest = _require_string(candidate.get(field), f"candidates[{index}].{field}")
+            if not re.fullmatch(r"[0-9a-f]{64}", digest):
+                raise ContractError(f"candidate {candidate_id} {field} is invalid")
+
+        build = _require_object(candidate.get("build"), f"candidates[{index}].build")
+        if build.get("status") != "passed" or build.get("locked") is not True:
+            raise ContractError(f"candidate {candidate_id} requires a passed locked build")
+        artifacts = build.get("artifacts")
+        if not isinstance(artifacts, list) or not artifacts:
+            raise ContractError(f"candidate {candidate_id} build.artifacts must be non-empty")
+        for artifact_index, raw_artifact in enumerate(artifacts):
+            artifact = _require_object(
+                raw_artifact, f"candidates[{index}].build.artifacts[{artifact_index}]"
+            )
+            _require_string(artifact.get("name"), "artifact.name")
+            digest = _require_string(artifact.get("sha256"), "artifact.sha256")
+            if not re.fullmatch(r"[0-9a-f]{64}", digest):
+                raise ContractError(f"candidate {candidate_id} artifact sha256 is invalid")
+            if not isinstance(artifact.get("bytes"), int) or artifact["bytes"] <= 0:
+                raise ContractError(f"candidate {candidate_id} artifact bytes is invalid")
+
+        tests = _require_object(candidate.get("tests"), f"candidates[{index}].tests")
+        attempts = tests.get("attempts")
+        if not isinstance(attempts, list) or not attempts:
+            raise ContractError(f"candidate {candidate_id} tests.attempts must be non-empty")
+        if not any(isinstance(attempt, dict) and attempt.get("status") == "passed" for attempt in attempts):
+            raise ContractError(f"candidate {candidate_id} requires a passing full test attempt")
+        for attempt_index, raw_attempt in enumerate(attempts):
+            attempt = _require_object(raw_attempt, f"candidate {candidate_id} attempt {attempt_index}")
+            if attempt.get("status") not in {"passed", "failed"}:
+                raise ContractError(f"candidate {candidate_id} test attempt status is invalid")
+            for field in ("passed", "failed", "ignored"):
+                count = attempt.get(field)
+                if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+                    raise ContractError(f"candidate {candidate_id} test attempt {field} is invalid")
+
+    decision = _require_object(root.get("decision"), "decision")
+    primary_candidate_id = _require_string(
+        decision.get("primary_candidate_id"), "decision.primary_candidate_id"
+    )
+    if primary_candidate_id not in candidate_ids:
+        raise ContractError("decision.primary_candidate_id is not an assessed candidate")
+    if decision.get("status") != "accepted":
+        raise ContractError("decision.status must be accepted")
+
+    smoke = _require_object(root.get("runtime_smoke"), "runtime_smoke")
+    if smoke.get("candidate_id") != primary_candidate_id:
+        raise ContractError("runtime_smoke must exercise the primary candidate")
+    if smoke.get("status") != "passed":
+        raise ContractError("runtime_smoke.status must be passed")
+    if smoke.get("transport") != "udp-loopback":
+        raise ContractError("runtime_smoke.transport must be udp-loopback")
+    if smoke.get("tun_enabled") is not False:
+        raise ContractError("runtime_smoke.tun_enabled must explicitly be false")
+    for field in ("connected_peer_count", "connected_link_count"):
+        if smoke.get(field) != 1:
+            raise ContractError(f"runtime_smoke.{field} must be 1")
+    if smoke.get("peers_after_disconnect") != 0:
+        raise ContractError("runtime_smoke.peers_after_disconnect must be 0")
+
+    limitations = root.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item for item in limitations
+    ):
+        raise ContractError("limitations must be a non-empty string array")
+
+
 def _iter_repository_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file() or any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
@@ -291,6 +401,17 @@ def validate_repository(root: Path) -> None:
     for path in scenario_paths:
         try:
             validate_scenario(load_json(path))
+        except ContractError as exc:
+            errors.append(f"{path.relative_to(root)}: {exc}")
+
+    retained_paths = sorted((root / "qualification/retained-results").glob("*.json"))
+    for path in retained_paths:
+        try:
+            retained = _require_object(load_json(path), str(path.relative_to(root)))
+            if retained.get("evidence_type") == "fips-source-assessment":
+                validate_fips_source_assessment(retained)
+            else:
+                errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:
             errors.append(f"{path.relative_to(root)}: {exc}")
 
