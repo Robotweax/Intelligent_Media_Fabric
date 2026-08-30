@@ -1029,8 +1029,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "restart_epoch_admission_floor_ms",
         "reconnect_elapsed_ms",
         "reconnect_budget_ms",
-        "route_warmup_ipv6_packet_bytes",
-        "route_warmup_echo_reply_received",
+        "post_change_application_packets_before_trigger",
+        "source_coordinate_cache_path_mtu_before_trigger",
         "transport_mtu_before",
         "transport_mtu_after",
         "endpoint_session_start_ms_before",
@@ -1064,8 +1064,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or isinstance(reconnect_elapsed, bool)
         or not 15_000 <= reconnect_elapsed <= 20_000
         or restart.get("reconnect_budget_ms") != 20_000
-        or restart.get("route_warmup_ipv6_packet_bytes") != 80
-        or restart.get("route_warmup_echo_reply_received") is not True
+        or restart.get("post_change_application_packets_before_trigger") != 0
+        or restart.get("source_coordinate_cache_path_mtu_before_trigger") != 1280
         or restart.get("transport_mtu_before") != 1280
         or restart.get("transport_mtu_after") != 1000
         or not isinstance(starts_before, list)

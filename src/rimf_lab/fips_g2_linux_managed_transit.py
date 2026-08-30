@@ -825,42 +825,6 @@ def run_fips_g2_linux_managed_transit(
                 (time.monotonic() - restart_reconnect_started) * 1000
             )
 
-            phase = "post-restart-route-warmup"
-
-            def post_restart_route_warmed():
-                result = _run(
-                    [
-                        "ip",
-                        "netns",
-                        "exec",
-                        node_a_namespace,
-                        "ping",
-                        "-6",
-                        "-c",
-                        "1",
-                        "-W",
-                        "1",
-                        "-s",
-                        "32",
-                        destination,
-                    ],
-                    label="post-restart coordinate warmup probe",
-                    timeout=3,
-                    check=False,
-                )
-                return result.returncode == 0
-
-            _wait_for(
-                post_restart_route_warmed,
-                label="post-restart route and coordinate warmup",
-                # Reconnected tree state is published on the qualification
-                # tick.  Keep retrying through one complete tick, then verify
-                # below that no proactive PMTU notification pre-empted the
-                # reactive window before accepting the warmup.
-                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
-                interval=0.1,
-            )
-
             before_reactive_records = [
                 endpoint_session_record(control(0, "show", "sessions"), identities[2]),
                 endpoint_session_record(control(2, "show", "sessions"), identities[0]),
@@ -874,12 +838,16 @@ def run_fips_g2_linux_managed_transit(
             before_reactive_mtu = session_path_mtu(
                 control(0, "show", "sessions"), identities[2]
             )
+            before_reactive_cache_mtu = coordinate_cache_path_mtu(
+                control(0, "show", "cache"), statuses[2]["ipv6_addr"]
+            )
             if (
                 before_reactive_starts != initial_session_starts
                 or before_reactive_mtu != TUN_MTU
+                or before_reactive_cache_mtu != TUN_MTU
             ):
                 raise QualificationError(
-                    "proactive PMTU feedback or session replacement pre-empted the reactive window"
+                    "route loss, proactive PMTU feedback, or session replacement pre-empted the reactive window"
                 )
 
             endpoint_error_before = mtu_error_counters(control(0, "show", "routing"))
@@ -1009,8 +977,10 @@ def run_fips_g2_linux_managed_transit(
                 ),
                 "reconnect_elapsed_ms": restart_reconnect_elapsed_ms,
                 "reconnect_budget_ms": RESTART_RECONNECT_BUDGET_SECS * 1000,
-                "route_warmup_ipv6_packet_bytes": 80,
-                "route_warmup_echo_reply_received": True,
+                "post_change_application_packets_before_trigger": 0,
+                "source_coordinate_cache_path_mtu_before_trigger": (
+                    before_reactive_cache_mtu
+                ),
                 "transport_mtu_before": TUN_MTU,
                 "transport_mtu_after": TRANSIT_UDP_MTU,
                 "endpoint_session_start_ms_before": initial_session_starts,
@@ -1505,7 +1475,7 @@ def run_fips_g2_linux_managed_transit(
             "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
             "The transit restarted with static auto-connect peers; the endpoint FMP peer slots were replaced through FIPS restart-epoch handling without explicit endpoint link withdrawal.",
             "FIPS restart replay protection imposed a 15-second admission floor; the bounded reconnect observation remained below the 30-second link-dead timeout.",
-            "One small ICMPv6 exchange verified the retained route coordinates; the oversized reactive trigger followed before the next five-second PMTU notification tick.",
+            "No post-change application packet preceded the oversized trigger; the retained source coordinate cache and endpoint session both still reported transport PMTU 1280 immediately before it.",
             "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
             "A five-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
