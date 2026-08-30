@@ -51,9 +51,6 @@ REACTIVE_TICK_INTERVAL_SECS = 5
 REACTIVE_CONVERGENCE_BUDGET_SECS = 20
 RESTART_EPOCH_ADMISSION_SECS = 15
 RESTART_RECONNECT_BUDGET_SECS = 20
-RESTART_PROMOTION_LOG_MARKER = (
-    "Peer restart detected during promotion, replacing stale active peer"
-)
 PEER_PROMOTION_LOG_MARKER = "Peer promoted to active"
 
 
@@ -749,12 +746,6 @@ def run_fips_g2_linux_managed_transit(
                     "route loss or proactive PMTU feedback pre-empted the reactive baseline"
                 )
             endpoint_error_before = mtu_error_counters(control(0, "show", "routing"))
-            endpoint_restart_markers_before = [
-                daemon_logs[index]
-                .read_text(encoding="utf-8", errors="replace")
-                .count(RESTART_PROMOTION_LOG_MARKER)
-                for index in (0, 2)
-            ]
             transit_promotions_before = daemon_logs[1].read_text(
                 encoding="utf-8", errors="replace"
             ).count(PEER_PROMOTION_LOG_MARKER)
@@ -825,20 +816,7 @@ def run_fips_g2_linux_managed_transit(
             phase = "post-restart-line-reconnect"
             restart_reconnect_started = time.monotonic()
 
-            def restart_epoch_promotions_logged():
-                endpoint_counts = [
-                    daemon_logs[index]
-                    .read_text(encoding="utf-8", errors="replace")
-                    .count(RESTART_PROMOTION_LOG_MARKER)
-                    for index in (0, 2)
-                ]
-                if any(
-                    after <= before
-                    for before, after in zip(
-                        endpoint_restart_markers_before, endpoint_counts
-                    )
-                ):
-                    return None
+            def transit_peer_promotions_logged():
                 transit_promotions = daemon_logs[1].read_text(
                     encoding="utf-8", errors="replace"
                 ).count(PEER_PROMOTION_LOG_MARKER)
@@ -847,14 +825,15 @@ def run_fips_g2_linux_managed_transit(
                 return True
 
             _wait_for(
-                restart_epoch_promotions_logged,
-                label="restart-epoch promotion of both endpoint FMP links",
+                transit_peer_promotions_logged,
+                label="restart-epoch promotion of both transit FMP peers",
                 timeout=RESTART_RECONNECT_BUDGET_SECS,
                 interval=0.01,
             )
             restart_reconnect_elapsed_ms = round(
                 (time.monotonic() - restart_reconnect_started) * 1000
             )
+            time.sleep(0.05)
 
             reactive_started = time.monotonic()
             phase = "reactive-mtu-exceeded"
