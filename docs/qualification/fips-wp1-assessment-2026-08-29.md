@@ -167,6 +167,11 @@ Nostr signaling-relay or public-discovery evidence.
 The [effective-MTU boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) subsequently
 proved explicit ICMPv6 Packet Too Big type 2/code 0 with MTU 1203 for a 1204-byte direct-path IPv6
 packet, followed by successful boundary-sized and exact UDP traffic. This completes the direct
-below/at/one-byte-above MTU class. G2 remains `in-progress` for broader NAT and discovery classes,
-failure/restart and reconvergence cases, impaired networks, heterogeneous multihop PMTUD, and
-resource bounds.
+below/at/one-byte-above MTU class.
+
+The [lifecycle qualification](fips-g2-linux-lifecycle-2026-08-30.md) subsequently proved bounded
+link-dead cleanup after an ungraceful direct-peer failure, stable identity across daemon restart,
+automatic reauthentication with zero manual reconnect commands, and restored exact payload/FSP
+behavior. This completes the explicit direct link-dead/daemon-restart item. G2 remains
+`in-progress` for broader NAT and discovery classes, alternate-route and managed-transit
+reconvergence, impaired networks, heterogeneous multihop PMTUD, and resource bounds.

@@ -25,6 +25,7 @@
 - [FIPS G2 Linux effective-MTU boundary qualification](qualification/fips-g2-linux-mtu-boundary-2026-08-30.md)
 - [FIPS G2 Linux one-sided NAT qualification](qualification/fips-g2-linux-nat-2026-08-29.md)
 - [FIPS G2 Linux managed-transit qualification](qualification/fips-g2-linux-managed-transit-2026-08-30.md)
+- [FIPS G2 Linux lifecycle qualification](qualification/fips-g2-linux-lifecycle-2026-08-30.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

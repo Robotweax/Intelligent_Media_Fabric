@@ -1,0 +1,234 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "faulted_daemon_reaped": true,
+    "namespaces_removed": true,
+    "persistent_identity_directory_removed": true
+  },
+  "evidence_type": "fips-g2-linux-lifecycle",
+  "finished_at": "2026-08-30T06:34:40.862159Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "limitations": [
+    "One hard failure and restart of node B was exercised on a direct veth underlay.",
+    "No alternate route, managed transit, NAT rebinding, public discovery, or signaling relay was exercised.",
+    "Recovery timing is an observation from one GitHub-hosted runner and is not a production SLO.",
+    "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+    "Private keys, public identities, mesh addresses, process identifiers, raw payloads, and daemon logs were not retained.",
+    "This run qualifies Linux lifecycle behavior for the pinned host architecture only."
+  ],
+  "observations": {
+    "automatic_reconnect": {
+      "authenticated_peers_per_node": 1,
+      "configured": true,
+      "estimated_mesh_size": 2,
+      "links_per_node": 1,
+      "manual_reconnect_commands": 0,
+      "reconnect_budget_secs": 90,
+      "reconnect_elapsed_ms": 3037,
+      "retry_base_interval_secs": 5,
+      "retry_max_backoff_secs": 300
+    },
+    "disconnect": {
+      "control_acknowledged": true,
+      "fsp_sessions_per_node_after": 0,
+      "links_per_node_after": 0,
+      "peers_per_node_after": 0
+    },
+    "failure_injection": {
+      "failed_node": "b",
+      "graceful_disconnect_sent": false,
+      "process_exit_observed": true,
+      "signal": "SIGKILL"
+    },
+    "identity_continuity": {
+      "daemon_pid_changed": true,
+      "identity_values_retained": false,
+      "mesh_address_unchanged": true,
+      "persistent_identity_configured_per_node": [
+        true,
+        true
+      ],
+      "private_key_file_mode": "0600",
+      "public_identity_unchanged": true,
+      "public_key_file_mode": "0644",
+      "restarted_node": "b"
+    },
+    "initial_connection": {
+      "authenticated_peers_per_node": 1,
+      "configured_auto_connect_peers": 1,
+      "estimated_mesh_size": 2,
+      "links_per_node": 1,
+      "manual_connect_commands": 0,
+      "transport": "udp"
+    },
+    "initial_fsp_session_counts": [
+      1,
+      1
+    ],
+    "initial_mmp": [
+      {
+        "etx": 1.0,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "a",
+        "srtt_ms_observed": true
+      },
+      {
+        "etx": 1.0,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "b",
+        "srtt_ms_observed": true
+      }
+    ],
+    "initial_payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    },
+    "link_dead_detection": {
+      "detection_budget_secs": 60,
+      "detection_elapsed_ms": 31978,
+      "fsp_sessions_after": 0,
+      "heartbeat_interval_secs": 10,
+      "link_dead_timeout_secs": 30,
+      "links_after": 0,
+      "observer": "node-a",
+      "outage_probe_blocked": true,
+      "peers_after": 0,
+      "tick_interval_secs": 1
+    },
+    "nodes_after_restart": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "persistent_identity": true,
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "persistent_identity": true,
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "nodes_before_failure": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "persistent_identity": true,
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "persistent_identity": true,
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "post_restart_fsp_session_counts": [
+      1,
+      1
+    ],
+    "post_restart_icmpv6": {
+      "echo_requests": 2,
+      "effective_mtu_boundary_payload_bytes": 1155,
+      "passed": true
+    },
+    "post_restart_mmp": [
+      {
+        "etx": 1.0,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "a",
+        "srtt_ms_observed": true
+      },
+      {
+        "etx": 1.0,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "b",
+        "srtt_ms_observed": true
+      }
+    ],
+    "post_restart_payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83",
+    "fips_binary_sha256": "737287bff9a0bf783e85cf1d2877425b4df7899b91e9c3f485c042bb19bef03b",
+    "fips_commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "070e2b51095f50ba6520e025849895fcf68c5a5447d312434906ad54644a210d",
+    "project_revision": "b9af41705bad5548087d6077077a2d62f54fc624",
+    "reported_version": "fips 0.4.2 (rev 487fa86f65)\ntarget: x86_64-unknown-linux-gnu",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
+  },
+  "run_id": "038bcc76-cfb9-47b5-9899-27a0817d5411",
+  "schema_version": 1,
+  "started_at": "2026-08-30T06:33:55.149202Z",
+  "status": "passed",
+  "topology": {
+    "configured_tun_mtu": 1280,
+    "configured_udp_mtu": 1280,
+    "identity_storage": "temporary-config-adjacent-key-files",
+    "isolation": "linux-network-namespaces",
+    "node_count": 2,
+    "restarted_node": "b",
+    "tun_name": "fips0",
+    "underlay": "direct-veth-ipv4-udp"
+  }
+}

@@ -62,11 +62,11 @@ provide an operating `fips0` data path, FSP session establishment, exact payload
 effective MTU boundary, correlated control observations, and deterministic cleanup in isolated
 Linux namespaces.
 
-It does not pass G2 as a whole and is not G3 media evidence. After the later MTU-boundary follow-up,
-the following remain:
+It does not pass G2 as a whole and is not G3 media evidence. After the later MTU-boundary and
+lifecycle follow-ups, the following remain:
 
 1. broader NAT traversal and public/private discovery classes;
-2. link-dead timeout, daemon restart, and route-reconvergence behavior;
+2. alternate-route and managed-transit failure/reconvergence behavior;
 3. loss, delay, reordering, queue, and resource bounds; and
 4. Robotweax SRT payload and downstream media timing over the qualified `fips0` path.
 
@@ -83,3 +83,7 @@ It is data-plane transit evidence, not Nostr signaling-relay or public-discovery
 The [effective-MTU boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) subsequently
 proved that a 1204-byte IPv6 packet receives explicit ICMPv6 Packet Too Big feedback reporting MTU
 1203, while boundary-sized and exact UDP payloads continue to cross the established direct path.
+
+The [lifecycle qualification](fips-g2-linux-lifecycle-2026-08-30.md) subsequently proved direct
+link-dead cleanup, identity-preserving daemon restart, automatic reauthentication without a manual
+connect, and restored exact payload/FSP behavior.

@@ -26,8 +26,15 @@ static authenticated A–R–B FIPS data path across two underlay segments. It r
 exclusion, exact multihop payloads, positive forwarding counters at R, and endpoint-only FSP
 termination. It is not Nostr-relay or public-discovery evidence.
 
-G2 remains in progress because broader NAT traversal, public/private discovery, failure/restart,
-reconvergence, and impaired-network classes are not covered.
+The
+[FIPS G2 Linux lifecycle result](2026-08-30-fips-g2-linux-lifecycle-x86_64.json) adds one
+ungraceful direct-peer failure and daemon restart. It records bounded link-dead cleanup, a blocked
+outage probe, stable identity, automatic reauthentication with zero manual reconnect commands,
+post-restart payload/FSP recovery, and credential-directory teardown.
+
+G2 remains in progress because broader NAT traversal, public/private discovery, alternate-route
+reconvergence, heterogeneous multihop PMTUD, impaired-network, and resource-bound classes are not
+covered.
 
 Do not commit generated output automatically. A retained result must pass review for provenance,
 reproducibility, secrets, privacy, customer payload, size, licensing, and evidence classification.
@@ -50,4 +57,7 @@ PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-nat \
 
 PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-managed-transit \
   qualification/retained-results/2026-08-30-fips-g2-linux-managed-transit-x86_64.json
+
+PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-lifecycle \
+  qualification/retained-results/2026-08-30-fips-g2-linux-lifecycle-x86_64.json
 ```
