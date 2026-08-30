@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/telemetry/srt-telemetry-observation-v1.json",
+  "title": "RIMF SRT Telemetry observation adapter contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "source",
+    "observed_at_unix_nano",
+    "monotonic_ns",
+    "route_epoch",
+    "clock",
+    "fabric_identity",
+    "source_identity",
+    "provenance",
+    "quality",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_id": {"type": "string", "format": "uuid"},
+    "source": {"const": "srt"},
+    "observed_at_unix_nano": {"type": "integer", "minimum": 0},
+    "monotonic_ns": {"type": "integer", "minimum": 0},
+    "route_epoch": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Fabric route epoch; zero means unknown or not yet assigned."
+    },
+    "clock": {"$ref": "#/$defs/clock"},
+    "fabric_identity": {"$ref": "#/$defs/fabricIdentity"},
+    "source_identity": {"$ref": "#/$defs/sourceIdentity"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "quality": {"$ref": "#/$defs/quality"},
+    "payload": {"$ref": "#/$defs/payload"}
+  },
+  "$defs": {
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "clock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain_id",
+        "synchronization",
+        "max_error_ns",
+        "cross_host_ordering_allowed"
+      ],
+      "properties": {
+        "domain_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "synchronization": {"enum": ["local-only", "unknown", "ntp", "ptp", "gps"]},
+        "max_error_ns": {"type": ["integer", "null"], "minimum": 0},
+        "cross_host_ordering_allowed": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "synchronization": {"enum": ["local-only", "unknown"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "max_error_ns": {"type": "null"},
+              "cross_host_ordering_allowed": {"const": false}
+            }
+          },
+          "else": {
+            "properties": {
+              "max_error_ns": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      ]
+    },
+    "fabricIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "device_id", "stream_id", "mapping"],
+      "properties": {
+        "tenant_id": {"type": ["string", "null"], "minLength": 1},
+        "device_id": {"type": ["string", "null"], "minLength": 1},
+        "stream_id": {"type": ["string", "null"], "minLength": 1},
+        "mapping": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tenant_id", "device_id", "stream_id"],
+          "properties": {
+            "tenant_id": {"enum": ["explicit-policy", "unavailable"]},
+            "device_id": {"enum": ["explicit-policy", "unavailable"]},
+            "stream_id": {"enum": ["explicit-policy", "unavailable"]}
+          }
+        }
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream_id", "flow_id", "role", "sample_index", "identifiers_pseudonymous"],
+      "properties": {
+        "stream_id": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "flow_id": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "role": {"enum": ["sender", "receiver"]},
+        "sample_index": {"$ref": "#/$defs/nonNegativeInteger"},
+        "identifiers_pseudonymous": {"const": true}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "provider_version",
+        "provider_revision",
+        "build_profile",
+        "telemetry_version",
+        "telemetry_revision",
+        "source_schema_id",
+        "source_schema_sha256",
+        "adapter_contract"
+      ],
+      "properties": {
+        "provider": {"enum": ["robotweax-srt", "haivision-srt"]},
+        "provider_version": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "provider_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "build_profile": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "telemetry_version": {"const": "0.1.0-alpha.0"},
+        "telemetry_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_schema_id": {
+          "const": "https://robotweax.com/schemas/srt-telemetry/telemetry-jsonl-line-v1alpha1.json"
+        },
+        "source_schema_sha256": {
+          "const": "ec235ac4fcc4e1ffc0a3881dcb2fe7a206c80013de5f1b6e2a23a7de42ffcd8e"
+        },
+        "adapter_contract": {"const": "rimf-srt-telemetry-adapter-v1"}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "reason",
+        "source_available_fields",
+        "source_quality_flags",
+        "source_available_delta_fields",
+        "source_counter_reset_fields",
+        "source_available_rates"
+      ],
+      "properties": {
+        "availability": {"enum": ["available", "partial", "unavailable"]},
+        "reason": {"type": ["string", "null"], "minLength": 1},
+        "source_available_fields": {"$ref": "#/$defs/nonNegativeInteger"},
+        "source_quality_flags": {"$ref": "#/$defs/nonNegativeInteger"},
+        "source_available_delta_fields": {"$ref": "#/$defs/nonNegativeInteger"},
+        "source_counter_reset_fields": {"$ref": "#/$defs/nonNegativeInteger"},
+        "source_available_rates": {"$ref": "#/$defs/nonNegativeInteger"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"availability": {"const": "available"}}},
+          "then": {
+            "properties": {
+              "reason": {"type": "null"},
+              "source_available_fields": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"availability": {"const": "partial"}}},
+          "then": {
+            "properties": {
+              "reason": {"type": "string", "minLength": 1},
+              "source_available_fields": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"availability": {"const": "unavailable"}}},
+          "then": {
+            "properties": {
+              "reason": {"type": "string", "minLength": 1},
+              "source_available_fields": {"const": 0}
+            }
+          }
+        }
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recording", "sample"],
+      "properties": {
+        "recording": {"$ref": "#/$defs/sourceRecording"},
+        "sample": {"$ref": "#/$defs/sourceSample"}
+      }
+    },
+    "sourceRecording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "streamId",
+        "flowId",
+        "role",
+        "configuredProvider",
+        "providerVersion",
+        "providerRevision",
+        "buildProfile",
+        "telemetryVersion",
+        "recordCount",
+        "capacity",
+        "overwrittenCount"
+      ],
+      "properties": {
+        "schemaVersion": {"const": "1alpha1"},
+        "kind": {"const": "robotweax-srt-telemetry-recording"},
+        "streamId": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "flowId": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "role": {"enum": ["sender", "receiver"]},
+        "configuredProvider": {"enum": ["robotweax-srt", "haivision-srt"]},
+        "providerVersion": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "providerRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "buildProfile": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "telemetryVersion": {"const": "0.1.0-alpha.0"},
+        "recordCount": {"$ref": "#/$defs/nonNegativeInteger"},
+        "capacity": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "overwrittenCount": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "sourceSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "kind", "streamId", "sampleIndex", "raw", "delta"],
+      "properties": {
+        "schemaVersion": {"const": "1alpha1"},
+        "kind": {"const": "robotweax-srt-telemetry-sample"},
+        "streamId": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "sampleIndex": {"$ref": "#/$defs/nonNegativeInteger"},
+        "raw": {
+          "type": "object",
+          "required": [
+            "provider",
+            "available_fields",
+            "observed_at_unix_nano",
+            "sample_monotonic_nano"
+          ],
+          "properties": {
+            "provider": {"enum": ["robotweax-srt", "haivision-srt"]},
+            "available_fields": {"$ref": "#/$defs/nonNegativeInteger"},
+            "observed_at_unix_nano": {"$ref": "#/$defs/nonNegativeInteger"},
+            "sample_monotonic_nano": {"$ref": "#/$defs/nonNegativeInteger"}
+          }
+        },
+        "delta": {
+          "type": "object",
+          "required": [
+            "quality_flags",
+            "available_delta_fields",
+            "counter_reset_fields",
+            "available_rates"
+          ],
+          "properties": {
+            "quality_flags": {"$ref": "#/$defs/nonNegativeInteger"},
+            "available_delta_fields": {"$ref": "#/$defs/nonNegativeInteger"},
+            "counter_reset_fields": {"$ref": "#/$defs/nonNegativeInteger"},
+            "available_rates": {"$ref": "#/$defs/nonNegativeInteger"}
+          }
+        }
+      }
+    }
+  }
+}

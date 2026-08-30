@@ -10,7 +10,7 @@ or an approved ADR can change a gate status.
 | G1 Direct SRT Baseline | not-started | Is the control correct and the harness non-distorting? | payload and timing validation, repeated direct runs |
 | G2 FIPS Connectivity | in-progress | Does the selected FIPS baseline provide the documented connectivity and telemetry? | build provenance, Linux two-node TUN, NAT and managed-transit classes, direct and heterogeneous multihop MTU boundaries, direct-link lifecycle, bounded non-hitless alternate-route recovery, fixed-delay and fixed-loss MMP responses, control-socket observations |
 | G3 Transparent SRT over FIPS | not-started | Does SRT over `fips0` meet frozen correctness and overhead budgets? | direct/FIPS scorecard, mandatory correctness, CPU/wire/timing evidence |
-| G4 Unified Observation | not-started | Can correlation identify the first divergent layer and fault domain? | route epochs, data-quality cases, retained golden incidents |
+| G4 Unified Observation | not-started | Can correlation identify the first divergent layer and fault domain? | accepted SRT adapter contract, route epochs, data-quality cases, retained cross-layer golden incidents |
 | G5 SRT Group Resilience | not-started | What continuity can existing SRT groups provide across real fault domains? | broadcast/backup scorecard, downstream media gap |
 | G6 FIPS Reconvergence | not-started | Can a running stream survive route change within budget? | route event, socket continuity, downstream timing, MTU transition |
 | G7 Route Advisor | not-started | Are recommendations stable, explainable, and better than raw metrics? | deterministic replay, confidence, hysteresis, no mutation |

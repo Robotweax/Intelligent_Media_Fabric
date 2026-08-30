@@ -10,6 +10,7 @@ from rimf_lab.contracts import (
     validate_baselines,
     validate_fips_source_assessment,
     validate_scenario,
+    validate_srt_telemetry_observation,
     validate_toolchain,
 )
 
@@ -161,6 +162,59 @@ class FipsAssessmentContractTests(unittest.TestCase):
         data["runtime_smoke"]["tun_enabled"] = True
         with self.assertRaisesRegex(ContractError, "tun_enabled"):
             validate_fips_source_assessment(data)
+
+
+class SrtTelemetryObservationContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.observation = load_json(
+            Path(__file__).parents[1]
+            / "qualification/fixtures/srt-telemetry-observation-v1.json"
+        )
+
+    def test_accepts_pinned_source_sample_without_reinterpretation(self):
+        validate_srt_telemetry_observation(self.observation)
+
+    def test_generic_envelope_cannot_bypass_srt_adapter_contract(self):
+        generic_schema = load_json(
+            Path(__file__).parents[1]
+            / "schema/telemetry/correlation-envelope.schema.json"
+        )
+        self.assertNotIn("srt", generic_schema["properties"]["source"]["enum"])
+
+    def test_rejects_cross_host_ordering_for_local_clock(self):
+        data = deepcopy(self.observation)
+        data["clock"]["cross_host_ordering_allowed"] = True
+        with self.assertRaisesRegex(ContractError, "cannot authorize cross-host ordering"):
+            validate_srt_telemetry_observation(data)
+
+    def test_accepts_bounded_synchronized_cross_host_clock(self):
+        data = deepcopy(self.observation)
+        data["clock"] = {
+            "domain_id": "ptp-domain-7",
+            "synchronization": "ptp",
+            "max_error_ns": 500000,
+            "cross_host_ordering_allowed": True,
+        }
+        validate_srt_telemetry_observation(data)
+
+    def test_rejects_implicit_fabric_identity_mapping(self):
+        data = deepcopy(self.observation)
+        data["fabric_identity"]["stream_id"] = "fabric-stream-1"
+        with self.assertRaisesRegex(ContractError, "must be null when mapping is unavailable"):
+            validate_srt_telemetry_observation(data)
+
+    def test_rejects_non_pseudonymous_source_identifiers(self):
+        data = deepcopy(self.observation)
+        data["source_identity"]["identifiers_pseudonymous"] = False
+        with self.assertRaisesRegex(ContractError, "identifiers_pseudonymous must be true"):
+            validate_srt_telemetry_observation(data)
+
+    def test_rejects_reinterpreted_quality_mask(self):
+        data = deepcopy(self.observation)
+        data["quality"]["source_quality_flags"] = 0
+        with self.assertRaisesRegex(ContractError, "quality flag mask must be preserved"):
+            validate_srt_telemetry_observation(data)
 
 
 if __name__ == "__main__":

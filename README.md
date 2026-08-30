@@ -31,6 +31,9 @@ FIPS
 Robotweax SRT
     media reliability + timing + FEC + connection groups
 
+Robotweax SRT Telemetry
+    SRT field semantics + deltas + quality + raw evidence
+
 Robotweax Intelligent Media Fabric
     authorization + correlation + path intelligence
     + resilience policy + operations

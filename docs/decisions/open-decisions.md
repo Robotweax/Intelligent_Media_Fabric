@@ -12,7 +12,6 @@ replaced with an implicit implementation default.
 | OD-05 | Simpler secure-network comparison baseline | Go/Pivot | Architecture ADR |
 | OD-06 | Private discovery and Nostr relay operation | Product pilot | Threat model and deployment ADR |
 | OD-07 | Device credential, revocation, and offline policy | G3 security | Credential ADR and adversarial tests |
-| OD-08 | Shared telemetry primitives without widening the SRT provider contract | G4 | Adapter contract ADR |
 | OD-09 | Missing FIPS route/path events for a qualified advisor | G7 | WP1 inventory and upstream proposal |
 | OD-10 | Generic capabilities proposed upstream | G8 | Upstream issue/design record |
 | OD-11 | SRT-group topologies with proven independent fault domains | G5 | Topology experiment |
@@ -24,10 +23,11 @@ replaced with an implicit implementation default.
 
 ## Immediate order
 
-OD-02 is closed by [ADR-0003](0003-fips-phase1-baseline.md) after the WP1 comparison. OD-01, OD-03,
-OD-04, and OD-14 must close before G3 can pass. OD-12 must close before an external contributor or
-distributable artifact is accepted. OD-15 must close before G6 can pass; the retained FIPS result
-proves route reparenting but not usable-session or media continuity. OD-16 must close before a
-reactive path-MTU result can contribute to G6; the current stock-daemon limitation and acceptance
-contract are documented in the
+OD-02 is closed by [ADR-0003](0003-fips-phase1-baseline.md) after the WP1 comparison. OD-08 is closed
+by [ADR-0004](0004-srt-telemetry-adapter-boundary.md); G4 still requires retained cross-layer
+data-quality and golden-incident evidence. OD-01, OD-03, OD-04, and OD-14 must close before G3 can
+pass. OD-12 must close before an external contributor or distributable artifact is accepted. OD-15
+must close before G6 can pass; the retained FIPS result proves route reparenting but not a usable
+session or media continuity. OD-16 must close before a reactive path-MTU result can contribute to
+G6; the current stock-daemon limitation and acceptance contract are documented in the
 [reactive path-MTU capability-gap assessment](../qualification/fips-g2-reactive-mtu-gap-2026-08-30.md).

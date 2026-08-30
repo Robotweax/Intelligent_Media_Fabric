@@ -8,6 +8,9 @@ from urllib.parse import unquote
 
 
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,127}$")
 SCENARIO_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
 GATE_RE = re.compile(r"^G[0-9]+(?:-[A-Z])?$")
@@ -27,6 +30,14 @@ CREDENTIAL_PATTERNS = (
 MARKDOWN_LINK_RE = re.compile(r"!?(?:\[[^\]]*\])\(([^)]+)\)")
 TEXT_SUFFIXES = {"", ".md", ".py", ".json", ".toml", ".yml", ".yaml"}
 IGNORED_PARTS = {".git", "artifacts", "build", "dist", "__pycache__"}
+SRT_TELEMETRY_SCHEMA_ID = (
+    "https://robotweax.com/schemas/srt-telemetry/telemetry-jsonl-line-v1alpha1.json"
+)
+SRT_TELEMETRY_SCHEMA_SHA256 = (
+    "ec235ac4fcc4e1ffc0a3881dcb2fe7a206c80013de5f1b6e2a23a7de42ffcd8e"
+)
+SRT_TELEMETRY_VERSION = "0.1.0-alpha.0"
+SRT_ADAPTER_CONTRACT = "rimf-srt-telemetry-adapter-v1"
 
 
 class ContractError(ValueError):
@@ -50,6 +61,21 @@ def _require_string(value: Any, context: str) -> str:
     if not isinstance(value, str) or not value:
         raise ContractError(f"{context} must be a non-empty string")
     return value
+
+
+def _require_nonnegative_integer(value: Any, context: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ContractError(f"{context} must be a non-negative integer")
+    return value
+
+
+def _require_exact_fields(value: dict[str, Any], fields: set[str], context: str) -> None:
+    missing = fields - set(value)
+    unexpected = set(value) - fields
+    if missing:
+        raise ContractError(f"{context} is missing fields: {', '.join(sorted(missing))}")
+    if unexpected:
+        raise ContractError(f"{context} has unexpected fields: {', '.join(sorted(unexpected))}")
 
 
 def validate_baselines(data: Any) -> None:
@@ -234,6 +260,260 @@ def validate_result(data: Any) -> None:
             )
             if not re.fullmatch(r"[0-9a-f]{64}", stream_digest):
                 raise ContractError(f"result.cases[{index}].{stream_name}.sha256 is invalid")
+
+
+def validate_srt_telemetry_observation(data: Any) -> None:
+    root = _require_object(data, "SRT telemetry observation")
+    _require_exact_fields(
+        root,
+        {
+            "schema_version",
+            "event_id",
+            "source",
+            "observed_at_unix_nano",
+            "monotonic_ns",
+            "route_epoch",
+            "clock",
+            "fabric_identity",
+            "source_identity",
+            "provenance",
+            "quality",
+            "payload",
+        },
+        "SRT telemetry observation",
+    )
+    if root.get("schema_version") != 1 or root.get("source") != "srt":
+        raise ContractError("SRT telemetry observation schema_version/source is invalid")
+    event_id = _require_string(root.get("event_id"), "event_id")
+    if not UUID_RE.fullmatch(event_id):
+        raise ContractError("event_id must be a canonical lowercase UUID")
+    observed_at = _require_nonnegative_integer(
+        root.get("observed_at_unix_nano"), "observed_at_unix_nano"
+    )
+    monotonic_ns = _require_nonnegative_integer(root.get("monotonic_ns"), "monotonic_ns")
+    _require_nonnegative_integer(root.get("route_epoch"), "route_epoch")
+
+    clock = _require_object(root.get("clock"), "clock")
+    _require_exact_fields(
+        clock,
+        {"domain_id", "synchronization", "max_error_ns", "cross_host_ordering_allowed"},
+        "clock",
+    )
+    _require_string(clock.get("domain_id"), "clock.domain_id")
+    synchronization = clock.get("synchronization")
+    if synchronization not in {"local-only", "unknown", "ntp", "ptp", "gps"}:
+        raise ContractError("clock.synchronization is invalid")
+    cross_host_ordering = clock.get("cross_host_ordering_allowed")
+    if not isinstance(cross_host_ordering, bool):
+        raise ContractError("clock.cross_host_ordering_allowed must be a boolean")
+    max_error_ns = clock.get("max_error_ns")
+    if synchronization in {"local-only", "unknown"}:
+        if max_error_ns is not None or cross_host_ordering:
+            raise ContractError(
+                "local-only or unknown clocks cannot authorize cross-host ordering"
+            )
+    else:
+        _require_nonnegative_integer(max_error_ns, "clock.max_error_ns")
+
+    fabric_identity = _require_object(root.get("fabric_identity"), "fabric_identity")
+    _require_exact_fields(
+        fabric_identity,
+        {"tenant_id", "device_id", "stream_id", "mapping"},
+        "fabric_identity",
+    )
+    mapping = _require_object(fabric_identity.get("mapping"), "fabric_identity.mapping")
+    identity_fields = {"tenant_id", "device_id", "stream_id"}
+    _require_exact_fields(mapping, identity_fields, "fabric_identity.mapping")
+    for field in sorted(identity_fields):
+        value = fabric_identity.get(field)
+        authority = mapping.get(field)
+        if authority not in {"explicit-policy", "unavailable"}:
+            raise ContractError(f"fabric_identity.mapping.{field} is invalid")
+        if authority == "unavailable" and value is not None:
+            raise ContractError(f"fabric_identity.{field} must be null when mapping is unavailable")
+        if authority == "explicit-policy":
+            _require_string(value, f"fabric_identity.{field}")
+
+    source_identity = _require_object(root.get("source_identity"), "source_identity")
+    _require_exact_fields(
+        source_identity,
+        {"stream_id", "flow_id", "role", "sample_index", "identifiers_pseudonymous"},
+        "source_identity",
+    )
+    source_stream_id = _require_string(source_identity.get("stream_id"), "source_identity.stream_id")
+    source_flow_id = _require_string(source_identity.get("flow_id"), "source_identity.flow_id")
+    if source_identity.get("role") not in {"sender", "receiver"}:
+        raise ContractError("source_identity.role is invalid")
+    sample_index = _require_nonnegative_integer(
+        source_identity.get("sample_index"), "source_identity.sample_index"
+    )
+    if source_identity.get("identifiers_pseudonymous") is not True:
+        raise ContractError("source_identity.identifiers_pseudonymous must be true")
+
+    provenance = _require_object(root.get("provenance"), "provenance")
+    _require_exact_fields(
+        provenance,
+        {
+            "provider",
+            "provider_version",
+            "provider_revision",
+            "build_profile",
+            "telemetry_version",
+            "telemetry_revision",
+            "source_schema_id",
+            "source_schema_sha256",
+            "adapter_contract",
+        },
+        "provenance",
+    )
+    if provenance.get("provider") not in {"robotweax-srt", "haivision-srt"}:
+        raise ContractError("provenance.provider is invalid")
+    for field in ("provider_version", "build_profile"):
+        _require_string(provenance.get(field), f"provenance.{field}")
+    for field in ("provider_revision", "telemetry_revision"):
+        commit = _require_string(provenance.get(field), f"provenance.{field}")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"provenance.{field} must be a full lowercase Git commit")
+    if provenance.get("telemetry_version") != SRT_TELEMETRY_VERSION:
+        raise ContractError("provenance.telemetry_version is not the pinned contract version")
+    if provenance.get("source_schema_id") != SRT_TELEMETRY_SCHEMA_ID:
+        raise ContractError("provenance.source_schema_id is invalid")
+    if provenance.get("source_schema_sha256") != SRT_TELEMETRY_SCHEMA_SHA256:
+        raise ContractError("provenance.source_schema_sha256 is invalid")
+    if provenance.get("adapter_contract") != SRT_ADAPTER_CONTRACT:
+        raise ContractError("provenance.adapter_contract is invalid")
+
+    quality = _require_object(root.get("quality"), "quality")
+    _require_exact_fields(
+        quality,
+        {
+            "availability",
+            "reason",
+            "source_available_fields",
+            "source_quality_flags",
+            "source_available_delta_fields",
+            "source_counter_reset_fields",
+            "source_available_rates",
+        },
+        "quality",
+    )
+    availability = quality.get("availability")
+    if availability not in {"available", "partial", "unavailable"}:
+        raise ContractError("quality.availability is invalid")
+    available_fields = _require_nonnegative_integer(
+        quality.get("source_available_fields"), "quality.source_available_fields"
+    )
+    for field in (
+        "source_quality_flags",
+        "source_available_delta_fields",
+        "source_counter_reset_fields",
+        "source_available_rates",
+    ):
+        _require_nonnegative_integer(quality.get(field), f"quality.{field}")
+    reason = quality.get("reason")
+    if availability == "available":
+        if available_fields == 0 or reason is not None:
+            raise ContractError("available quality requires fields and a null reason")
+    elif availability == "partial":
+        if available_fields == 0:
+            raise ContractError("partial quality requires at least one available source field")
+        _require_string(reason, "quality.reason")
+    else:
+        if available_fields != 0:
+            raise ContractError("unavailable quality requires a zero source field mask")
+        _require_string(reason, "quality.reason")
+
+    payload = _require_object(root.get("payload"), "payload")
+    _require_exact_fields(payload, {"recording", "sample"}, "payload")
+    recording = _require_object(payload.get("recording"), "payload.recording")
+    recording_fields = {
+        "schemaVersion",
+        "kind",
+        "streamId",
+        "flowId",
+        "role",
+        "configuredProvider",
+        "providerVersion",
+        "providerRevision",
+        "buildProfile",
+        "telemetryVersion",
+        "recordCount",
+        "capacity",
+        "overwrittenCount",
+    }
+    _require_exact_fields(recording, recording_fields, "payload.recording")
+    if (
+        recording.get("schemaVersion") != "1alpha1"
+        or recording.get("kind") != "robotweax-srt-telemetry-recording"
+    ):
+        raise ContractError("payload.recording is not an SRT telemetry v1alpha1 header")
+    for field in ("recordCount", "capacity", "overwrittenCount"):
+        _require_nonnegative_integer(recording.get(field), f"payload.recording.{field}")
+    if recording["capacity"] < 1 or recording["capacity"] > 1_000_000:
+        raise ContractError("payload.recording.capacity is outside the source contract")
+    if recording["recordCount"] > recording["capacity"]:
+        raise ContractError("payload.recording.recordCount exceeds its fixed capacity")
+
+    sample = _require_object(payload.get("sample"), "payload.sample")
+    _require_exact_fields(
+        sample, {"schemaVersion", "kind", "streamId", "sampleIndex", "raw", "delta"}, "payload.sample"
+    )
+    if (
+        sample.get("schemaVersion") != "1alpha1"
+        or sample.get("kind") != "robotweax-srt-telemetry-sample"
+    ):
+        raise ContractError("payload.sample is not an SRT telemetry v1alpha1 sample")
+    raw = _require_object(sample.get("raw"), "payload.sample.raw")
+    delta = _require_object(sample.get("delta"), "payload.sample.delta")
+    for field in ("provider", "available_fields", "observed_at_unix_nano", "sample_monotonic_nano"):
+        if field not in raw:
+            raise ContractError(f"payload.sample.raw is missing field: {field}")
+    if raw.get("provider") not in {"robotweax-srt", "haivision-srt"}:
+        raise ContractError("payload.sample.raw.provider is invalid")
+    for field in ("available_fields", "observed_at_unix_nano", "sample_monotonic_nano"):
+        _require_nonnegative_integer(raw.get(field), f"payload.sample.raw.{field}")
+    for field in (
+        "quality_flags",
+        "available_delta_fields",
+        "counter_reset_fields",
+        "available_rates",
+    ):
+        if field not in delta:
+            raise ContractError(f"payload.sample.delta is missing field: {field}")
+        _require_nonnegative_integer(delta.get(field), f"payload.sample.delta.{field}")
+    _require_nonnegative_integer(sample.get("sampleIndex"), "payload.sample.sampleIndex")
+
+    expected_equalities = (
+        (recording.get("streamId"), source_stream_id, "recording stream identity"),
+        (recording.get("flowId"), source_flow_id, "recording flow identity"),
+        (recording.get("role"), source_identity["role"], "recording role"),
+        (recording.get("configuredProvider"), provenance["provider"], "configured provider"),
+        (recording.get("providerVersion"), provenance["provider_version"], "provider version"),
+        (recording.get("providerRevision"), provenance["provider_revision"], "provider revision"),
+        (recording.get("buildProfile"), provenance["build_profile"], "build profile"),
+        (recording.get("telemetryVersion"), provenance["telemetry_version"], "telemetry version"),
+        (sample.get("streamId"), source_stream_id, "sample stream identity"),
+        (sample.get("sampleIndex"), sample_index, "sample index"),
+        (raw.get("provider"), provenance["provider"], "sample provider"),
+        (raw.get("observed_at_unix_nano"), observed_at, "wall timestamp"),
+        (raw.get("sample_monotonic_nano"), monotonic_ns, "monotonic timestamp"),
+        (raw.get("available_fields"), available_fields, "available field mask"),
+        (delta.get("quality_flags"), quality["source_quality_flags"], "quality flag mask"),
+        (
+            delta.get("available_delta_fields"),
+            quality["source_available_delta_fields"],
+            "available delta mask",
+        ),
+        (
+            delta.get("counter_reset_fields"),
+            quality["source_counter_reset_fields"],
+            "counter reset mask",
+        ),
+        (delta.get("available_rates"), quality["source_available_rates"], "available rate mask"),
+    )
+    for actual, expected, label in expected_equalities:
+        if actual != expected:
+            raise ContractError(f"{label} must be preserved without reinterpretation")
 
 
 def validate_fips_source_assessment(data: Any) -> None:
@@ -2161,6 +2441,14 @@ def validate_repository(root: Path) -> None:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:
             errors.append(f"{path.relative_to(root)}: {exc}")
+
+    srt_observation_fixture = (
+        root / "qualification/fixtures/srt-telemetry-observation-v1.json"
+    )
+    try:
+        validate_srt_telemetry_observation(load_json(srt_observation_fixture))
+    except ContractError as exc:
+        errors.append(f"{srt_observation_fixture.relative_to(root)}: {exc}")
 
     for path in _iter_repository_files(root):
         if path.suffix not in TEXT_SUFFIXES and path.name not in {"Makefile"}:

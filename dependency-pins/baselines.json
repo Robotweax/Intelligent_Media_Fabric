@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "as_of": "2026-08-29",
+  "as_of": "2026-08-30",
   "dependencies": [
     {
       "id": "robotweax-srt",
@@ -13,10 +13,11 @@
     {
       "id": "robotweax-srt-telemetry",
       "repository": "https://github.com/Robotweax/srt_telemetry.git",
-      "commit": "9c49648dda59231f3c1bd8dfa4fc9fbeea1eceb2",
+      "commit": "9e879b13d94e9e4f62e1e9167012e98c5b945c9d",
       "role": "srt-observation",
       "integration": "external-versioned-c-abi",
-      "evidence_class": "pre-alpha-candidate"
+      "evidence_class": "pre-alpha-candidate",
+      "selection_adr": "ADR-0004"
     },
     {
       "id": "fips-release-candidate",

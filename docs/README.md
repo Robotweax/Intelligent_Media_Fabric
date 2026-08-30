@@ -9,6 +9,7 @@
 - [ADR-0001: Evidence-first project scope](decisions/0001-evidence-first-project-scope.md)
 - [ADR-0002: External pinned dependencies](decisions/0002-external-pinned-dependencies.md)
 - [ADR-0003: FIPS Phase 1 baseline](decisions/0003-fips-phase1-baseline.md)
+- [ADR-0004: SRT Telemetry adapter boundary](decisions/0004-srt-telemetry-adapter-boundary.md)
 
 ## Security and protocols
 

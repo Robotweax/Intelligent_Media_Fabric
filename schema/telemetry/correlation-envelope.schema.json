@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://robotweax.example/schema/rimf/telemetry/correlation-envelope-v1.json",
   "title": "Media Fabric correlation envelope",
+  "$comment": "Direct SRT observations use srt-telemetry-observation-v1 so source quality and clock boundaries cannot be omitted.",
   "type": "object",
   "required": [
     "schema_version",
@@ -16,7 +17,7 @@
   "properties": {
     "schema_version": {"const": 1},
     "event_id": {"type": "string", "format": "uuid"},
-    "source": {"enum": ["srt", "fips", "os", "media-validator", "fabric"]},
+    "source": {"enum": ["fips", "os", "media-validator", "fabric"]},
     "observed_at": {"type": "string", "format": "date-time"},
     "monotonic_ns": {"type": "integer", "minimum": 0},
     "route_epoch": {"type": "integer", "minimum": 0},

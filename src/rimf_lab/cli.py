@@ -19,6 +19,7 @@ from .contracts import (
     validate_repository,
     validate_result,
     validate_scenario,
+    validate_srt_telemetry_observation,
 )
 from .fips_g2_linux import QualificationError, run_fips_g2_linux_direct
 from .fips_g2_linux_alternate_route import run_fips_g2_linux_alternate_route
@@ -47,6 +48,12 @@ def _parser() -> argparse.ArgumentParser:
 
     result_parser = subparsers.add_parser("validate-result", help="validate a generated result")
     result_parser.add_argument("path", type=Path)
+
+    srt_observation_parser = subparsers.add_parser(
+        "validate-srt-telemetry-observation",
+        help="validate an SRT Telemetry to Fabric adapter observation",
+    )
+    srt_observation_parser.add_argument("path", type=Path)
 
     fips_parser = subparsers.add_parser(
         "validate-fips-assessment", help="validate a retained FIPS source/build assessment"
@@ -196,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-result":
             validate_result(load_json(args.path))
             print(f"result validation: OK ({args.path})")
+        elif args.command == "validate-srt-telemetry-observation":
+            validate_srt_telemetry_observation(load_json(args.path))
+            print(f"SRT telemetry observation validation: OK ({args.path})")
         elif args.command == "validate-fips-assessment":
             validate_fips_source_assessment(load_json(args.path))
             print(f"FIPS assessment validation: OK ({args.path})")

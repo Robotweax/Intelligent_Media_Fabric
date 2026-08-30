@@ -23,10 +23,15 @@ External pinned FIPS daemon
 Underlay links and relays
 
 Side-channel observation only during the first phases:
-  SRT Telemetry + FIPS control socket + OS/network observations
-                      |
-                      v
-       Correlation envelope + retained evidence
+  SRT Telemetry          FIPS control socket       OS/network observations
+  (SRT semantics)        (FIPS semantics)          (host semantics)
+         \                       |                         /
+          \                      v                        /
+           +---- explicit Fabric context adapter -------+
+                  clock + identity + route epoch
+                              |
+                              v
+                 Correlation + retained evidence
 ```
 
 ## Relay terminology
@@ -63,7 +68,17 @@ local `fips0` limit applies end to end.
 
 ## Control authority
 
-The initial Media Fabric is observational:
+The initial Media Fabric is observational. Under
+[ADR-0004](../decisions/0004-srt-telemetry-adapter-boundary.md), SRT Telemetry remains the only
+owner of SRT field semantics, deltas, quality masks, raw recording, and SRT-domain hypotheses. The
+Fabric adds explicit identity, route, and clock context without inferring joins or collapsing SRT
+and FIPS metrics.
+
+- `local-only` and unknown clock domains may be ordered only by their local monotonic clock;
+- cross-host ordering requires a declared synchronization mechanism and maximum error; and
+- FIPS MMP loss is not an SRT sender/receiver loss or drop counter.
+
+Within that boundary:
 
 - adapters collect SRT, FIPS, and OS measurements;
 - a correlation envelope aligns monotonic and wall-clock time;
@@ -94,6 +109,7 @@ application recovery, not route state alone.
 - immutable dependency pins;
 - qualification scenario and result schemas;
 - correlation and route-epoch schemas;
+- the SRT Telemetry observation adapter schema and executable fixture;
 - explicit gate identifiers and evidence classes; and
 - security and authorization drafts.
 
