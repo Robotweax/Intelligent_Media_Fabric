@@ -777,6 +777,274 @@ def validate_fips_g2_linux_managed_transit_result(data: Any) -> None:
         raise ContractError("managed-transit limitations must be a non-empty string array")
 
 
+def validate_fips_g2_linux_lifecycle_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux lifecycle result")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 lifecycle result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-lifecycle":
+        raise ContractError("FIPS G2 lifecycle result evidence_type is invalid")
+    if root.get("status") != "passed" or root.get("classification") != "experiment":
+        raise ContractError("FIPS G2 lifecycle retained result must be a passed experiment")
+    if root.get("gate_ids") != ["G2"]:
+        raise ContractError("FIPS G2 lifecycle result gate_ids must be exactly ['G2']")
+    for field in ("run_id", "started_at", "finished_at"):
+        _require_string(root.get(field), f"FIPS G2 lifecycle result.{field}")
+
+    provenance = _require_object(root.get("provenance"), "lifecycle provenance")
+    for field in ("project_revision", "fips_commit"):
+        commit = _require_string(provenance.get(field), f"provenance.{field}")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"provenance.{field} must be a full lowercase Git commit")
+    if provenance.get("fips_source_tree_state") != "clean":
+        raise ContractError("provenance.fips_source_tree_state must be clean")
+    for field in (
+        "cargo_lock_sha256",
+        "rust_toolchain_sha256",
+        "fips_binary_sha256",
+        "fipsctl_binary_sha256",
+    ):
+        digest = _require_string(provenance.get(field), f"provenance.{field}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"provenance.{field} is invalid")
+    if provenance.get("fips_repository") != "https://github.com/jmcorgan/fips.git":
+        raise ContractError("provenance.fips_repository is invalid")
+    _require_string(provenance.get("reported_version"), "provenance.reported_version")
+
+    platform_data = _require_object(root.get("platform"), "lifecycle platform")
+    if platform_data.get("system") != "Linux":
+        raise ContractError("lifecycle retained result must come from Linux")
+    for field in ("release", "machine", "python"):
+        _require_string(platform_data.get(field), f"platform.{field}")
+
+    expected_topology = {
+        "node_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv4-udp",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+        "identity_storage": "temporary-config-adjacent-key-files",
+        "restarted_node": "b",
+    }
+    if root.get("topology") != expected_topology:
+        raise ContractError("FIPS G2 lifecycle topology is invalid")
+
+    observations = _require_object(root.get("observations"), "lifecycle observations")
+    expected_observation_fields = {
+        "nodes_before_failure",
+        "initial_connection",
+        "initial_mmp",
+        "initial_payload_identity",
+        "initial_fsp_session_counts",
+        "failure_injection",
+        "link_dead_detection",
+        "identity_continuity",
+        "automatic_reconnect",
+        "nodes_after_restart",
+        "post_restart_mmp",
+        "post_restart_icmpv6",
+        "post_restart_payload_identity",
+        "post_restart_fsp_session_counts",
+        "disconnect",
+    }
+    if set(observations) != expected_observation_fields:
+        raise ContractError("lifecycle observations contain unexpected fields")
+
+    def validate_nodes(value: Any, context: str) -> None:
+        if not isinstance(value, list) or len(value) != 2:
+            raise ContractError(f"{context} must contain exactly two nodes")
+        expected = [
+            {
+                "node": node,
+                "tun_state": "active",
+                "tun_name": "fips0",
+                "kernel_tun_mtu": 1280,
+                "effective_ipv6_mtu": 1203,
+                "persistent_identity": True,
+            }
+            for node in ("a", "b")
+        ]
+        if value != expected:
+            raise ContractError(f"{context} is invalid")
+
+    validate_nodes(observations.get("nodes_before_failure"), "nodes_before_failure")
+    validate_nodes(observations.get("nodes_after_restart"), "nodes_after_restart")
+
+    if observations.get("initial_connection") != {
+        "configured_auto_connect_peers": 1,
+        "manual_connect_commands": 0,
+        "authenticated_peers_per_node": 1,
+        "links_per_node": 1,
+        "estimated_mesh_size": 2,
+        "transport": "udp",
+    }:
+        raise ContractError("observations.initial_connection is invalid")
+
+    def validate_mmp(value: Any, context: str) -> None:
+        if not isinstance(value, list) or len(value) != 2:
+            raise ContractError(f"{context} must contain exactly two node views")
+        if [item.get("node") for item in value if isinstance(item, dict)] != ["a", "b"]:
+            raise ContractError(f"{context} node ordering is invalid")
+        for index, raw_item in enumerate(value):
+            item = _require_object(raw_item, f"{context}[{index}]")
+            if item.get("mode") != "full" or item.get("srtt_ms_observed") is not True:
+                raise ContractError(f"{context}[{index}] is incomplete")
+            for field in ("loss_rate", "etx"):
+                metric = item.get(field)
+                if (
+                    not isinstance(metric, (int, float))
+                    or isinstance(metric, bool)
+                    or metric < 0
+                ):
+                    raise ContractError(f"{context}[{index}].{field} is invalid")
+
+    validate_mmp(observations.get("initial_mmp"), "initial_mmp")
+    validate_mmp(observations.get("post_restart_mmp"), "post_restart_mmp")
+
+    def validate_payload(value: Any, context: str) -> None:
+        payload = _require_object(value, context)
+        if (
+            payload.get("protocol") != "udp-over-ipv6-over-fips0"
+            or payload.get("all_exact_echo") is not True
+        ):
+            raise ContractError(f"{context} is invalid")
+        records = payload.get("records")
+        if (
+            not isinstance(records, list)
+            or [item.get("bytes") for item in records if isinstance(item, dict)]
+            != [1, 1024, 1155]
+        ):
+            raise ContractError(f"{context}.records has invalid sizes")
+        for index, raw_record in enumerate(records):
+            record = _require_object(raw_record, f"{context}.records[{index}]")
+            digest = _require_string(
+                record.get("sha256"), f"{context}.records[{index}].sha256"
+            )
+            if not re.fullmatch(r"[0-9a-f]{64}", digest) or record.get("exact_echo") is not True:
+                raise ContractError(f"{context}.records[{index}] is invalid")
+
+    validate_payload(
+        observations.get("initial_payload_identity"), "initial_payload_identity"
+    )
+    validate_payload(
+        observations.get("post_restart_payload_identity"),
+        "post_restart_payload_identity",
+    )
+
+    def validate_session_counts(value: Any, context: str) -> None:
+        if (
+            not isinstance(value, list)
+            or len(value) != 2
+            or any(
+                not isinstance(item, int) or isinstance(item, bool) or item < 1
+                for item in value
+            )
+        ):
+            raise ContractError(f"{context} is invalid")
+
+    validate_session_counts(
+        observations.get("initial_fsp_session_counts"), "initial_fsp_session_counts"
+    )
+    validate_session_counts(
+        observations.get("post_restart_fsp_session_counts"),
+        "post_restart_fsp_session_counts",
+    )
+
+    if observations.get("failure_injection") != {
+        "failed_node": "b",
+        "signal": "SIGKILL",
+        "graceful_disconnect_sent": False,
+        "process_exit_observed": True,
+    }:
+        raise ContractError("observations.failure_injection is invalid")
+
+    link_dead = _require_object(
+        observations.get("link_dead_detection"), "link_dead_detection"
+    )
+    detection_elapsed_ms = link_dead.get("detection_elapsed_ms")
+    expected_link_dead = {
+        "tick_interval_secs": 1,
+        "heartbeat_interval_secs": 10,
+        "link_dead_timeout_secs": 30,
+        "detection_budget_secs": 60,
+        "observer": "node-a",
+        "peers_after": 0,
+        "links_after": 0,
+        "fsp_sessions_after": 0,
+        "outage_probe_blocked": True,
+    }
+    if any(link_dead.get(field) != expected for field, expected in expected_link_dead.items()):
+        raise ContractError("observations.link_dead_detection is invalid")
+    if (
+        not isinstance(detection_elapsed_ms, int)
+        or isinstance(detection_elapsed_ms, bool)
+        or not 0 < detection_elapsed_ms <= 60_000
+    ):
+        raise ContractError("link_dead_detection.detection_elapsed_ms is invalid")
+
+    if observations.get("identity_continuity") != {
+        "persistent_identity_configured_per_node": [True, True],
+        "private_key_file_mode": "0600",
+        "public_key_file_mode": "0644",
+        "restarted_node": "b",
+        "public_identity_unchanged": True,
+        "mesh_address_unchanged": True,
+        "daemon_pid_changed": True,
+        "identity_values_retained": False,
+    }:
+        raise ContractError("observations.identity_continuity is invalid")
+
+    reconnect = _require_object(
+        observations.get("automatic_reconnect"), "automatic_reconnect"
+    )
+    reconnect_elapsed_ms = reconnect.get("reconnect_elapsed_ms")
+    expected_reconnect = {
+        "configured": True,
+        "retry_base_interval_secs": 5,
+        "retry_max_backoff_secs": 300,
+        "manual_reconnect_commands": 0,
+        "reconnect_budget_secs": 90,
+        "authenticated_peers_per_node": 1,
+        "links_per_node": 1,
+        "estimated_mesh_size": 2,
+    }
+    if any(reconnect.get(field) != expected for field, expected in expected_reconnect.items()):
+        raise ContractError("observations.automatic_reconnect is invalid")
+    if (
+        not isinstance(reconnect_elapsed_ms, int)
+        or isinstance(reconnect_elapsed_ms, bool)
+        or not 0 < reconnect_elapsed_ms <= 90_000
+    ):
+        raise ContractError("automatic_reconnect.reconnect_elapsed_ms is invalid")
+
+    if observations.get("post_restart_icmpv6") != {
+        "effective_mtu_boundary_payload_bytes": 1155,
+        "echo_requests": 2,
+        "passed": True,
+    }:
+        raise ContractError("observations.post_restart_icmpv6 is invalid")
+    if observations.get("disconnect") != {
+        "control_acknowledged": True,
+        "peers_per_node_after": 0,
+        "links_per_node_after": 0,
+        "fsp_sessions_per_node_after": 0,
+    }:
+        raise ContractError("observations.disconnect is invalid")
+
+    if root.get("cleanup") != {
+        "daemons_stopped": True,
+        "faulted_daemon_reaped": True,
+        "namespaces_removed": True,
+        "persistent_identity_directory_removed": True,
+    }:
+        raise ContractError("lifecycle cleanup is incomplete")
+    limitations = root.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item for item in limitations
+    ):
+        raise ContractError("lifecycle limitations must be a non-empty string array")
+
+
 def _iter_repository_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file() or any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
@@ -847,6 +1115,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_g2_linux_nat_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-managed-transit":
                 validate_fips_g2_linux_managed_transit_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-lifecycle":
+                validate_fips_g2_linux_lifecycle_result(retained)
             else:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:

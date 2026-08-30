@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/fips-g2-linux-lifecycle-result-v1.json",
+  "title": "RIMF FIPS G2 Linux lifecycle qualification result v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "run_id",
+    "status",
+    "classification",
+    "gate_ids",
+    "started_at",
+    "finished_at",
+    "provenance",
+    "platform",
+    "topology",
+    "observations",
+    "cleanup",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_type": {"const": "fips-g2-linux-lifecycle"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "status": {"const": "passed"},
+    "classification": {"const": "experiment"},
+    "gate_ids": {"const": ["G2"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "provenance": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/provenance"
+    },
+    "platform": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/platform"
+    },
+    "topology": {
+      "type": "object",
+      "required": [
+        "node_count",
+        "isolation",
+        "underlay",
+        "tun_name",
+        "configured_tun_mtu",
+        "configured_udp_mtu",
+        "identity_storage",
+        "restarted_node"
+      ],
+      "properties": {
+        "node_count": {"const": 2},
+        "isolation": {"const": "linux-network-namespaces"},
+        "underlay": {"const": "direct-veth-ipv4-udp"},
+        "tun_name": {"const": "fips0"},
+        "configured_tun_mtu": {"const": 1280},
+        "configured_udp_mtu": {"const": 1280},
+        "identity_storage": {"const": "temporary-config-adjacent-key-files"},
+        "restarted_node": {"const": "b"}
+      },
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "object",
+      "required": [
+        "nodes_before_failure",
+        "initial_connection",
+        "initial_mmp",
+        "initial_payload_identity",
+        "initial_fsp_session_counts",
+        "failure_injection",
+        "link_dead_detection",
+        "identity_continuity",
+        "automatic_reconnect",
+        "nodes_after_restart",
+        "post_restart_mmp",
+        "post_restart_icmpv6",
+        "post_restart_payload_identity",
+        "post_restart_fsp_session_counts",
+        "disconnect"
+      ],
+      "properties": {
+        "nodes_before_failure": {"$ref": "#/$defs/nodes"},
+        "initial_connection": {
+          "type": "object",
+          "required": [
+            "configured_auto_connect_peers",
+            "manual_connect_commands",
+            "authenticated_peers_per_node",
+            "links_per_node",
+            "estimated_mesh_size",
+            "transport"
+          ],
+          "properties": {
+            "configured_auto_connect_peers": {"const": 1},
+            "manual_connect_commands": {"const": 0},
+            "authenticated_peers_per_node": {"const": 1},
+            "links_per_node": {"const": 1},
+            "estimated_mesh_size": {"const": 2},
+            "transport": {"const": "udp"}
+          },
+          "additionalProperties": false
+        },
+        "initial_mmp": {"$ref": "#/$defs/mmpViews"},
+        "initial_payload_identity": {"$ref": "#/$defs/payloadIdentity"},
+        "initial_fsp_session_counts": {"$ref": "#/$defs/sessionCounts"},
+        "failure_injection": {
+          "type": "object",
+          "required": [
+            "failed_node",
+            "signal",
+            "graceful_disconnect_sent",
+            "process_exit_observed"
+          ],
+          "properties": {
+            "failed_node": {"const": "b"},
+            "signal": {"const": "SIGKILL"},
+            "graceful_disconnect_sent": {"const": false},
+            "process_exit_observed": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "link_dead_detection": {
+          "type": "object",
+          "required": [
+            "tick_interval_secs",
+            "heartbeat_interval_secs",
+            "link_dead_timeout_secs",
+            "detection_budget_secs",
+            "detection_elapsed_ms",
+            "observer",
+            "peers_after",
+            "links_after",
+            "fsp_sessions_after",
+            "outage_probe_blocked"
+          ],
+          "properties": {
+            "tick_interval_secs": {"const": 1},
+            "heartbeat_interval_secs": {"const": 10},
+            "link_dead_timeout_secs": {"const": 30},
+            "detection_budget_secs": {"const": 60},
+            "detection_elapsed_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
+            "observer": {"const": "node-a"},
+            "peers_after": {"const": 0},
+            "links_after": {"const": 0},
+            "fsp_sessions_after": {"const": 0},
+            "outage_probe_blocked": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "identity_continuity": {
+          "type": "object",
+          "required": [
+            "persistent_identity_configured_per_node",
+            "private_key_file_mode",
+            "public_key_file_mode",
+            "restarted_node",
+            "public_identity_unchanged",
+            "mesh_address_unchanged",
+            "daemon_pid_changed",
+            "identity_values_retained"
+          ],
+          "properties": {
+            "persistent_identity_configured_per_node": {"const": [true, true]},
+            "private_key_file_mode": {"const": "0600"},
+            "public_key_file_mode": {"const": "0644"},
+            "restarted_node": {"const": "b"},
+            "public_identity_unchanged": {"const": true},
+            "mesh_address_unchanged": {"const": true},
+            "daemon_pid_changed": {"const": true},
+            "identity_values_retained": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "automatic_reconnect": {
+          "type": "object",
+          "required": [
+            "configured",
+            "retry_base_interval_secs",
+            "retry_max_backoff_secs",
+            "manual_reconnect_commands",
+            "reconnect_budget_secs",
+            "reconnect_elapsed_ms",
+            "authenticated_peers_per_node",
+            "links_per_node",
+            "estimated_mesh_size"
+          ],
+          "properties": {
+            "configured": {"const": true},
+            "retry_base_interval_secs": {"const": 5},
+            "retry_max_backoff_secs": {"const": 300},
+            "manual_reconnect_commands": {"const": 0},
+            "reconnect_budget_secs": {"const": 90},
+            "reconnect_elapsed_ms": {"type": "integer", "minimum": 1, "maximum": 90000},
+            "authenticated_peers_per_node": {"const": 1},
+            "links_per_node": {"const": 1},
+            "estimated_mesh_size": {"const": 2}
+          },
+          "additionalProperties": false
+        },
+        "nodes_after_restart": {"$ref": "#/$defs/nodes"},
+        "post_restart_mmp": {"$ref": "#/$defs/mmpViews"},
+        "post_restart_icmpv6": {
+          "type": "object",
+          "required": ["effective_mtu_boundary_payload_bytes", "echo_requests", "passed"],
+          "properties": {
+            "effective_mtu_boundary_payload_bytes": {"const": 1155},
+            "echo_requests": {"const": 2},
+            "passed": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "post_restart_payload_identity": {"$ref": "#/$defs/payloadIdentity"},
+        "post_restart_fsp_session_counts": {"$ref": "#/$defs/sessionCounts"},
+        "disconnect": {
+          "type": "object",
+          "required": [
+            "control_acknowledged",
+            "peers_per_node_after",
+            "links_per_node_after",
+            "fsp_sessions_per_node_after"
+          ],
+          "properties": {
+            "control_acknowledged": {"const": true},
+            "peers_per_node_after": {"const": 0},
+            "links_per_node_after": {"const": 0},
+            "fsp_sessions_per_node_after": {"const": 0}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanup": {
+      "type": "object",
+      "required": [
+        "daemons_stopped",
+        "faulted_daemon_reaped",
+        "namespaces_removed",
+        "persistent_identity_directory_removed"
+      ],
+      "properties": {
+        "daemons_stopped": {"const": true},
+        "faulted_daemon_reaped": {"const": true},
+        "namespaces_removed": {"const": true},
+        "persistent_identity_directory_removed": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": [
+        "node",
+        "tun_state",
+        "tun_name",
+        "kernel_tun_mtu",
+        "effective_ipv6_mtu",
+        "persistent_identity"
+      ],
+      "properties": {
+        "node": {"enum": ["a", "b"]},
+        "tun_state": {"const": "active"},
+        "tun_name": {"const": "fips0"},
+        "kernel_tun_mtu": {"const": 1280},
+        "effective_ipv6_mtu": {"const": 1203},
+        "persistent_identity": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "nodes": {
+      "type": "array",
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/node"}, {"properties": {"node": {"const": "a"}}}]},
+        {"allOf": [{"$ref": "#/$defs/node"}, {"properties": {"node": {"const": "b"}}}]}
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "mmp": {
+      "type": "object",
+      "required": ["node", "mode", "loss_rate", "etx", "srtt_ms_observed"],
+      "properties": {
+        "node": {"enum": ["a", "b"]},
+        "mode": {"const": "full"},
+        "loss_rate": {"type": "number", "minimum": 0},
+        "etx": {"type": "number", "minimum": 0},
+        "srtt_ms_observed": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "mmpViews": {
+      "type": "array",
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/mmp"}, {"properties": {"node": {"const": "a"}}}]},
+        {"allOf": [{"$ref": "#/$defs/mmp"}, {"properties": {"node": {"const": "b"}}}]}
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "payloadIdentity": {
+      "type": "object",
+      "required": ["protocol", "records", "all_exact_echo"],
+      "properties": {
+        "protocol": {"const": "udp-over-ipv6-over-fips0"},
+        "records": {
+          "type": "array",
+          "prefixItems": [
+            {"allOf": [{"$ref": "fips-g2-linux-direct-result.schema.json#/$defs/payloadRecord"}, {"properties": {"bytes": {"const": 1}}}]},
+            {"allOf": [{"$ref": "fips-g2-linux-direct-result.schema.json#/$defs/payloadRecord"}, {"properties": {"bytes": {"const": 1024}}}]},
+            {"allOf": [{"$ref": "fips-g2-linux-direct-result.schema.json#/$defs/payloadRecord"}, {"properties": {"bytes": {"const": 1155}}}]}
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "all_exact_echo": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "sessionCounts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "integer", "minimum": 1}
+    }
+  }
+}

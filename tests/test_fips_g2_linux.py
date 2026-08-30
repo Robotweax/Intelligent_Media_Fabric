@@ -7,6 +7,7 @@ from pathlib import Path
 from rimf_lab.contracts import (
     ContractError,
     validate_fips_g2_linux_direct_result,
+    validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
     validate_fips_g2_linux_nat_result,
 )
@@ -16,6 +17,10 @@ from rimf_lab.fips_g2_linux import (
     valid_connect_acknowledgement,
 )
 from rimf_lab.fips_g2_linux_nat import translated_peer_observed
+from rimf_lab.fips_g2_linux_lifecycle import (
+    lifecycle_timings_within_contract,
+    render_lifecycle_config,
+)
 from rimf_lab.fips_g2_linux_managed_transit import (
     forwarding_counters,
     line_peer_relationships,
@@ -251,6 +256,130 @@ def valid_managed_transit_result():
     return result
 
 
+def valid_lifecycle_result():
+    result = deepcopy(valid_result())
+    result["evidence_type"] = "fips-g2-linux-lifecycle"
+    result["topology"] = {
+        "node_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv4-udp",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+        "identity_storage": "temporary-config-adjacent-key-files",
+        "restarted_node": "b",
+    }
+    nodes = [
+        {
+            "node": node,
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": 1203,
+            "persistent_identity": True,
+        }
+        for node in ("a", "b")
+    ]
+    mmp = [
+        {
+            "node": node,
+            "mode": "full",
+            "loss_rate": 0.0,
+            "etx": 1.0,
+            "srtt_ms_observed": True,
+        }
+        for node in ("a", "b")
+    ]
+    digest = "a" * 64
+
+    def payload():
+        return {
+            "protocol": "udp-over-ipv6-over-fips0",
+            "records": [
+                {"bytes": size, "sha256": digest, "exact_echo": True}
+                for size in (1, 1024, 1155)
+            ],
+            "all_exact_echo": True,
+        }
+
+    result["observations"] = {
+        "nodes_before_failure": deepcopy(nodes),
+        "initial_connection": {
+            "configured_auto_connect_peers": 1,
+            "manual_connect_commands": 0,
+            "authenticated_peers_per_node": 1,
+            "links_per_node": 1,
+            "estimated_mesh_size": 2,
+            "transport": "udp",
+        },
+        "initial_mmp": deepcopy(mmp),
+        "initial_payload_identity": payload(),
+        "initial_fsp_session_counts": [1, 1],
+        "failure_injection": {
+            "failed_node": "b",
+            "signal": "SIGKILL",
+            "graceful_disconnect_sent": False,
+            "process_exit_observed": True,
+        },
+        "link_dead_detection": {
+            "tick_interval_secs": 1,
+            "heartbeat_interval_secs": 10,
+            "link_dead_timeout_secs": 30,
+            "detection_budget_secs": 60,
+            "detection_elapsed_ms": 30250,
+            "observer": "node-a",
+            "peers_after": 0,
+            "links_after": 0,
+            "fsp_sessions_after": 0,
+            "outage_probe_blocked": True,
+        },
+        "identity_continuity": {
+            "persistent_identity_configured_per_node": [True, True],
+            "private_key_file_mode": "0600",
+            "public_key_file_mode": "0644",
+            "restarted_node": "b",
+            "public_identity_unchanged": True,
+            "mesh_address_unchanged": True,
+            "daemon_pid_changed": True,
+            "identity_values_retained": False,
+        },
+        "automatic_reconnect": {
+            "configured": True,
+            "retry_base_interval_secs": 5,
+            "retry_max_backoff_secs": 300,
+            "manual_reconnect_commands": 0,
+            "reconnect_budget_secs": 90,
+            "reconnect_elapsed_ms": 6200,
+            "authenticated_peers_per_node": 1,
+            "links_per_node": 1,
+            "estimated_mesh_size": 2,
+        },
+        "nodes_after_restart": deepcopy(nodes),
+        "post_restart_mmp": deepcopy(mmp),
+        "post_restart_icmpv6": {
+            "effective_mtu_boundary_payload_bytes": 1155,
+            "echo_requests": 2,
+            "passed": True,
+        },
+        "post_restart_payload_identity": payload(),
+        "post_restart_fsp_session_counts": [1, 1],
+        "disconnect": {
+            "control_acknowledged": True,
+            "peers_per_node_after": 0,
+            "links_per_node_after": 0,
+            "fsp_sessions_per_node_after": 0,
+        },
+    }
+    result["cleanup"] = {
+        "daemons_stopped": True,
+        "faulted_daemon_reaped": True,
+        "namespaces_removed": True,
+        "persistent_identity_directory_removed": True,
+    }
+    result["limitations"] = ["One direct hard-failure lifecycle only."]
+    return result
+
+
 class PayloadProbeTests(unittest.TestCase):
     def test_payload_is_deterministic_and_exact_length(self):
         first = deterministic_payload(1155)
@@ -420,6 +549,44 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         result["observations"]["transit_forwarding"]["transit_fsp_session_count"] = 1
         with self.assertRaisesRegex(ContractError, "transit role"):
             validate_fips_g2_linux_managed_transit_result(result)
+
+    def test_lifecycle_config_freezes_persistent_auto_reconnect_contract(self):
+        config = render_lifecycle_config(
+            Path("/tmp/rimf/control.sock"),
+            "10.206.0.1",
+            peer_npub="npub1test",
+            peer_address="10.206.0.2",
+        )
+        self.assertIn("persistent: true", config)
+        self.assertIn("link_dead_timeout_secs: 30", config)
+        self.assertIn('connect_policy: "auto_connect"', config)
+        self.assertIn("auto_reconnect: true", config)
+
+    def test_lifecycle_timing_contract_is_bounded(self):
+        self.assertTrue(lifecycle_timings_within_contract(30_250, 6_200))
+        self.assertFalse(lifecycle_timings_within_contract(60_001, 6_200))
+        self.assertFalse(lifecycle_timings_within_contract(30_250, 90_001))
+
+    def test_accepts_complete_lifecycle_result(self):
+        validate_fips_g2_linux_lifecycle_result(valid_lifecycle_result())
+
+    def test_rejects_lifecycle_manual_reconnect(self):
+        result = valid_lifecycle_result()
+        result["observations"]["automatic_reconnect"]["manual_reconnect_commands"] = 1
+        with self.assertRaisesRegex(ContractError, "automatic_reconnect"):
+            validate_fips_g2_linux_lifecycle_result(result)
+
+    def test_rejects_lifecycle_identity_change(self):
+        result = valid_lifecycle_result()
+        result["observations"]["identity_continuity"]["public_identity_unchanged"] = False
+        with self.assertRaisesRegex(ContractError, "identity_continuity"):
+            validate_fips_g2_linux_lifecycle_result(result)
+
+    def test_rejects_lifecycle_incomplete_fault_cleanup(self):
+        result = valid_lifecycle_result()
+        result["cleanup"]["faulted_daemon_reaped"] = False
+        with self.assertRaisesRegex(ContractError, "cleanup"):
+            validate_fips_g2_linux_lifecycle_result(result)
 
 
 if __name__ == "__main__":

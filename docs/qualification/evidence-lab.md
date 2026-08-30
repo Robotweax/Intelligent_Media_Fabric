@@ -124,3 +124,32 @@ Successful output must pass
 `schema/qualification/fips-g2-linux-managed-transit-result.schema.json` and the repository
 contract. This qualifies a static managed FIPS data-plane transit path. It does not qualify a Nostr
 signaling relay, public discovery, NAT traversal, relay selection, failure behavior, or SRT media.
+
+## Privileged FIPS G2 Linux lifecycle runner
+
+The manually dispatched `FIPS G2 Linux Lifecycle Qualification` workflow freezes one direct
+link-dead and daemon-restart experiment. It generates persistent FIPS keypairs only inside the
+runner's mode-0700 temporary directory, configures A with B as a static `auto_connect` peer, and
+requires the initial authenticated link, full MMP, exact UDP payloads, and FSP sessions before
+injecting a failure.
+
+The fault is an ungraceful `SIGKILL` of B with no protocol disconnect. A must independently remove
+the peer, link, and FSP session within the 60-second observation budget configured around FIPS's
+30-second link-dead timeout. An IPv6 probe must fail while B is absent. B is then restarted from the
+same temporary identity; its public identity and derived mesh address must be unchanged, while its
+daemon process changes. A must reconnect through FIPS's configured automatic retry path within 90
+seconds. No `fipsctl connect` command is allowed before or after the fault.
+
+After recovery, the runner repeats full-MMP, effective-MTU-boundary ICMPv6, exact deterministic UDP
+echo, and FSP-session assertions. A final acknowledged control disconnect must remove peer, link,
+and session state on both nodes. Success additionally requires the faulted process to have been
+reaped, all live daemons stopped, both namespaces removed, and the entire persistent-identity
+directory deleted.
+
+Successful output must pass
+`schema/qualification/fips-g2-linux-lifecycle-result.schema.json` and the repository contract. The
+result retains elapsed milliseconds and booleans, but excludes private keys, public identities,
+mesh and underlay addresses, process identifiers, raw payloads, and daemon logs. The budgets are
+qualification stop conditions, not production SLOs. This single direct-path experiment does not
+qualify alternate-route reconvergence, NAT rebinding, managed-transit failure, discovery, a
+signaling relay, impaired networks, or SRT media continuity.
