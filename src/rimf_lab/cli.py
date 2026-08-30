@@ -8,6 +8,7 @@ from .contracts import (
     ContractError,
     load_json,
     validate_fips_g2_linux_alternate_route_result,
+    validate_fips_g2_linux_delay_mmp_result,
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
@@ -20,6 +21,7 @@ from .contracts import (
 )
 from .fips_g2_linux import QualificationError, run_fips_g2_linux_direct
 from .fips_g2_linux_alternate_route import run_fips_g2_linux_alternate_route
+from .fips_g2_linux_delay_mmp import run_fips_g2_linux_delay_mmp
 from .fips_g2_linux_lifecycle import run_fips_g2_linux_lifecycle
 from .fips_g2_linux_managed_transit import (
     run_fips_g2_linux_managed_transit,
@@ -83,6 +85,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     fips_g2_alternate_result_parser.add_argument("path", type=Path)
 
+    fips_g2_delay_mmp_result_parser = subparsers.add_parser(
+        "validate-fips-g2-linux-delay-mmp",
+        help="validate a retained Linux FIPS fixed-delay MMP result",
+    )
+    fips_g2_delay_mmp_result_parser.add_argument("path", type=Path)
+
     fips_g2_run_parser = subparsers.add_parser(
         "run-fips-g2-linux-direct", help="run the privileged Linux two-node FIPS qualification"
     )
@@ -141,6 +149,16 @@ def _parser() -> argparse.ArgumentParser:
     fips_g2_alternate_run_parser.add_argument("--output", type=Path, required=True)
     fips_g2_alternate_run_parser.add_argument("--project-revision", required=True)
 
+    fips_g2_delay_mmp_run_parser = subparsers.add_parser(
+        "run-fips-g2-linux-delay-mmp",
+        help="run the privileged Linux FIPS fixed-delay MMP qualification",
+    )
+    fips_g2_delay_mmp_run_parser.add_argument("--fips-source", type=Path, required=True)
+    fips_g2_delay_mmp_run_parser.add_argument("--fips", type=Path, required=True)
+    fips_g2_delay_mmp_run_parser.add_argument("--fipsctl", type=Path, required=True)
+    fips_g2_delay_mmp_run_parser.add_argument("--output", type=Path, required=True)
+    fips_g2_delay_mmp_run_parser.add_argument("--project-revision", required=True)
+
     run_parser = subparsers.add_parser("run", help="run an enabled, reviewed scenario")
     run_parser.add_argument("--scenario", type=Path, required=True)
     run_parser.add_argument("--output", type=Path, required=True)
@@ -181,6 +199,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-fips-g2-linux-alternate-route":
             validate_fips_g2_linux_alternate_route_result(load_json(args.path))
             print(f"FIPS G2 Linux alternate-route validation: OK ({args.path})")
+        elif args.command == "validate-fips-g2-linux-delay-mmp":
+            validate_fips_g2_linux_delay_mmp_result(load_json(args.path))
+            print(f"FIPS G2 Linux delay/MMP validation: OK ({args.path})")
         elif args.command == "run-fips-g2-linux-direct":
             result = run_fips_g2_linux_direct(
                 fips_source=args.fips_source,
@@ -235,6 +256,15 @@ def main(argv: list[str] | None = None) -> int:
                 project_revision=args.project_revision,
             )
             print(f"FIPS G2 Linux alternate route: {result['status']} ({args.output})")
+        elif args.command == "run-fips-g2-linux-delay-mmp":
+            result = run_fips_g2_linux_delay_mmp(
+                fips_source=args.fips_source,
+                fips_binary=args.fips,
+                fipsctl_binary=args.fipsctl,
+                output=args.output,
+                project_revision=args.project_revision,
+            )
+            print(f"FIPS G2 Linux delay/MMP: {result['status']} ({args.output})")
         elif args.command == "run":
             result = run_scenario(args.scenario, args.output, args.root)
             print(f"run {result['run_id']}: {result['status']} ({result['classification']})")

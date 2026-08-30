@@ -7,6 +7,7 @@ from pathlib import Path
 from rimf_lab.contracts import (
     ContractError,
     validate_fips_g2_linux_alternate_route_result,
+    validate_fips_g2_linux_delay_mmp_result,
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
@@ -18,6 +19,10 @@ from rimf_lab.fips_g2_linux_alternate_route import (
     diamond_peer_relationships,
     node_addr_from_npub,
     render_alternate_route_config,
+)
+from rimf_lab.fips_g2_linux_delay_mmp import (
+    delay_mmp_transition_within_contract,
+    render_delay_mmp_config,
 )
 from rimf_lab.fips_g2_linux import (
     mesh_size_converged,
@@ -577,6 +582,102 @@ def valid_alternate_route_result():
     return result
 
 
+def valid_delay_mmp_result():
+    result = deepcopy(valid_result())
+    result["evidence_type"] = "fips-g2-linux-delay-mmp"
+    result["topology"] = {
+        "node_count": 2,
+        "namespace_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv4-udp",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+        "heartbeat_interval_secs": 1,
+    }
+    digest = "a" * 64
+    result["observations"] = {
+        "nodes": [
+            {
+                "node": node,
+                "tun_state": "active",
+                "tun_name": "fips0",
+                "kernel_tun_mtu": 1280,
+                "effective_ipv6_mtu": 1203,
+            }
+            for node in ("a", "b")
+        ],
+        "connection": {
+            "control_acknowledged": True,
+            "authenticated_peers_per_node": 1,
+            "links_per_node": 1,
+            "estimated_mesh_size": 2,
+            "transport": "udp",
+        },
+        "baseline_mmp": {
+            "mode": "full",
+            "srtt_ms_per_node": [1.2, 1.4],
+            "maximum_srtt_ms": 25.0,
+        },
+        "delay_injection": {
+            "mechanism": "linux-tc-netem",
+            "configured_one_way_delay_ms": 40,
+            "configured_loss_percent": 0,
+            "impaired_underlay_directions": 2,
+            "verified_netem_qdiscs": 2,
+        },
+        "degraded_mmp": {
+            "srtt_ms_per_node": [78.0, 81.0],
+            "minimum_srtt_ms": 55.0,
+            "maximum_srtt_ms": 200.0,
+            "minimum_increase_ms": 30.0,
+            "convergence_budget_secs": 60,
+            "convergence_elapsed_ms": 8_500,
+        },
+        "session_continuity": {
+            "session_start_unchanged_during_delay": [True, True],
+            "session_start_unchanged_after_recovery": [True, True],
+            "peer_counts_during_delay": [1, 1],
+            "link_counts_during_delay": [1, 1],
+            "fsp_session_counts_during_delay": [1, 1],
+        },
+        "impaired_icmpv6": {
+            "effective_mtu_boundary_payload_bytes": 1155,
+            "echo_requests": 2,
+            "passed": True,
+        },
+        "impaired_payload_identity": {
+            "protocol": "udp-over-ipv6-over-fips0",
+            "records": [
+                {"bytes": size, "sha256": digest, "exact_echo": True}
+                for size in (1, 1024, 1155)
+            ],
+            "all_exact_echo": True,
+        },
+        "recovery_mmp": {
+            "netem_removed_per_direction": [True, True],
+            "srtt_ms_per_node": [8.0, 9.0],
+            "maximum_srtt_ms": 25.0,
+            "convergence_budget_secs": 60,
+            "convergence_elapsed_ms": 12_000,
+        },
+        "disconnect": {
+            "control_acknowledged": True,
+            "peers_per_node_after": 0,
+            "links_per_node_after": 0,
+            "fsp_sessions_per_node_after": 0,
+        },
+    }
+    result["cleanup"] = {
+        "netem_removed": True,
+        "daemons_stopped": True,
+        "namespaces_removed": True,
+        "ephemeral_identity_directory_removed": True,
+    }
+    result["limitations"] = ["One fixed-delay direct-link experiment only."]
+    return result
+
+
 class PayloadProbeTests(unittest.TestCase):
     def test_payload_is_deterministic_and_exact_length(self):
         first = deterministic_payload(1155)
@@ -882,6 +983,49 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
 
     def test_accepts_complete_alternate_route_result(self):
         validate_fips_g2_linux_alternate_route_result(valid_alternate_route_result())
+
+    def test_delay_mmp_config_freezes_measurement_controls(self):
+        config = render_delay_mmp_config(
+            Path("/tmp/rimf/control.sock"), "10.208.0.1"
+        )
+        self.assertIn("persistent: false", config)
+        self.assertIn("heartbeat_interval_secs: 1", config)
+        self.assertEqual(config.count('mode: "full"'), 2)
+        self.assertEqual(config.count("mtu: 1280"), 2)
+
+    def test_delay_mmp_transition_contract_is_bounded(self):
+        self.assertTrue(
+            delay_mmp_transition_within_contract(
+                [1.2, 1.4], [78.0, 81.0], [8.0, 9.0], 8_500, 12_000
+            )
+        )
+        self.assertFalse(
+            delay_mmp_transition_within_contract(
+                [1.2, 1.4], [31.0, 81.0], [8.0, 9.0], 8_500, 12_000
+            )
+        )
+        self.assertFalse(
+            delay_mmp_transition_within_contract(
+                [1.2, 1.4], [78.0, 81.0], [8.0, 26.0], 8_500, 12_000
+            )
+        )
+
+    def test_accepts_complete_delay_mmp_result(self):
+        validate_fips_g2_linux_delay_mmp_result(valid_delay_mmp_result())
+
+    def test_rejects_delay_mmp_without_session_continuity(self):
+        result = valid_delay_mmp_result()
+        result["observations"]["session_continuity"][
+            "session_start_unchanged_during_delay"
+        ] = [True, False]
+        with self.assertRaisesRegex(ContractError, "session_continuity"):
+            validate_fips_g2_linux_delay_mmp_result(result)
+
+    def test_rejects_delay_mmp_outside_degraded_bound(self):
+        result = valid_delay_mmp_result()
+        result["observations"]["degraded_mmp"]["srtt_ms_per_node"] = [54.9, 81.0]
+        with self.assertRaisesRegex(ContractError, "degraded SRTT"):
+            validate_fips_g2_linux_delay_mmp_result(result)
 
     def test_rejects_alternate_route_with_negative_alternate_counter(self):
         result = valid_alternate_route_result()

@@ -219,3 +219,24 @@ The failed experimental workflow is not kept on `main`. The reviewed observation
 boundary, decision, and upstream acceptance contract are recorded in the
 [reactive path-MTU capability-gap assessment](fips-g2-reactive-mtu-gap-2026-08-30.md). It is not
 passing G2 or G6 evidence and does not weaken the retained static multihop-MTU result.
+
+## Privileged FIPS G2 Linux fixed-delay MMP runner
+
+The manually dispatched `FIPS G2 Linux Delay MMP Qualification` workflow freezes one direct-link
+telemetry response experiment. It is not part of push or pull-request CI. The runner establishes a
+two-node UDP FIPS link and endpoint FSP session with a one-second heartbeat interval, then requires
+both full-MMP peer views to report baseline SRTT at or below 25 ms.
+
+It applies Linux `tc netem` with a fixed 40 ms egress delay to both underlay directions and no
+configured loss. Within 60 seconds both peer views must report SRTT between 55 and 200 ms and at
+least 30 ms above their own baseline. Peer, link, and FSP session identity must stay unchanged while
+effective-MTU-boundary ICMPv6 and exact UDP payloads of 1, 1024, and 1155 bytes pass. After removing
+both qdiscs, both SRTT views must recover to at most 25 ms within a second 60-second budget without
+replacing the FSP session.
+
+Successful output must pass
+`schema/qualification/fips-g2-linux-delay-mmp-result.schema.json` and the repository contract. The
+result excludes identities, addresses, session timestamps, raw payloads, packets, and daemon logs.
+This is one deterministic fixed-delay response test; it does not qualify loss, jitter, reordering,
+duplication, corruption, bandwidth limits, queue pressure, route changes, NAT, SRT, or production
+telemetry thresholds.
