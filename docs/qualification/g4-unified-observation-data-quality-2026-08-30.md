@@ -93,6 +93,10 @@ assessments. Every bundle file is hashed and the adapter outputs are byte-replay
 validation. Output is bounded to a 14-day workflow artifact unless it is separately reviewed for
 retention.
 
+The private dependency checkouts require `ROBOTWEAX_REPO_TOKEN` with read-only Contents access to
+the SRT and SRT Telemetry repositories. The default workflow token is deliberately insufficient
+because GitHub scopes it to the Fabric repository.
+
 Even a successful pilot result declares `G3: not-passed` and `G4: not-passed`. It contains one
 healthy direct-veth route epoch, no injected fault or route transition, and a provider-linked
 application receiver rather than an independent decoder. The next positive-diagnosis experiment

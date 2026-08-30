@@ -17,9 +17,9 @@ env:
   SRT_COMMIT: e3d61f77e852001224b6586c63bcff46a3200223
   TELEMETRY_COMMIT: bf10da0431fdf23772210262755f745b62b6ff58
   FIPS_SOURCE: /tmp/rimf-g4-fips
-  SRT_SOURCE: /tmp/rimf-g4-srt
+  SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
   SRT_BUILD: /tmp/rimf-g4-srt-build
-  TELEMETRY_SOURCE: /tmp/rimf-g4-telemetry
+  TELEMETRY_SOURCE: ${{ github.workspace }}/dependencies/srt_telemetry
   TELEMETRY_BUILD: /tmp/rimf-g4-telemetry-build
   OUTPUT_DIR: artifacts/g4-srt-over-fips-live
 
@@ -29,6 +29,35 @@ jobs:
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Require bounded private dependency read token
+        env:
+          ROBOTWEAX_REPO_TOKEN: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+        run: |
+          test -n "$ROBOTWEAX_REPO_TOKEN" || {
+            echo "ROBOTWEAX_REPO_TOKEN must read Contents for Robotweax/srt and Robotweax/srt_telemetry" >&2
+            exit 1
+          }
+
+      - name: Checkout pinned private Robotweax SRT
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Robotweax/srt
+          ref: ${{ env.SRT_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt
+          persist-credentials: false
+
+      - name: Checkout pinned private SRT Telemetry
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Robotweax/srt_telemetry
+          ref: ${{ env.TELEMETRY_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt_telemetry
+          persist-credentials: false
 
       - name: Install bounded Linux build and network dependencies
         run: |
@@ -42,7 +71,7 @@ jobs:
             ninja-build \
             pkg-config
 
-      - name: Fetch immutable FIPS, SRT, and Telemetry sources
+      - name: Fetch immutable FIPS source and verify all revisions
         run: |
           git init "$FIPS_SOURCE"
           git -C "$FIPS_SOURCE" remote add origin https://github.com/jmcorgan/fips.git
@@ -54,16 +83,7 @@ jobs:
           printf '%s  %s\n' "$FIPS_RUST_TOOLCHAIN_SHA256" "$FIPS_SOURCE/rust-toolchain.toml" |
             sha256sum --check --strict
 
-          git init "$SRT_SOURCE"
-          git -C "$SRT_SOURCE" remote add origin https://github.com/Robotweax/srt.git
-          git -C "$SRT_SOURCE" fetch --depth=1 origin "$SRT_COMMIT"
-          git -C "$SRT_SOURCE" checkout --detach FETCH_HEAD
           test "$(git -C "$SRT_SOURCE" rev-parse HEAD)" = "$SRT_COMMIT"
-
-          git init "$TELEMETRY_SOURCE"
-          git -C "$TELEMETRY_SOURCE" remote add origin https://github.com/Robotweax/srt_telemetry.git
-          git -C "$TELEMETRY_SOURCE" fetch --depth=1 origin "$TELEMETRY_COMMIT"
-          git -C "$TELEMETRY_SOURCE" checkout --detach FETCH_HEAD
           test "$(git -C "$TELEMETRY_SOURCE" rev-parse HEAD)" = "$TELEMETRY_COMMIT"
 
       - name: Prepare immutable FIPS toolchain

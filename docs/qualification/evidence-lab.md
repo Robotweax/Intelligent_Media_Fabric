@@ -297,3 +297,8 @@ The bundle validator replays both SRT JSONL adapters byte-for-byte, checks all f
 validates the separate `srt`, `fips.mmp`, and `media.application` namespaces, and checks that both
 ordering assessments cite the exact selected input artifacts. A successful experiment still
 records both G3 and G4 as `not-passed`; it qualifies the capture path, not diagnosis or control.
+
+Because Robotweax SRT and SRT Telemetry are private repositories, the workflow requires the
+repository secret `ROBOTWEAX_REPO_TOKEN`. It must be a fine-grained token or GitHub App token with
+read-only Contents access to exactly `Robotweax/srt` and `Robotweax/srt_telemetry`; the workflow
+does not persist checkout credentials and its own repository permission remains `contents: read`.
