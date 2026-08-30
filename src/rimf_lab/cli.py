@@ -7,6 +7,7 @@ from pathlib import Path
 from .contracts import (
     ContractError,
     load_json,
+    validate_fips_g2_linux_alternate_route_result,
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
@@ -17,6 +18,7 @@ from .contracts import (
     validate_scenario,
 )
 from .fips_g2_linux import QualificationError, run_fips_g2_linux_direct
+from .fips_g2_linux_alternate_route import run_fips_g2_linux_alternate_route
 from .fips_g2_linux_lifecycle import run_fips_g2_linux_lifecycle
 from .fips_g2_linux_managed_transit import run_fips_g2_linux_managed_transit
 from .fips_g2_linux_nat import run_fips_g2_linux_nat
@@ -65,6 +67,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     fips_g2_lifecycle_result_parser.add_argument("path", type=Path)
 
+    fips_g2_alternate_result_parser = subparsers.add_parser(
+        "validate-fips-g2-linux-alternate-route",
+        help="validate a retained Linux FIPS alternate-route result",
+    )
+    fips_g2_alternate_result_parser.add_argument("path", type=Path)
+
     fips_g2_run_parser = subparsers.add_parser(
         "run-fips-g2-linux-direct", help="run the privileged Linux two-node FIPS qualification"
     )
@@ -103,6 +111,16 @@ def _parser() -> argparse.ArgumentParser:
     fips_g2_lifecycle_run_parser.add_argument("--output", type=Path, required=True)
     fips_g2_lifecycle_run_parser.add_argument("--project-revision", required=True)
 
+    fips_g2_alternate_run_parser = subparsers.add_parser(
+        "run-fips-g2-linux-alternate-route",
+        help="run the privileged Linux FIPS alternate-route qualification",
+    )
+    fips_g2_alternate_run_parser.add_argument("--fips-source", type=Path, required=True)
+    fips_g2_alternate_run_parser.add_argument("--fips", type=Path, required=True)
+    fips_g2_alternate_run_parser.add_argument("--fipsctl", type=Path, required=True)
+    fips_g2_alternate_run_parser.add_argument("--output", type=Path, required=True)
+    fips_g2_alternate_run_parser.add_argument("--project-revision", required=True)
+
     run_parser = subparsers.add_parser("run", help="run an enabled, reviewed scenario")
     run_parser.add_argument("--scenario", type=Path, required=True)
     run_parser.add_argument("--output", type=Path, required=True)
@@ -137,6 +155,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-fips-g2-linux-lifecycle":
             validate_fips_g2_linux_lifecycle_result(load_json(args.path))
             print(f"FIPS G2 Linux lifecycle validation: OK ({args.path})")
+        elif args.command == "validate-fips-g2-linux-alternate-route":
+            validate_fips_g2_linux_alternate_route_result(load_json(args.path))
+            print(f"FIPS G2 Linux alternate-route validation: OK ({args.path})")
         elif args.command == "run-fips-g2-linux-direct":
             result = run_fips_g2_linux_direct(
                 fips_source=args.fips_source,
@@ -173,6 +194,15 @@ def main(argv: list[str] | None = None) -> int:
                 project_revision=args.project_revision,
             )
             print(f"FIPS G2 Linux lifecycle: {result['status']} ({args.output})")
+        elif args.command == "run-fips-g2-linux-alternate-route":
+            result = run_fips_g2_linux_alternate_route(
+                fips_source=args.fips_source,
+                fips_binary=args.fips,
+                fipsctl_binary=args.fipsctl,
+                output=args.output,
+                project_revision=args.project_revision,
+            )
+            print(f"FIPS G2 Linux alternate route: {result['status']} ({args.output})")
         elif args.command == "run":
             result = run_scenario(args.scenario, args.output, args.root)
             print(f"run {result['run_id']}: {result['status']} ({result['classification']})")

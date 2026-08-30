@@ -1045,6 +1045,314 @@ def validate_fips_g2_linux_lifecycle_result(data: Any) -> None:
         raise ContractError("lifecycle limitations must be a non-empty string array")
 
 
+def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux alternate-route result")
+    if set(root) != {
+        "schema_version",
+        "evidence_type",
+        "run_id",
+        "status",
+        "classification",
+        "gate_ids",
+        "started_at",
+        "finished_at",
+        "provenance",
+        "platform",
+        "topology",
+        "observations",
+        "cleanup",
+        "limitations",
+    }:
+        raise ContractError("FIPS G2 alternate-route result contains unexpected fields")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 alternate-route result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-alternate-route":
+        raise ContractError("FIPS G2 alternate-route result evidence_type is invalid")
+    if root.get("status") != "passed" or root.get("classification") != "experiment":
+        raise ContractError("FIPS G2 alternate-route retained result must be a passed experiment")
+    if root.get("gate_ids") != ["G2"]:
+        raise ContractError("FIPS G2 alternate-route result gate_ids must be exactly ['G2']")
+    for field in ("run_id", "started_at", "finished_at"):
+        _require_string(root.get(field), f"FIPS G2 alternate-route result.{field}")
+
+    provenance = _require_object(root.get("provenance"), "alternate-route provenance")
+    for field in ("project_revision", "fips_commit"):
+        commit = _require_string(provenance.get(field), f"provenance.{field}")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"provenance.{field} must be a full lowercase Git commit")
+    if provenance.get("fips_repository") != "https://github.com/jmcorgan/fips.git":
+        raise ContractError("provenance.fips_repository is invalid")
+    if provenance.get("fips_source_tree_state") != "clean":
+        raise ContractError("provenance.fips_source_tree_state must be clean")
+    for field in (
+        "cargo_lock_sha256",
+        "rust_toolchain_sha256",
+        "fips_binary_sha256",
+        "fipsctl_binary_sha256",
+    ):
+        digest = _require_string(provenance.get(field), f"provenance.{field}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"provenance.{field} is invalid")
+    _require_string(provenance.get("reported_version"), "provenance.reported_version")
+
+    platform_data = _require_object(root.get("platform"), "alternate-route platform")
+    if platform_data.get("system") != "Linux":
+        raise ContractError("alternate-route retained result must come from Linux")
+    for field in ("release", "machine", "python"):
+        _require_string(platform_data.get(field), f"platform.{field}")
+
+    topology = _require_object(root.get("topology"), "alternate-route topology")
+    if topology != {
+        "node_count": 4,
+        "namespace_count": 4,
+        "authenticated_link_count": 4,
+        "isolation": "linux-network-namespaces",
+        "underlay": "four-segment-diamond-ipv4-udp",
+        "path_role": "redundant-managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+        "identity_storage": "temporary-config-adjacent-key-files",
+        "root_assignment": "lowest-derived-node-address-to-endpoint-a",
+    }:
+        raise ContractError("FIPS G2 alternate-route topology is invalid")
+
+    observations = _require_object(root.get("observations"), "alternate-route observations")
+    if set(observations) != {
+        "underlay_exclusion",
+        "nodes",
+        "initial_topology",
+        "identity_resolution",
+        "initial_payload_identity",
+        "initial_path_selection",
+        "failure_injection",
+        "automatic_reparenting",
+        "fsp_session_continuity_observation",
+        "post_failure_icmpv6",
+        "post_failure_payload_identity",
+        "post_failure_path",
+    }:
+        raise ContractError("alternate-route observations contain unexpected fields")
+    if observations.get("underlay_exclusion") != {
+        "transit_ipv4_forwarding_disabled": [True, True],
+        "endpoint_direct_ipv4_probe_blocked": True,
+        "direct_endpoint_underlay_link_absent": True,
+    }:
+        raise ContractError("observations.underlay_exclusion is invalid")
+
+    nodes = observations.get("nodes")
+    expected_nodes = (
+        ("a", "endpoint-root"),
+        ("r1", "managed-transit"),
+        ("r2", "managed-transit"),
+        ("b", "endpoint-leaf"),
+    )
+    if not isinstance(nodes, list) or len(nodes) != 4:
+        raise ContractError("observations.nodes must contain exactly four nodes")
+    for index, (raw_node, (node_name, role)) in enumerate(zip(nodes, expected_nodes)):
+        node = _require_object(raw_node, f"observations.nodes[{index}]")
+        if node != {
+            "node": node_name,
+            "role": role,
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": 1203,
+            "persistent_identity": True,
+        }:
+            raise ContractError(f"observations.nodes[{index}] is invalid")
+
+    initial_path = _require_object(
+        observations.get("initial_path_selection"), "initial path selection"
+    )
+    active = initial_path.get("active_transit")
+    standby = initial_path.get("standby_transit")
+    if active not in {"r1", "r2"} or standby not in {"r1", "r2"} or active == standby:
+        raise ContractError("observations.initial_path_selection transit roles are invalid")
+    if set(initial_path) != {
+        "active_transit",
+        "standby_transit",
+        "endpoint_b_parent_was_active_transit",
+        "active_forwarded_packets_delta",
+        "active_forwarded_bytes_delta",
+        "standby_forwarded_packets_delta",
+        "standby_forwarded_bytes_delta",
+        "transit_fsp_session_counts",
+    }:
+        raise ContractError("observations.initial_path_selection contains unexpected fields")
+    for field in ("active_forwarded_packets_delta", "active_forwarded_bytes_delta"):
+        value = initial_path.get(field)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ContractError(f"observations.initial_path_selection.{field} must be positive")
+    if (
+        initial_path.get("endpoint_b_parent_was_active_transit") is not True
+        or initial_path.get("standby_forwarded_packets_delta") != 0
+        or initial_path.get("standby_forwarded_bytes_delta") != 0
+        or initial_path.get("transit_fsp_session_counts") != [0, 0]
+    ):
+        raise ContractError("observations.initial_path_selection path proof is invalid")
+
+    initial_topology = observations.get("initial_topology")
+    if initial_topology != {
+        "configured_auto_connect_peers": 4,
+        "manual_connect_commands": 0,
+        "authenticated_peer_counts": [2, 2, 2, 2],
+        "authenticated_link_counts": [2, 2, 2, 2],
+        "root_role": "a",
+        "tree_depths": [0, 1, 1, 2],
+        "endpoint_b_parent_role": active,
+        "standby_transit_authenticated": True,
+        "full_mmp_link_views": 8,
+        "transport": "udp",
+    }:
+        raise ContractError("observations.initial_topology is invalid")
+    if observations.get("identity_resolution") != {
+        "mechanism": "local-fips-dns-npub",
+        "endpoint_remote_identities_registered": True,
+        "public_discovery_used": False,
+    }:
+        raise ContractError("observations.identity_resolution is invalid")
+
+    def validate_payload(raw_payload: Any, context: str) -> None:
+        payload = _require_object(raw_payload, context)
+        if (
+            payload.get("protocol") != "udp-over-ipv6-over-fips0-multihop"
+            or payload.get("all_exact_echo") is not True
+            or set(payload) != {"protocol", "records", "all_exact_echo"}
+        ):
+            raise ContractError(f"{context} is invalid")
+        records = payload.get("records")
+        if (
+            not isinstance(records, list)
+            or [item.get("bytes") for item in records if isinstance(item, dict)]
+            != [1, 1024, 1155]
+        ):
+            raise ContractError(f"{context}.records has invalid sizes")
+        for index, raw_record in enumerate(records):
+            record = _require_object(raw_record, f"{context}.records[{index}]")
+            digest = _require_string(record.get("sha256"), f"{context}.records[{index}].sha256")
+            if (
+                set(record) != {"bytes", "sha256", "exact_echo"}
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                or record.get("exact_echo") is not True
+            ):
+                raise ContractError(f"{context}.records[{index}] is invalid")
+
+    validate_payload(observations.get("initial_payload_identity"), "initial payload identity")
+
+    failure = observations.get("failure_injection")
+    if failure != {
+        "failed_role": active,
+        "signal": "SIGKILL",
+        "graceful_disconnect_sent": False,
+        "process_exit_observed": True,
+        "underlay_interfaces_left_up": True,
+        "outage_probe_blocked": True,
+    }:
+        raise ContractError("observations.failure_injection is invalid")
+
+    reparenting = _require_object(
+        observations.get("automatic_reparenting"), "automatic reparenting"
+    )
+    reparent_elapsed = reparenting.get("reparent_elapsed_ms")
+    if (
+        not isinstance(reparent_elapsed, int)
+        or isinstance(reparent_elapsed, bool)
+        or not 0 < reparent_elapsed <= 60_000
+    ):
+        raise ContractError("observations.automatic_reparenting timing is invalid")
+    expected_reparenting = {
+        "tick_interval_secs": 1,
+        "heartbeat_interval_secs": 10,
+        "link_dead_timeout_secs": 30,
+        "reparent_budget_secs": 60,
+        "reparent_elapsed_ms": reparent_elapsed,
+        "old_parent_role": active,
+        "new_parent_role": standby,
+        "root_unchanged": True,
+        "tree_depth_unchanged": True,
+        "declaration_sequence_increased": True,
+        "parent_loss_counter_increased": True,
+        "manual_route_or_connect_commands": 0,
+        "remaining_peer_counts": {"a": 1, "standby": 2, "b": 1},
+        "remaining_link_counts": {"a": 1, "standby": 2, "b": 1},
+    }
+    if reparenting != expected_reparenting:
+        raise ContractError("observations.automatic_reparenting is invalid")
+
+    continuity = _require_object(
+        observations.get("fsp_session_continuity_observation"),
+        "FSP session continuity observation",
+    )
+    poll_count = continuity.get("control_poll_count")
+    if not isinstance(poll_count, int) or isinstance(poll_count, bool) or poll_count < 1:
+        raise ContractError("FSP session continuity control_poll_count is invalid")
+    if continuity != {
+        "target_control_poll_interval_ms": 250,
+        "control_poll_count": poll_count,
+        "established_at_every_control_poll": True,
+        "session_start_unchanged_per_endpoint": [True, True],
+        "endpoint_session_counts_after": [1, 1],
+        "surviving_transit_fsp_session_count": 0,
+        "identity_values_retained": False,
+    }:
+        raise ContractError("observations.fsp_session_continuity_observation is invalid")
+
+    if observations.get("post_failure_icmpv6") != {
+        "effective_mtu_boundary_payload_bytes": 1155,
+        "echo_requests": 2,
+        "passed": True,
+    }:
+        raise ContractError("observations.post_failure_icmpv6 is invalid")
+    validate_payload(
+        observations.get("post_failure_payload_identity"), "post-failure payload identity"
+    )
+
+    post_path = _require_object(observations.get("post_failure_path"), "post-failure path")
+    recovery_elapsed = post_path.get("payload_recovery_elapsed_ms")
+    if (
+        not isinstance(recovery_elapsed, int)
+        or isinstance(recovery_elapsed, bool)
+        or not reparent_elapsed <= recovery_elapsed <= 120_000
+    ):
+        raise ContractError("observations.post_failure_path recovery timing is invalid")
+    for field in ("forwarded_packets_delta", "forwarded_bytes_delta"):
+        value = post_path.get(field)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ContractError(f"observations.post_failure_path.{field} must be positive")
+    if (
+        set(post_path)
+        != {
+            "forwarding_transit",
+            "forwarded_packets_delta",
+            "forwarded_bytes_delta",
+            "failed_transit_unavailable",
+            "payload_recovery_budget_secs",
+            "payload_recovery_elapsed_ms",
+        }
+        or post_path.get("forwarding_transit") != standby
+        or post_path.get("failed_transit_unavailable") is not True
+        or post_path.get("payload_recovery_budget_secs") != 120
+    ):
+        raise ContractError("observations.post_failure_path is invalid")
+
+    cleanup = _require_object(root.get("cleanup"), "alternate-route cleanup")
+    if cleanup != {
+        "daemons_stopped": True,
+        "faulted_daemon_reaped": True,
+        "namespaces_removed": True,
+        "persistent_identity_directory_removed": True,
+    }:
+        raise ContractError("alternate-route cleanup is incomplete")
+    limitations = root.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item for item in limitations
+    ):
+        raise ContractError("alternate-route limitations must be a non-empty string array")
+
+
 def _iter_repository_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file() or any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
@@ -1117,6 +1425,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_g2_linux_managed_transit_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-lifecycle":
                 validate_fips_g2_linux_lifecycle_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-alternate-route":
+                validate_fips_g2_linux_alternate_route_result(retained)
             else:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:

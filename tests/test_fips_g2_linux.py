@@ -6,10 +6,17 @@ from pathlib import Path
 
 from rimf_lab.contracts import (
     ContractError,
+    validate_fips_g2_linux_alternate_route_result,
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
     validate_fips_g2_linux_nat_result,
+)
+from rimf_lab.fips_g2_linux_alternate_route import (
+    alternate_route_timings_within_contract,
+    diamond_peer_relationships,
+    node_addr_from_npub,
+    render_alternate_route_config,
 )
 from rimf_lab.fips_g2_linux import (
     mesh_size_converged,
@@ -380,6 +387,145 @@ def valid_lifecycle_result():
     return result
 
 
+def valid_alternate_route_result():
+    result = deepcopy(valid_result())
+    result["evidence_type"] = "fips-g2-linux-alternate-route"
+    result["topology"] = {
+        "node_count": 4,
+        "namespace_count": 4,
+        "authenticated_link_count": 4,
+        "isolation": "linux-network-namespaces",
+        "underlay": "four-segment-diamond-ipv4-udp",
+        "path_role": "redundant-managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+        "identity_storage": "temporary-config-adjacent-key-files",
+        "root_assignment": "lowest-derived-node-address-to-endpoint-a",
+    }
+    digest = "a" * 64
+
+    def payload():
+        return {
+            "protocol": "udp-over-ipv6-over-fips0-multihop",
+            "records": [
+                {"bytes": size, "sha256": digest, "exact_echo": True}
+                for size in (1, 1024, 1155)
+            ],
+            "all_exact_echo": True,
+        }
+
+    result["observations"] = {
+        "underlay_exclusion": {
+            "transit_ipv4_forwarding_disabled": [True, True],
+            "endpoint_direct_ipv4_probe_blocked": True,
+            "direct_endpoint_underlay_link_absent": True,
+        },
+        "nodes": [
+            {
+                "node": node,
+                "role": role,
+                "tun_state": "active",
+                "tun_name": "fips0",
+                "kernel_tun_mtu": 1280,
+                "effective_ipv6_mtu": 1203,
+                "persistent_identity": True,
+            }
+            for node, role in (
+                ("a", "endpoint-root"),
+                ("r1", "managed-transit"),
+                ("r2", "managed-transit"),
+                ("b", "endpoint-leaf"),
+            )
+        ],
+        "initial_topology": {
+            "configured_auto_connect_peers": 4,
+            "manual_connect_commands": 0,
+            "authenticated_peer_counts": [2, 2, 2, 2],
+            "authenticated_link_counts": [2, 2, 2, 2],
+            "root_role": "a",
+            "tree_depths": [0, 1, 1, 2],
+            "endpoint_b_parent_role": "r1",
+            "standby_transit_authenticated": True,
+            "full_mmp_link_views": 8,
+            "transport": "udp",
+        },
+        "identity_resolution": {
+            "mechanism": "local-fips-dns-npub",
+            "endpoint_remote_identities_registered": True,
+            "public_discovery_used": False,
+        },
+        "initial_payload_identity": payload(),
+        "initial_path_selection": {
+            "active_transit": "r1",
+            "standby_transit": "r2",
+            "endpoint_b_parent_was_active_transit": True,
+            "active_forwarded_packets_delta": 6,
+            "active_forwarded_bytes_delta": 4096,
+            "standby_forwarded_packets_delta": 0,
+            "standby_forwarded_bytes_delta": 0,
+            "transit_fsp_session_counts": [0, 0],
+        },
+        "failure_injection": {
+            "failed_role": "r1",
+            "signal": "SIGKILL",
+            "graceful_disconnect_sent": False,
+            "process_exit_observed": True,
+            "underlay_interfaces_left_up": True,
+            "outage_probe_blocked": True,
+        },
+        "automatic_reparenting": {
+            "tick_interval_secs": 1,
+            "heartbeat_interval_secs": 10,
+            "link_dead_timeout_secs": 30,
+            "reparent_budget_secs": 60,
+            "reparent_elapsed_ms": 31_500,
+            "old_parent_role": "r1",
+            "new_parent_role": "r2",
+            "root_unchanged": True,
+            "tree_depth_unchanged": True,
+            "declaration_sequence_increased": True,
+            "parent_loss_counter_increased": True,
+            "manual_route_or_connect_commands": 0,
+            "remaining_peer_counts": {"a": 1, "standby": 2, "b": 1},
+            "remaining_link_counts": {"a": 1, "standby": 2, "b": 1},
+        },
+        "fsp_session_continuity_observation": {
+            "target_control_poll_interval_ms": 250,
+            "control_poll_count": 80,
+            "established_at_every_control_poll": True,
+            "session_start_unchanged_per_endpoint": [True, True],
+            "endpoint_session_counts_after": [1, 1],
+            "surviving_transit_fsp_session_count": 0,
+            "identity_values_retained": False,
+        },
+        "post_failure_icmpv6": {
+            "effective_mtu_boundary_payload_bytes": 1155,
+            "echo_requests": 2,
+            "passed": True,
+        },
+        "post_failure_payload_identity": payload(),
+        "post_failure_path": {
+            "forwarding_transit": "r2",
+            "forwarded_packets_delta": 6,
+            "forwarded_bytes_delta": 4096,
+            "failed_transit_unavailable": True,
+            "payload_recovery_budget_secs": 120,
+            "payload_recovery_elapsed_ms": 36_000,
+        },
+    }
+    result["cleanup"] = {
+        "daemons_stopped": True,
+        "faulted_daemon_reaped": True,
+        "namespaces_removed": True,
+        "persistent_identity_directory_removed": True,
+    }
+    result["limitations"] = ["One Linux UDP diamond only."]
+    return result
+
+
 class PayloadProbeTests(unittest.TestCase):
     def test_payload_is_deterministic_and_exact_length(self):
         first = deterministic_payload(1155)
@@ -587,6 +733,78 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         result["cleanup"]["faulted_daemon_reaped"] = False
         with self.assertRaisesRegex(ContractError, "cleanup"):
             validate_fips_g2_linux_lifecycle_result(result)
+
+    def test_derives_fips_node_addr_from_snapshot_npub(self):
+        self.assertEqual(
+            node_addr_from_npub(
+                "npub1sx42mj99aql52aklsg70y2jmr95u7uz2p40k769aw46ppjv302kqkhmu5r"
+            ),
+            "1b4788b7ab7a436a611fc59fb1e34c6e",
+        )
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            node_addr_from_npub(
+                "npub1sx42mj99aql52aklsg70y2jmr95u7uz2p40k769aw46ppjv302kqkhmu5q"
+            )
+
+    def test_recognizes_exact_four_node_diamond_relationships(self):
+        identities = ["npub1a", "npub1r1", "npub1r2", "npub1b"]
+        views = [
+            {"peers": [{"npub": "npub1r1"}, {"npub": "npub1r2"}]},
+            {"peers": [{"npub": "npub1a"}, {"npub": "npub1b"}]},
+            {"peers": [{"npub": "npub1b"}, {"npub": "npub1a"}]},
+            {"peers": [{"npub": "npub1r2"}, {"npub": "npub1r1"}]},
+        ]
+        self.assertTrue(diamond_peer_relationships(views, identities))
+        views[3]["peers"] = [{"npub": "npub1r1"}]
+        self.assertFalse(diamond_peer_relationships(views, identities))
+
+    def test_alternate_route_config_freezes_redundant_auto_peers(self):
+        config = render_alternate_route_config(
+            Path("/tmp/rimf/control.sock"),
+            dns_enabled=True,
+            peers=[
+                ("r1", "npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqc8247j", "10.0.0.1"),
+                ("r2", "npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqc8247j", "10.0.0.2"),
+            ],
+        )
+        self.assertEqual(config.count('connect_policy: "auto_connect"'), 2)
+        self.assertEqual(config.count("auto_reconnect: true"), 2)
+        self.assertIn("persistent: true", config)
+        self.assertIn("link_dead_timeout_secs: 30", config)
+        self.assertIn('bind_addr: "0.0.0.0:2121"', config)
+
+    def test_alternate_route_timing_contract_is_bounded(self):
+        self.assertTrue(alternate_route_timings_within_contract(31_500, 36_000))
+        self.assertFalse(alternate_route_timings_within_contract(60_001, 61_000))
+        self.assertFalse(alternate_route_timings_within_contract(31_500, 120_001))
+        self.assertFalse(alternate_route_timings_within_contract(31_500, 31_000))
+
+    def test_accepts_complete_alternate_route_result(self):
+        validate_fips_g2_linux_alternate_route_result(valid_alternate_route_result())
+
+    def test_rejects_alternate_route_with_forwarding_on_standby(self):
+        result = valid_alternate_route_result()
+        result["observations"]["initial_path_selection"][
+            "standby_forwarded_packets_delta"
+        ] = 1
+        with self.assertRaisesRegex(ContractError, "path proof"):
+            validate_fips_g2_linux_alternate_route_result(result)
+
+    def test_rejects_alternate_route_manual_reconnect(self):
+        result = valid_alternate_route_result()
+        result["observations"]["automatic_reparenting"][
+            "manual_route_or_connect_commands"
+        ] = 1
+        with self.assertRaisesRegex(ContractError, "automatic_reparenting"):
+            validate_fips_g2_linux_alternate_route_result(result)
+
+    def test_rejects_alternate_route_fsp_session_restart(self):
+        result = valid_alternate_route_result()
+        result["observations"]["fsp_session_continuity_observation"][
+            "session_start_unchanged_per_endpoint"
+        ] = [True, False]
+        with self.assertRaisesRegex(ContractError, "continuity"):
+            validate_fips_g2_linux_alternate_route_result(result)
 
 
 if __name__ == "__main__":

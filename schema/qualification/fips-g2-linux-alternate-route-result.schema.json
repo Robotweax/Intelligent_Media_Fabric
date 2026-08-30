@@ -1,0 +1,408 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/fips-g2-linux-alternate-route-result-v1.json",
+  "title": "RIMF FIPS G2 Linux alternate-route qualification result v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "run_id",
+    "status",
+    "classification",
+    "gate_ids",
+    "started_at",
+    "finished_at",
+    "provenance",
+    "platform",
+    "topology",
+    "observations",
+    "cleanup",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_type": {"const": "fips-g2-linux-alternate-route"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "status": {"const": "passed"},
+    "classification": {"const": "experiment"},
+    "gate_ids": {"const": ["G2"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "provenance": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/provenance"
+    },
+    "platform": {
+      "$ref": "fips-g2-linux-direct-result.schema.json#/properties/platform"
+    },
+    "topology": {
+      "type": "object",
+      "required": [
+        "node_count",
+        "namespace_count",
+        "authenticated_link_count",
+        "isolation",
+        "underlay",
+        "path_role",
+        "public_discovery",
+        "nostr_relay",
+        "tun_name",
+        "configured_tun_mtu",
+        "configured_udp_mtu",
+        "identity_storage",
+        "root_assignment"
+      ],
+      "properties": {
+        "node_count": {"const": 4},
+        "namespace_count": {"const": 4},
+        "authenticated_link_count": {"const": 4},
+        "isolation": {"const": "linux-network-namespaces"},
+        "underlay": {"const": "four-segment-diamond-ipv4-udp"},
+        "path_role": {"const": "redundant-managed-fips-transit"},
+        "public_discovery": {"const": false},
+        "nostr_relay": {"const": false},
+        "tun_name": {"const": "fips0"},
+        "configured_tun_mtu": {"const": 1280},
+        "configured_udp_mtu": {"const": 1280},
+        "identity_storage": {"const": "temporary-config-adjacent-key-files"},
+        "root_assignment": {"const": "lowest-derived-node-address-to-endpoint-a"}
+      },
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "object",
+      "required": [
+        "underlay_exclusion",
+        "nodes",
+        "initial_topology",
+        "identity_resolution",
+        "initial_payload_identity",
+        "initial_path_selection",
+        "failure_injection",
+        "automatic_reparenting",
+        "fsp_session_continuity_observation",
+        "post_failure_icmpv6",
+        "post_failure_payload_identity",
+        "post_failure_path"
+      ],
+      "properties": {
+        "underlay_exclusion": {
+          "type": "object",
+          "required": [
+            "transit_ipv4_forwarding_disabled",
+            "endpoint_direct_ipv4_probe_blocked",
+            "direct_endpoint_underlay_link_absent"
+          ],
+          "properties": {
+            "transit_ipv4_forwarding_disabled": {"const": [true, true]},
+            "endpoint_direct_ipv4_probe_blocked": {"const": true},
+            "direct_endpoint_underlay_link_absent": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "nodes": {
+          "type": "array",
+          "prefixItems": [
+            {"$ref": "#/$defs/nodeA"},
+            {"$ref": "#/$defs/nodeR1"},
+            {"$ref": "#/$defs/nodeR2"},
+            {"$ref": "#/$defs/nodeB"}
+          ],
+          "items": false
+        },
+        "initial_topology": {
+          "type": "object",
+          "required": [
+            "configured_auto_connect_peers",
+            "manual_connect_commands",
+            "authenticated_peer_counts",
+            "authenticated_link_counts",
+            "root_role",
+            "tree_depths",
+            "endpoint_b_parent_role",
+            "standby_transit_authenticated",
+            "full_mmp_link_views",
+            "transport"
+          ],
+          "properties": {
+            "configured_auto_connect_peers": {"const": 4},
+            "manual_connect_commands": {"const": 0},
+            "authenticated_peer_counts": {"const": [2, 2, 2, 2]},
+            "authenticated_link_counts": {"const": [2, 2, 2, 2]},
+            "root_role": {"const": "a"},
+            "tree_depths": {"const": [0, 1, 1, 2]},
+            "endpoint_b_parent_role": {"enum": ["r1", "r2"]},
+            "standby_transit_authenticated": {"const": true},
+            "full_mmp_link_views": {"const": 8},
+            "transport": {"const": "udp"}
+          },
+          "additionalProperties": false
+        },
+        "identity_resolution": {
+          "type": "object",
+          "required": [
+            "mechanism",
+            "endpoint_remote_identities_registered",
+            "public_discovery_used"
+          ],
+          "properties": {
+            "mechanism": {"const": "local-fips-dns-npub"},
+            "endpoint_remote_identities_registered": {"const": true},
+            "public_discovery_used": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "initial_payload_identity": {"$ref": "#/$defs/payloadIdentity"},
+        "initial_path_selection": {
+          "type": "object",
+          "required": [
+            "active_transit",
+            "standby_transit",
+            "endpoint_b_parent_was_active_transit",
+            "active_forwarded_packets_delta",
+            "active_forwarded_bytes_delta",
+            "standby_forwarded_packets_delta",
+            "standby_forwarded_bytes_delta",
+            "transit_fsp_session_counts"
+          ],
+          "properties": {
+            "active_transit": {"enum": ["r1", "r2"]},
+            "standby_transit": {"enum": ["r1", "r2"]},
+            "endpoint_b_parent_was_active_transit": {"const": true},
+            "active_forwarded_packets_delta": {"type": "integer", "minimum": 1},
+            "active_forwarded_bytes_delta": {"type": "integer", "minimum": 1},
+            "standby_forwarded_packets_delta": {"const": 0},
+            "standby_forwarded_bytes_delta": {"const": 0},
+            "transit_fsp_session_counts": {"const": [0, 0]}
+          },
+          "additionalProperties": false
+        },
+        "failure_injection": {
+          "type": "object",
+          "required": [
+            "failed_role",
+            "signal",
+            "graceful_disconnect_sent",
+            "process_exit_observed",
+            "underlay_interfaces_left_up",
+            "outage_probe_blocked"
+          ],
+          "properties": {
+            "failed_role": {"enum": ["r1", "r2"]},
+            "signal": {"const": "SIGKILL"},
+            "graceful_disconnect_sent": {"const": false},
+            "process_exit_observed": {"const": true},
+            "underlay_interfaces_left_up": {"const": true},
+            "outage_probe_blocked": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "automatic_reparenting": {
+          "type": "object",
+          "required": [
+            "tick_interval_secs",
+            "heartbeat_interval_secs",
+            "link_dead_timeout_secs",
+            "reparent_budget_secs",
+            "reparent_elapsed_ms",
+            "old_parent_role",
+            "new_parent_role",
+            "root_unchanged",
+            "tree_depth_unchanged",
+            "declaration_sequence_increased",
+            "parent_loss_counter_increased",
+            "manual_route_or_connect_commands",
+            "remaining_peer_counts",
+            "remaining_link_counts"
+          ],
+          "properties": {
+            "tick_interval_secs": {"const": 1},
+            "heartbeat_interval_secs": {"const": 10},
+            "link_dead_timeout_secs": {"const": 30},
+            "reparent_budget_secs": {"const": 60},
+            "reparent_elapsed_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
+            "old_parent_role": {"enum": ["r1", "r2"]},
+            "new_parent_role": {"enum": ["r1", "r2"]},
+            "root_unchanged": {"const": true},
+            "tree_depth_unchanged": {"const": true},
+            "declaration_sequence_increased": {"const": true},
+            "parent_loss_counter_increased": {"const": true},
+            "manual_route_or_connect_commands": {"const": 0},
+            "remaining_peer_counts": {"const": {"a": 1, "standby": 2, "b": 1}},
+            "remaining_link_counts": {"const": {"a": 1, "standby": 2, "b": 1}}
+          },
+          "additionalProperties": false
+        },
+        "fsp_session_continuity_observation": {
+          "type": "object",
+          "required": [
+            "target_control_poll_interval_ms",
+            "control_poll_count",
+            "established_at_every_control_poll",
+            "session_start_unchanged_per_endpoint",
+            "endpoint_session_counts_after",
+            "surviving_transit_fsp_session_count",
+            "identity_values_retained"
+          ],
+          "properties": {
+            "target_control_poll_interval_ms": {"const": 250},
+            "control_poll_count": {"type": "integer", "minimum": 1},
+            "established_at_every_control_poll": {"const": true},
+            "session_start_unchanged_per_endpoint": {"const": [true, true]},
+            "endpoint_session_counts_after": {"const": [1, 1]},
+            "surviving_transit_fsp_session_count": {"const": 0},
+            "identity_values_retained": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "post_failure_icmpv6": {
+          "type": "object",
+          "required": ["effective_mtu_boundary_payload_bytes", "echo_requests", "passed"],
+          "properties": {
+            "effective_mtu_boundary_payload_bytes": {"const": 1155},
+            "echo_requests": {"const": 2},
+            "passed": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "post_failure_payload_identity": {"$ref": "#/$defs/payloadIdentity"},
+        "post_failure_path": {
+          "type": "object",
+          "required": [
+            "forwarding_transit",
+            "forwarded_packets_delta",
+            "forwarded_bytes_delta",
+            "failed_transit_unavailable",
+            "payload_recovery_budget_secs",
+            "payload_recovery_elapsed_ms"
+          ],
+          "properties": {
+            "forwarding_transit": {"enum": ["r1", "r2"]},
+            "forwarded_packets_delta": {"type": "integer", "minimum": 1},
+            "forwarded_bytes_delta": {"type": "integer", "minimum": 1},
+            "failed_transit_unavailable": {"const": true},
+            "payload_recovery_budget_secs": {"const": 120},
+            "payload_recovery_elapsed_ms": {"type": "integer", "minimum": 1, "maximum": 120000}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanup": {
+      "type": "object",
+      "required": [
+        "daemons_stopped",
+        "faulted_daemon_reaped",
+        "namespaces_removed",
+        "persistent_identity_directory_removed"
+      ],
+      "properties": {
+        "daemons_stopped": {"const": true},
+        "faulted_daemon_reaped": {"const": true},
+        "namespaces_removed": {"const": true},
+        "persistent_identity_directory_removed": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nodeBase": {
+      "type": "object",
+      "required": [
+        "node",
+        "role",
+        "tun_state",
+        "tun_name",
+        "kernel_tun_mtu",
+        "effective_ipv6_mtu",
+        "persistent_identity"
+      ],
+      "properties": {
+        "node": {"enum": ["a", "r1", "r2", "b"]},
+        "role": {"enum": ["endpoint-root", "managed-transit", "endpoint-leaf"]},
+        "tun_state": {"const": "active"},
+        "tun_name": {"const": "fips0"},
+        "kernel_tun_mtu": {"const": 1280},
+        "effective_ipv6_mtu": {"const": 1203},
+        "persistent_identity": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "nodeA": {
+      "allOf": [
+        {"$ref": "#/$defs/nodeBase"},
+        {"properties": {"node": {"const": "a"}, "role": {"const": "endpoint-root"}}}
+      ]
+    },
+    "nodeR1": {
+      "allOf": [
+        {"$ref": "#/$defs/nodeBase"},
+        {"properties": {"node": {"const": "r1"}, "role": {"const": "managed-transit"}}}
+      ]
+    },
+    "nodeR2": {
+      "allOf": [
+        {"$ref": "#/$defs/nodeBase"},
+        {"properties": {"node": {"const": "r2"}, "role": {"const": "managed-transit"}}}
+      ]
+    },
+    "nodeB": {
+      "allOf": [
+        {"$ref": "#/$defs/nodeBase"},
+        {"properties": {"node": {"const": "b"}, "role": {"const": "endpoint-leaf"}}}
+      ]
+    },
+    "payloadIdentity": {
+      "type": "object",
+      "required": ["protocol", "records", "all_exact_echo"],
+      "properties": {
+        "protocol": {"const": "udp-over-ipv6-over-fips0-multihop"},
+        "records": {
+          "type": "array",
+          "prefixItems": [
+            {"$ref": "#/$defs/payload1"},
+            {"$ref": "#/$defs/payload1024"},
+            {"$ref": "#/$defs/payload1155"}
+          ],
+          "items": false
+        },
+        "all_exact_echo": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "payloadRecord": {
+      "type": "object",
+      "required": ["bytes", "sha256", "exact_echo"],
+      "properties": {
+        "bytes": {"enum": [1, 1024, 1155]},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "exact_echo": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "payload1": {
+      "allOf": [
+        {"$ref": "#/$defs/payloadRecord"},
+        {"properties": {"bytes": {"const": 1}}}
+      ]
+    },
+    "payload1024": {
+      "allOf": [
+        {"$ref": "#/$defs/payloadRecord"},
+        {"properties": {"bytes": {"const": 1024}}}
+      ]
+    },
+    "payload1155": {
+      "allOf": [
+        {"$ref": "#/$defs/payloadRecord"},
+        {"properties": {"bytes": {"const": 1155}}}
+      ]
+    }
+  }
+}
