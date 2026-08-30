@@ -342,6 +342,8 @@ def valid_reactive_mtu_result():
         "transit_identity_preserved": True,
         "transit_process_restarted": True,
         "manual_link_reconnect_commands": 2,
+        "route_warmup_ipv6_packet_bytes": 80,
+        "route_warmup_echo_reply_received": True,
         "transport_mtu_before": 1280,
         "transport_mtu_after": 1000,
         "endpoint_session_start_ms_before": [1000, 1001],

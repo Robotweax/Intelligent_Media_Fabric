@@ -816,6 +816,38 @@ def run_fips_g2_linux_managed_transit(
             ):
                 raise QualificationError("post-restart connect acknowledgement was invalid")
 
+            phase = "post-restart-route-warmup"
+
+            def post_restart_route_warmed():
+                result = _run(
+                    [
+                        "ip",
+                        "netns",
+                        "exec",
+                        node_a_namespace,
+                        "ping",
+                        "-6",
+                        "-c",
+                        "1",
+                        "-W",
+                        "1",
+                        "-s",
+                        "32",
+                        destination,
+                    ],
+                    label="post-restart coordinate warmup probe",
+                    timeout=3,
+                    check=False,
+                )
+                return result.returncode == 0
+
+            _wait_for(
+                post_restart_route_warmed,
+                label="post-restart route and coordinate warmup",
+                timeout=8,
+                interval=0.1,
+            )
+
             before_reactive_records = [
                 endpoint_session_record(control(0, "show", "sessions"), identities[2]),
                 endpoint_session_record(control(2, "show", "sessions"), identities[0]),
@@ -955,6 +987,8 @@ def run_fips_g2_linux_managed_transit(
                 "transit_identity_preserved": True,
                 "transit_process_restarted": daemon_processes[1].pid != old_transit_pid,
                 "manual_link_reconnect_commands": 2,
+                "route_warmup_ipv6_packet_bytes": 80,
+                "route_warmup_echo_reply_received": True,
                 "transport_mtu_before": TUN_MTU,
                 "transport_mtu_after": TRANSIT_UDP_MTU,
                 "endpoint_session_start_ms_before": initial_session_starts,
@@ -1448,6 +1482,7 @@ def run_fips_g2_linux_managed_transit(
         result["limitations"] = [
             "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
             "The two FMP links were explicitly withdrawn and reconnected around the transit restart; automatic link reconnection was not qualified by this run.",
+            "One small ICMPv6 exchange re-warmed route coordinates after the parent change; the oversized reactive trigger followed before the next 15-second PMTU notification tick.",
             "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
             "A 15-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",

@@ -1022,6 +1022,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "transit_identity_preserved",
         "transit_process_restarted",
         "manual_link_reconnect_commands",
+        "route_warmup_ipv6_packet_bytes",
+        "route_warmup_echo_reply_received",
         "transport_mtu_before",
         "transport_mtu_after",
         "endpoint_session_start_ms_before",
@@ -1038,6 +1040,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or restart.get("transit_identity_preserved") is not True
         or restart.get("transit_process_restarted") is not True
         or restart.get("manual_link_reconnect_commands") != 2
+        or restart.get("route_warmup_ipv6_packet_bytes") != 80
+        or restart.get("route_warmup_echo_reply_received") is not True
         or restart.get("transport_mtu_before") != 1280
         or restart.get("transport_mtu_after") != 1000
         or not isinstance(starts_before, list)
