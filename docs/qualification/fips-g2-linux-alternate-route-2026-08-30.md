@@ -100,5 +100,7 @@ socket or running stream survives. It therefore does not pass G6 or G3.
 The external-daemon baseline remains suitable for later transparent SRT experiments, but route
 continuity must not be assumed. G6 must compare this behavior with SRT connection-group resilience
 and determine whether a FIPS improvement, a bounded workaround, or a pivot is justified. G2 remains
-open for broader NAT and discovery classes, heterogeneous multihop PMTUD, impaired-network cases,
-and resource bounds.
+open for broader NAT and discovery classes, dynamic or impaired-network PMTUD, other
+impaired-network cases, and resource bounds. The subsequent
+[heterogeneous multihop-MTU qualification](fips-g2-linux-multihop-mtu-2026-08-30.md) closed the
+static lower-bottleneck PMTUD slice without changing this non-hitless reconvergence finding.

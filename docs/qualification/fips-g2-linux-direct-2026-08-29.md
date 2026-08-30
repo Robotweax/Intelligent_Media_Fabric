@@ -92,3 +92,8 @@ The [alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md)
 proved automatic tree reparenting and exact-payload recovery through a second authenticated
 transit. Its 93.439-second recovery depended on FSP idle expiry and session replacement, so it is
 bounded G2 connectivity evidence rather than G6 or G3 continuity evidence.
+
+The [heterogeneous multihop-MTU qualification](fips-g2-linux-multihop-mtu-2026-08-30.md)
+subsequently proved that endpoint-local MTU 1203 cannot be treated as an end-to-end constant: a
+static transit bottleneck produced learned inner path MTU 923, explicit PTB/923 above it, and exact
+payload delivery at and below it.

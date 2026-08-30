@@ -40,9 +40,24 @@ minus current FEC reservation             4 bytes
 GCM plus FEC payload                   1119 bytes
 ```
 
+The retained heterogeneous multihop result also proves that the remote path can be smaller than
+the endpoint-local effective MTU. For a learned FIPS transport PMTU of 1000 bytes:
+
+```text
+learned inner IPv6 path MTU              923 bytes
+minus Robotweax SRT IPv6/UDP/SRT          64 bytes
+clear or CTR SRT payload                 859 bytes
+minus AES-GCM extension overhead          16 bytes
+GCM SRT payload                          843 bytes
+minus current FEC reservation              4 bytes
+GCM plus FEC payload                     839 bytes
+```
+
 These values are experiment inputs, not a general product guarantee. Each run must derive and record
 the actual underlay, FIPS, inner-IP, SRT, crypto, FEC, and media packet budgets. Fragmentation or an
-unexplained payload-size change fails the MTU gate.
+unexplained payload-size change fails the MTU gate. Packetization must use the smaller of the local
+effective MTU and the qualified per-destination path MTU; a fixed 1203-byte assumption is invalid
+for heterogeneous paths.
 
 ## Required success evidence
 

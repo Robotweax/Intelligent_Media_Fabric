@@ -40,8 +40,15 @@ session re-establishment after the configured 90-second idle timeout. Exact payl
 93,439 ms, so this is explicitly non-hitless G2 connectivity evidence rather than G6 or media
 continuity evidence.
 
-G2 remains in progress because broader NAT traversal, public/private discovery, heterogeneous
-multihop PMTUD, impaired-network, and resource-bound classes are not covered.
+The
+[FIPS G2 Linux heterogeneous multihop-MTU result](2026-08-30-fips-g2-linux-multihop-mtu-x86_64.json)
+adds a static A–R–B path with FIPS UDP MTUs 1280/1000/1280. It proves learned transport PMTU 1000,
+endpoint session PMTU 1000, inner IPv6 PMTU 923, explicit ICMPv6 PTB/923 one byte above the path
+boundary, and exact payload delivery at and below that boundary.
+
+G2 remains in progress because broader NAT traversal, public/private discovery, dynamic or
+impaired-network PMTUD cases, other impaired-network classes, and resource-bound classes are not
+covered.
 
 Do not commit generated output automatically. A retained result must pass review for provenance,
 reproducibility, secrets, privacy, customer payload, size, licensing, and evidence classification.
@@ -70,4 +77,7 @@ PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-lifecycle \
 
 PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-alternate-route \
   qualification/retained-results/2026-08-30-fips-g2-linux-alternate-route-x86_64.json
+
+PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-multihop-mtu \
+  qualification/retained-results/2026-08-30-fips-g2-linux-multihop-mtu-x86_64.json
 ```

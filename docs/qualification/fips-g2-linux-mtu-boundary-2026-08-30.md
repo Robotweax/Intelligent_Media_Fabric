@@ -65,6 +65,13 @@ packetization, NAT-specific PMTUD, or impaired-network PTB loss. The subsequent
 [lifecycle qualification](fips-g2-linux-lifecycle-2026-08-30.md) closed the direct link-dead and
 daemon-restart slice. The later
 [alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) closed a bounded
-managed-transit failure and recovery slice, but exposed non-hitless FSP recovery. G2 remains open
-for broader NAT and discovery classes, impaired-network cases, heterogeneous multihop PMTUD, and
-resource bounds. SRT-over-FIPS correctness and continuity remain G3 work.
+managed-transit failure and recovery slice, but exposed non-hitless FSP recovery. Before the
+multihop-MTU follow-up, G2 remained open for broader NAT and discovery classes, impaired-network
+cases, heterogeneous multihop PMTUD, and resource bounds. SRT-over-FIPS correctness and continuity
+remain G3 work.
+
+The subsequent
+[heterogeneous multihop-MTU qualification](fips-g2-linux-multihop-mtu-2026-08-30.md) extended the
+same below/at/one-byte-above contract to a managed-transit path whose learned inner IPv6 PMTU was
+923 while the endpoint-local effective MTU stayed 1203. Dynamic bottleneck changes and lost PTB
+feedback remain impairment work.

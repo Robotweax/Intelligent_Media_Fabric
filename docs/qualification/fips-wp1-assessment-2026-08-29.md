@@ -172,7 +172,7 @@ below/at/one-byte-above MTU class.
 The [lifecycle qualification](fips-g2-linux-lifecycle-2026-08-30.md) subsequently proved bounded
 link-dead cleanup after an ungraceful direct-peer failure, stable identity across daemon restart,
 automatic reauthentication with zero manual reconnect commands, and restored exact payload/FSP
-behavior. This completes the explicit direct link-dead/daemon-restart item. G2 remains
+behavior. This completes the explicit direct link-dead/daemon-restart item. At that point G2 remained
 `in-progress` for broader NAT and discovery classes, alternate-route and managed-transit
 reconvergence, impaired networks, heterogeneous multihop PMTUD, and resource bounds.
 
@@ -181,5 +181,9 @@ proved bounded recovery in an authenticated A–R1/R2–B diamond. After R1 was 
 R2 in 31,746 ms with no route or connect command. Exact payload recovery followed after 93,439 ms
 through automatic idle-session removal, discovery, and FSP re-establishment with no session-reset
 command. This closes the basic alternate-route connectivity slice but is explicitly non-hitless;
-it does not qualify SRT socket or media continuity. G2 remains `in-progress` for broader NAT and
-discovery, impaired networks, heterogeneous multihop PMTUD, and resource bounds.
+it does not qualify SRT socket or media continuity.
+
+The [heterogeneous multihop-MTU qualification](fips-g2-linux-multihop-mtu-2026-08-30.md)
+subsequently proved transport PMTU 1000 and inner IPv6 PMTU 923 across a static A–R–B path, with
+explicit PTB/923 above the boundary and exact payload below it. G2 remains `in-progress` for broader
+NAT and discovery, dynamic or lost-feedback PMTUD, other impaired networks, and resource bounds.

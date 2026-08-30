@@ -77,12 +77,16 @@ peer contract without a manual connect, and restored exact data-plane and sessio
 This is not alternate-route reconvergence evidence: the underlay and endpoint address were
 unchanged, and no backup peer or managed transit route was available. It also does not qualify
 transit-node failure, NAT rebinding, public discovery, signaling relay recovery, impaired networks,
-resource bounds, or SRT media continuity. G2 therefore remains open for the remaining
-connectivity/discovery, heterogeneous multihop PMTUD, impairment, and resource slices. Route
-reconvergence and running-stream continuity remain G6 and G3 work respectively.
+resource bounds, or SRT media continuity. At that point G2 remained open for connectivity and
+discovery, heterogeneous multihop PMTUD, impairment, and resource slices. Route reconvergence and
+running-stream continuity remain G6 and G3 work respectively.
 
 The subsequent
 [alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) closed the bounded
 transit-failure connectivity slice: FIPS reparented automatically to an already authenticated
 alternate in 31.746 seconds and restored exact payload after automatic FSP session replacement in
 93.439 seconds. That result is non-hitless and does not change the G6 or G3 continuity status.
+
+The later
+[heterogeneous multihop-MTU qualification](fips-g2-linux-multihop-mtu-2026-08-30.md) closed the
+static lower-bottleneck PMTUD slice. Dynamic or lost-feedback PMTUD remains impairment work.

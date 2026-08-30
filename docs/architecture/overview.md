@@ -55,6 +55,12 @@ no new FIPS native-datagram dependency is accepted in the first implementation.
 The native FIPS API becomes a candidate only if qualified TUN, MTU, copying, or performance evidence
 fails an approved gate. Generic multipath requires a separate post-Phase-4 decision.
 
+The TUN boundary does not imply one mesh-wide MTU. The retained
+[heterogeneous multihop-MTU qualification](../qualification/fips-g2-linux-multihop-mtu-2026-08-30.md)
+shows endpoint-local effective MTU 1203 with a learned remote-path MTU of 923. Packetization and
+later SRT configuration must consume qualified per-destination path state rather than assume the
+local `fips0` limit applies end to end.
+
 ## Control authority
 
 The initial Media Fabric is observational:
