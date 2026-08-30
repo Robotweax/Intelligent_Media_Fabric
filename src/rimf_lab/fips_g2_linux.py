@@ -26,6 +26,8 @@ TUN_MTU = 1280
 EFFECTIVE_IPV6_MTU = 1203
 UDP_PAYLOAD_SIZES = (1, 1024, 1155)
 UDP_PROBE_PORT = 42042
+ABOVE_EFFECTIVE_MTU_ICMP_PAYLOAD = 1156
+ABOVE_EFFECTIVE_MTU_IPV6_BYTES = 1204
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 IDENTITY_RE = re.compile(r"\b(?:npub|nsec)1[0-9a-z]+\b")
 
@@ -236,7 +238,7 @@ def _safe_failure_result(
     error: Exception,
 ) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "evidence_type": "fips-g2-linux-direct",
         "run_id": run_id,
         "status": "failed",
@@ -311,6 +313,7 @@ def run_fips_g2_linux_direct(
     daemon_processes: list[subprocess.Popen | None] = [None, None]
     daemon_streams = []
     payload_server: subprocess.Popen | None = None
+    ptb_probe: subprocess.Popen | None = None
     observations: dict = {}
     cleanup = {
         "daemons_stopped": False,
@@ -535,6 +538,98 @@ def run_fips_g2_linux_direct(
             timeout=20,
         )
 
+        phase = "above-effective-mtu"
+        ptb_ready_path = work / "ptb-probe.ready"
+        ptb_result_path = work / "ptb-probe.json"
+        ptb_probe = subprocess.Popen(
+            [
+                "ip",
+                "netns",
+                "exec",
+                namespaces[0],
+                sys.executable,
+                "-m",
+                "rimf_lab.icmpv6_ptb_probe",
+                "--interface",
+                "fips0",
+                "--ready",
+                str(ptb_ready_path),
+                "--output",
+                str(ptb_result_path),
+                "--timeout",
+                "10",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
+        def ptb_probe_ready():
+            if ptb_probe is None or ptb_probe.poll() is not None:
+                raise QualificationError("ICMPv6 PTB observer exited before becoming ready")
+            return ptb_ready_path.is_file()
+
+        _wait_for(ptb_probe_ready, label="ICMPv6 PTB observer", timeout=10)
+        above_boundary_probe = _run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                namespaces[0],
+                "ping",
+                "-6",
+                "-c",
+                "1",
+                "-W",
+                "5",
+                "-s",
+                str(ABOVE_EFFECTIVE_MTU_ICMP_PAYLOAD),
+                destination,
+            ],
+            label="one-byte-above-effective-MTU ICMPv6 probe",
+            timeout=10,
+            check=False,
+        )
+        if above_boundary_probe.returncode == 0:
+            raise QualificationError("above-effective-MTU probe unexpectedly received an echo reply")
+        try:
+            ptb_probe.wait(timeout=12)
+        except subprocess.TimeoutExpired as exc:
+            raise QualificationError("ICMPv6 PTB observer did not finish") from exc
+        if ptb_probe.returncode != 0 or not ptb_result_path.is_file():
+            raise QualificationError("ICMPv6 PTB observer did not capture a Packet Too Big message")
+        try:
+            ptb_observation = json.loads(ptb_result_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise QualificationError("ICMPv6 PTB observer returned invalid JSON") from exc
+        expected_ptb = {
+            "status": "passed",
+            "icmpv6_type": 2,
+            "icmpv6_code": 0,
+            "reported_mtu": EFFECTIVE_IPV6_MTU,
+        }
+        if ptb_observation != expected_ptb:
+            raise QualificationError("ICMPv6 PTB observation did not report MTU 1203")
+        _run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                namespaces[0],
+                "ping",
+                "-6",
+                "-c",
+                "2",
+                "-W",
+                "5",
+                "-s",
+                "1155",
+                destination,
+            ],
+            label="post-PTB boundary ICMPv6 recovery probe",
+            timeout=20,
+        )
+
         phase = "payload-identity"
         ready_path = work / "payload-server.ready"
         server_result_path = work / "payload-server.json"
@@ -657,6 +752,17 @@ def run_fips_g2_linux_direct(
                 "echo_requests_per_size": 2,
                 "passed": True,
             },
+            "above_effective_mtu": {
+                "effective_ipv6_mtu": EFFECTIVE_IPV6_MTU,
+                "boundary_icmp_payload_bytes": 1155,
+                "above_boundary_icmp_payload_bytes": ABOVE_EFFECTIVE_MTU_ICMP_PAYLOAD,
+                "above_boundary_ipv6_packet_bytes": ABOVE_EFFECTIVE_MTU_IPV6_BYTES,
+                "echo_reply_received": False,
+                "icmpv6_type": ptb_observation["icmpv6_type"],
+                "icmpv6_code": ptb_observation["icmpv6_code"],
+                "reported_mtu": ptb_observation["reported_mtu"],
+                "post_ptb_boundary_probe_passed": True,
+            },
             "payload_identity": {
                 "protocol": "udp-over-ipv6-over-fips0",
                 "records": payload_records,
@@ -676,6 +782,7 @@ def run_fips_g2_linux_direct(
         _print_redacted_log_tails(daemon_logs)
     finally:
         phase_at_failure = phase
+        _stop_process(ptb_probe)
         _stop_process(payload_server)
         cleanup["daemons_stopped"] = all(_stop_process(process) for process in daemon_processes)
         for stream in daemon_streams:
@@ -713,7 +820,7 @@ def run_fips_g2_linux_direct(
         raise QualificationError(f"G2 direct qualification failed during {phase_at_failure}") from error
 
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "evidence_type": "fips-g2-linux-direct",
         "run_id": run_id,
         "status": "passed",
@@ -742,6 +849,7 @@ def run_fips_g2_linux_direct(
             "Direct veth underlay only; NAT and relay-assisted connectivity were not exercised.",
             "No loss, delay, reordering, link failure, daemon restart, or route reconvergence was injected.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+            "The ICMPv6 observer retained only type, code, and reported MTU; no packet capture or endpoint address was retained.",
             "This run qualifies Linux TUN connectivity for the pinned host architecture only.",
         ],
     }

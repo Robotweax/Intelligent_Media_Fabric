@@ -348,8 +348,9 @@ def validate_fips_source_assessment(data: Any) -> None:
 
 def validate_fips_g2_linux_direct_result(data: Any) -> None:
     root = _require_object(data, "FIPS G2 Linux direct result")
-    if root.get("schema_version") != 1:
-        raise ContractError("FIPS G2 result schema_version must be 1")
+    schema_version = root.get("schema_version")
+    if schema_version not in {1, 2}:
+        raise ContractError("FIPS G2 result schema_version must be 1 or 2")
     if root.get("evidence_type") != "fips-g2-linux-direct":
         raise ContractError("FIPS G2 result evidence_type is invalid")
     if root.get("status") != "passed" or root.get("classification") != "experiment":
@@ -451,6 +452,24 @@ def validate_fips_g2_linux_direct_result(data: Any) -> None:
         or icmpv6.get("echo_requests_per_size") != 2
     ):
         raise ContractError("observations.icmpv6 is invalid")
+
+    above_mtu = observations.get("above_effective_mtu")
+    if schema_version == 2 and above_mtu is None:
+        raise ContractError("schema v2 requires observations.above_effective_mtu")
+    if above_mtu is not None:
+        above_mtu = _require_object(above_mtu, "observations.above_effective_mtu")
+        if above_mtu != {
+            "effective_ipv6_mtu": 1203,
+            "boundary_icmp_payload_bytes": 1155,
+            "above_boundary_icmp_payload_bytes": 1156,
+            "above_boundary_ipv6_packet_bytes": 1204,
+            "echo_reply_received": False,
+            "icmpv6_type": 2,
+            "icmpv6_code": 0,
+            "reported_mtu": 1203,
+            "post_ptb_boundary_probe_passed": True,
+        }:
+            raise ContractError("observations.above_effective_mtu is invalid")
 
     payload = _require_object(observations.get("payload_identity"), "observations.payload_identity")
     if payload.get("protocol") != "udp-over-ipv6-over-fips0":

@@ -104,6 +104,10 @@ jobs:
             echo "- Payload sizes: $(jq -r '[.observations.payload_identity.records[].bytes] | join(", ")' "$RESULT_PATH") bytes"
             echo "- TUN MTU: $(jq -r '.topology.configured_tun_mtu' "$RESULT_PATH") bytes"
             echo "- Effective IPv6 MTU: $(jq -r '.observations.nodes[0].effective_ipv6_mtu' "$RESULT_PATH") bytes"
+            echo "- Above-boundary IPv6 packet: $(jq -r '.observations.above_effective_mtu.above_boundary_ipv6_packet_bytes' "$RESULT_PATH") bytes"
+            echo "- ICMPv6 PTB type/code: $(jq -r '.observations.above_effective_mtu | \"\(.icmpv6_type)/\(.icmpv6_code)\"' "$RESULT_PATH")"
+            echo "- ICMPv6 PTB reported MTU: $(jq -r '.observations.above_effective_mtu.reported_mtu' "$RESULT_PATH") bytes"
+            echo "- Post-PTB boundary recovery: $(jq -r '.observations.above_effective_mtu.post_ptb_boundary_probe_passed' "$RESULT_PATH")"
             echo "- Teardown complete: $(jq -r '[.cleanup[]] | all' "$RESULT_PATH")"
           } >> "$GITHUB_STEP_SUMMARY"
 

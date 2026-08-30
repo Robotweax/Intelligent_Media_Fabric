@@ -20,6 +20,7 @@ from rimf_lab.fips_g2_linux_managed_transit import (
     forwarding_counters,
     line_peer_relationships,
 )
+from rimf_lab.icmpv6_ptb_probe import parse_packet_too_big
 from rimf_lab.payload_probe import deterministic_payload
 
 
@@ -145,6 +146,23 @@ def valid_nat_result():
     return result
 
 
+def valid_direct_mtu_result():
+    result = deepcopy(valid_result())
+    result["schema_version"] = 2
+    result["observations"]["above_effective_mtu"] = {
+        "effective_ipv6_mtu": 1203,
+        "boundary_icmp_payload_bytes": 1155,
+        "above_boundary_icmp_payload_bytes": 1156,
+        "above_boundary_ipv6_packet_bytes": 1204,
+        "echo_reply_received": False,
+        "icmpv6_type": 2,
+        "icmpv6_code": 0,
+        "reported_mtu": 1203,
+        "post_ptb_boundary_probe_passed": True,
+    }
+    return result
+
+
 def valid_managed_transit_result():
     result = deepcopy(valid_result())
     result["evidence_type"] = "fips-g2-linux-managed-transit"
@@ -246,6 +264,26 @@ class PayloadProbeTests(unittest.TestCase):
             deterministic_payload(0)
 
 
+class Icmpv6PtbProbeTests(unittest.TestCase):
+    def test_parses_raw_icmpv6_packet_too_big(self):
+        packet = bytes([2, 0, 0, 0]) + (1203).to_bytes(4, "big") + b"payload"
+        self.assertEqual(
+            parse_packet_too_big(packet),
+            {"icmpv6_type": 2, "icmpv6_code": 0, "reported_mtu": 1203},
+        )
+
+    def test_parses_packet_too_big_with_ipv6_header(self):
+        header = bytearray(40)
+        header[0] = 0x60
+        header[6] = 58
+        packet = bytes(header) + bytes([2, 0, 0, 0]) + (1203).to_bytes(4, "big")
+        self.assertEqual(parse_packet_too_big(packet)["reported_mtu"], 1203)
+
+    def test_rejects_non_ptb_icmpv6(self):
+        packet = bytes([128, 0, 0, 0]) + b"\0\0\0\0"
+        self.assertIsNone(parse_packet_too_big(packet))
+
+
 class FipsLinuxRunnerContractTests(unittest.TestCase):
     def test_config_uses_ephemeral_identity_and_expected_mtu(self):
         config = render_config(Path("/tmp/rimf/control.sock"), "10.203.0.1")
@@ -292,6 +330,21 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
 
     def test_accepts_complete_result(self):
         validate_fips_g2_linux_direct_result(valid_result())
+
+    def test_accepts_complete_schema_v2_mtu_result(self):
+        validate_fips_g2_linux_direct_result(valid_direct_mtu_result())
+
+    def test_rejects_schema_v2_without_above_mtu_observation(self):
+        result = valid_direct_mtu_result()
+        del result["observations"]["above_effective_mtu"]
+        with self.assertRaisesRegex(ContractError, "schema v2"):
+            validate_fips_g2_linux_direct_result(result)
+
+    def test_rejects_wrong_packet_too_big_mtu(self):
+        result = valid_direct_mtu_result()
+        result["observations"]["above_effective_mtu"]["reported_mtu"] = 1280
+        with self.assertRaisesRegex(ContractError, "above_effective_mtu"):
+            validate_fips_g2_linux_direct_result(result)
 
     def test_rejects_wrong_effective_mtu(self):
         result = deepcopy(valid_result())
