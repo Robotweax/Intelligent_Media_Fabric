@@ -184,3 +184,25 @@ contract. The 60- and 180-second bounds are qualification stop conditions, not p
 This runner qualifies bounded FIPS connectivity recovery only. It explicitly does not qualify
 hitless failover, SRT socket survival, downstream media timing, G6, G3, public discovery, NAT
 rebinding, or impaired-network behavior.
+
+## Privileged FIPS G2 Linux heterogeneous multihop-MTU runner
+
+The manually dispatched `FIPS G2 Linux Multihop MTU Qualification` workflow reuses the isolated
+three-node A–R–B managed-transit line while assigning UDP transport MTUs 1280/1000/1280 to A/R/B.
+All three TUN interfaces stay at MTU 1280. Ordinary IPv4 forwarding on R remains disabled, no
+direct A–B underlay exists, and endpoint identities are registered through loopback-only FIPS DNS.
+
+The runner requires FIPS discovery to retain transport PMTU 1000 for the remote endpoint and both
+endpoint FSP sessions to expose path MTU 1000. With the pinned 77-byte FIPS IPv6 overhead, this
+produces an inner IPv6 path MTU of 923 bytes while the endpoint-local effective MTU remains 1203.
+An ICMPv6 echo payload of 875 bytes must pass because it creates a 923-byte IPv6 packet. A payload
+of 876 bytes creates a 924-byte packet and must receive no echo; the root-only observer must instead
+receive ICMPv6 Packet Too Big type 2/code 0 reporting MTU 923. Boundary traffic must still pass
+immediately afterward.
+
+The runner also requires exact UDP echo at 1, 512, and 875 payload bytes, positive transit
+forwarding counters, endpoint-only FSP termination, controlled disconnect, and complete namespace
+and credential-directory teardown. Successful output must pass
+`schema/qualification/fips-g2-linux-multihop-mtu-result.schema.json` and the repository contract.
+This is one static proactive discovery/session PMTUD case. It does not qualify a changing physical
+underlay MTU, lost PTB messages, NAT-specific PMTUD, SRT packetization, or media continuity.

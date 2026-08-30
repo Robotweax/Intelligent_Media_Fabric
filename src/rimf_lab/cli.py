@@ -11,6 +11,7 @@ from .contracts import (
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
+    validate_fips_g2_linux_multihop_mtu_result,
     validate_fips_g2_linux_nat_result,
     validate_fips_source_assessment,
     validate_repository,
@@ -20,7 +21,10 @@ from .contracts import (
 from .fips_g2_linux import QualificationError, run_fips_g2_linux_direct
 from .fips_g2_linux_alternate_route import run_fips_g2_linux_alternate_route
 from .fips_g2_linux_lifecycle import run_fips_g2_linux_lifecycle
-from .fips_g2_linux_managed_transit import run_fips_g2_linux_managed_transit
+from .fips_g2_linux_managed_transit import (
+    run_fips_g2_linux_managed_transit,
+    run_fips_g2_linux_multihop_mtu,
+)
 from .fips_g2_linux_nat import run_fips_g2_linux_nat
 from .runner import run_scenario
 
@@ -61,6 +65,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     fips_g2_transit_result_parser.add_argument("path", type=Path)
 
+    fips_g2_multihop_mtu_result_parser = subparsers.add_parser(
+        "validate-fips-g2-linux-multihop-mtu",
+        help="validate a retained Linux heterogeneous multihop-MTU FIPS result",
+    )
+    fips_g2_multihop_mtu_result_parser.add_argument("path", type=Path)
+
     fips_g2_lifecycle_result_parser = subparsers.add_parser(
         "validate-fips-g2-linux-lifecycle",
         help="validate a retained Linux FIPS lifecycle result",
@@ -100,6 +110,16 @@ def _parser() -> argparse.ArgumentParser:
     fips_g2_transit_run_parser.add_argument("--fipsctl", type=Path, required=True)
     fips_g2_transit_run_parser.add_argument("--output", type=Path, required=True)
     fips_g2_transit_run_parser.add_argument("--project-revision", required=True)
+
+    fips_g2_multihop_mtu_run_parser = subparsers.add_parser(
+        "run-fips-g2-linux-multihop-mtu",
+        help="run the privileged Linux heterogeneous multihop-MTU FIPS qualification",
+    )
+    fips_g2_multihop_mtu_run_parser.add_argument("--fips-source", type=Path, required=True)
+    fips_g2_multihop_mtu_run_parser.add_argument("--fips", type=Path, required=True)
+    fips_g2_multihop_mtu_run_parser.add_argument("--fipsctl", type=Path, required=True)
+    fips_g2_multihop_mtu_run_parser.add_argument("--output", type=Path, required=True)
+    fips_g2_multihop_mtu_run_parser.add_argument("--project-revision", required=True)
 
     fips_g2_lifecycle_run_parser = subparsers.add_parser(
         "run-fips-g2-linux-lifecycle",
@@ -152,6 +172,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-fips-g2-linux-managed-transit":
             validate_fips_g2_linux_managed_transit_result(load_json(args.path))
             print(f"FIPS G2 Linux managed-transit validation: OK ({args.path})")
+        elif args.command == "validate-fips-g2-linux-multihop-mtu":
+            validate_fips_g2_linux_multihop_mtu_result(load_json(args.path))
+            print(f"FIPS G2 Linux multihop-MTU validation: OK ({args.path})")
         elif args.command == "validate-fips-g2-linux-lifecycle":
             validate_fips_g2_linux_lifecycle_result(load_json(args.path))
             print(f"FIPS G2 Linux lifecycle validation: OK ({args.path})")
@@ -185,6 +208,15 @@ def main(argv: list[str] | None = None) -> int:
                 project_revision=args.project_revision,
             )
             print(f"FIPS G2 Linux managed transit: {result['status']} ({args.output})")
+        elif args.command == "run-fips-g2-linux-multihop-mtu":
+            result = run_fips_g2_linux_multihop_mtu(
+                fips_source=args.fips_source,
+                fips_binary=args.fips,
+                fipsctl_binary=args.fipsctl,
+                output=args.output,
+                project_revision=args.project_revision,
+            )
+            print(f"FIPS G2 Linux multihop MTU: {result['status']} ({args.output})")
         elif args.command == "run-fips-g2-linux-lifecycle":
             result = run_fips_g2_linux_lifecycle(
                 fips_source=args.fips_source,

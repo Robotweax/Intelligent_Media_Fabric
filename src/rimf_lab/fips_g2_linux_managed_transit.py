@@ -39,6 +39,12 @@ NODE_A_ADDRESS = "10.206.0.1"
 TRANSIT_LEFT_ADDRESS = "10.206.0.2"
 TRANSIT_RIGHT_ADDRESS = "10.207.0.1"
 NODE_B_ADDRESS = "10.207.0.2"
+TRANSIT_UDP_MTU = 1000
+PATH_EFFECTIVE_IPV6_MTU = 923
+PATH_BOUNDARY_ICMP_PAYLOAD = 875
+PATH_ABOVE_BOUNDARY_ICMP_PAYLOAD = 876
+PATH_ABOVE_BOUNDARY_IPV6_BYTES = 924
+PATH_UDP_PAYLOAD_SIZES = (1, 512, 875)
 
 
 def line_peer_relationships(peer_views: list[dict], identities: list[str]) -> bool:
@@ -73,6 +79,35 @@ def forwarding_counters(value: dict) -> tuple[int, int]:
     return packets, byte_count
 
 
+def session_path_mtu(value: dict, remote_identity: str) -> int | None:
+    sessions = value.get("sessions")
+    if not isinstance(sessions, list):
+        return None
+    for session in sessions:
+        if not isinstance(session, dict) or session.get("npub") != remote_identity:
+            continue
+        mmp = session.get("mmp")
+        if session.get("state") != "established" or not isinstance(mmp, dict):
+            return None
+        path_mtu = mmp.get("path_mtu")
+        if isinstance(path_mtu, int) and not isinstance(path_mtu, bool):
+            return path_mtu
+    return None
+
+
+def coordinate_cache_path_mtu(value: dict, remote_ipv6: str) -> int | None:
+    entries = value.get("entries")
+    if not isinstance(entries, list):
+        return None
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("ipv6_addr") != remote_ipv6:
+            continue
+        path_mtu = entry.get("path_mtu")
+        if isinstance(path_mtu, int) and not isinstance(path_mtu, bool):
+            return path_mtu
+    return None
+
+
 def _safe_failure_result(
     *,
     run_id: str,
@@ -82,10 +117,11 @@ def _safe_failure_result(
     project_revision: str,
     cleanup: dict,
     error: Exception,
+    evidence_type: str = "fips-g2-linux-managed-transit",
 ) -> dict:
     return {
         "schema_version": 1,
-        "evidence_type": "fips-g2-linux-managed-transit",
+        "evidence_type": evidence_type,
         "run_id": run_id,
         "status": "failed",
         "classification": "experiment",
@@ -107,7 +143,27 @@ def run_fips_g2_linux_managed_transit(
     fipsctl_binary: Path,
     output: Path,
     project_revision: str,
+    _heterogeneous_mtu: bool = False,
 ) -> dict:
+    evidence_type = (
+        "fips-g2-linux-multihop-mtu"
+        if _heterogeneous_mtu
+        else "fips-g2-linux-managed-transit"
+    )
+    udp_mtus = (
+        (TUN_MTU, TRANSIT_UDP_MTU, TUN_MTU)
+        if _heterogeneous_mtu
+        else (TUN_MTU,) * 3
+    )
+    effective_ipv6_mtus = (
+        (EFFECTIVE_IPV6_MTU, PATH_EFFECTIVE_IPV6_MTU, EFFECTIVE_IPV6_MTU)
+        if _heterogeneous_mtu
+        else (EFFECTIVE_IPV6_MTU,) * 3
+    )
+    boundary_icmp_payload = (
+        PATH_BOUNDARY_ICMP_PAYLOAD if _heterogeneous_mtu else 1155
+    )
+    payload_sizes = PATH_UDP_PAYLOAD_SIZES if _heterogeneous_mtu else UDP_PAYLOAD_SIZES
     run_id = str(uuid.uuid4())
     started_at = utc_now()
     phase = "preflight"
@@ -156,6 +212,8 @@ def run_fips_g2_linux_managed_transit(
     daemon_processes: list[subprocess.Popen | None] = [None, None, None]
     daemon_streams = []
     payload_server: subprocess.Popen | None = None
+    ptb_probe: subprocess.Popen | None = None
+    path_mtu_observation: dict | None = None
     observations: dict = {}
     cleanup = {
         "daemons_stopped": False,
@@ -169,9 +227,17 @@ def run_fips_g2_linux_managed_transit(
         for node_dir in node_dirs:
             node_dir.mkdir(mode=0o700)
         bind_addresses = (NODE_A_ADDRESS, "0.0.0.0", NODE_B_ADDRESS)
-        for config, socket_path, address in zip(configs, sockets, bind_addresses):
+        for config, socket_path, address, udp_mtu in zip(
+            configs, sockets, bind_addresses, udp_mtus
+        ):
             config.write_text(
-                render_config(socket_path, address, dns_enabled=True), encoding="utf-8"
+                render_config(
+                    socket_path,
+                    address,
+                    dns_enabled=True,
+                    udp_mtu=udp_mtu,
+                ),
+                encoding="utf-8",
             )
             config.chmod(0o600)
 
@@ -311,10 +377,12 @@ def run_fips_g2_linux_managed_transit(
             raise QualificationError("a node did not expose a valid public identity")
 
         node_observations = []
-        for index, (namespace, node_status) in enumerate(zip(namespaces, statuses)):
+        for index, (namespace, node_status, expected_effective_mtu) in enumerate(
+            zip(namespaces, statuses, effective_ipv6_mtus)
+        ):
             if node_status.get("tun_state") != "active" or node_status.get("tun_name") != "fips0":
                 raise QualificationError(f"node {index} TUN did not become active")
-            if node_status.get("effective_ipv6_mtu") != EFFECTIVE_IPV6_MTU:
+            if node_status.get("effective_ipv6_mtu") != expected_effective_mtu:
                 raise QualificationError(f"node {index} reported an unexpected effective IPv6 MTU")
             link_data = _json_value_command(
                 ["ip", "-n", namespace, "-j", "link", "show", "dev", "fips0"],
@@ -518,6 +586,35 @@ def run_fips_g2_linux_managed_transit(
             timeout=45,
             interval=1,
         )
+        learned_session_path_mtus: list[int] | None = None
+        learned_coordinate_path_mtu: int | None = None
+        if _heterogeneous_mtu:
+            phase = "multihop-path-mtu-learning"
+
+            def path_mtu_learned():
+                endpoint_a_sessions = control(0, "show", "sessions")
+                endpoint_b_sessions = control(2, "show", "sessions")
+                session_mtus = [
+                    session_path_mtu(endpoint_a_sessions, identities[2]),
+                    session_path_mtu(endpoint_b_sessions, identities[0]),
+                ]
+                cache_mtu = coordinate_cache_path_mtu(
+                    control(0, "show", "cache"), statuses[2]["ipv6_addr"]
+                )
+                if session_mtus != [TRANSIT_UDP_MTU, TRANSIT_UDP_MTU]:
+                    return None
+                if cache_mtu != TRANSIT_UDP_MTU:
+                    return None
+                return session_mtus, cache_mtu
+
+            learned_session_path_mtus, learned_coordinate_path_mtu = _wait_for(
+                path_mtu_learned,
+                label="heterogeneous multihop path MTU learning",
+                timeout=30,
+            )
+
+        if _heterogeneous_mtu:
+            phase = "multihop-path-mtu-boundary"
         _run(
             [
                 "ip",
@@ -531,12 +628,125 @@ def run_fips_g2_linux_managed_transit(
                 "-W",
                 "10",
                 "-s",
-                "1155",
+                str(boundary_icmp_payload),
                 destination,
             ],
-            label="effective-MTU-boundary multihop ICMPv6 probe",
+            label="path-MTU-boundary multihop ICMPv6 probe",
             timeout=30,
         )
+
+        if _heterogeneous_mtu:
+            ptb_ready_path = work / "ptb-probe.ready"
+            ptb_result_path = work / "ptb-probe.json"
+            ptb_probe = subprocess.Popen(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    node_a_namespace,
+                    sys.executable,
+                    "-m",
+                    "rimf_lab.icmpv6_ptb_probe",
+                    "--interface",
+                    "fips0",
+                    "--ready",
+                    str(ptb_ready_path),
+                    "--output",
+                    str(ptb_result_path),
+                    "--timeout",
+                    "10",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+
+            def ptb_probe_ready():
+                if ptb_probe is None or ptb_probe.poll() is not None:
+                    raise QualificationError("ICMPv6 PTB observer exited before becoming ready")
+                return ptb_ready_path.is_file()
+
+            _wait_for(ptb_probe_ready, label="ICMPv6 PTB observer", timeout=10)
+            above_boundary_probe = _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    node_a_namespace,
+                    "ping",
+                    "-6",
+                    "-c",
+                    "1",
+                    "-W",
+                    "5",
+                    "-s",
+                    str(PATH_ABOVE_BOUNDARY_ICMP_PAYLOAD),
+                    destination,
+                ],
+                label="one-byte-above-multihop-path-MTU ICMPv6 probe",
+                timeout=10,
+                check=False,
+            )
+            if above_boundary_probe.returncode == 0:
+                raise QualificationError(
+                    "above-path-MTU probe unexpectedly received an echo reply"
+                )
+            try:
+                ptb_probe.wait(timeout=12)
+            except subprocess.TimeoutExpired as exc:
+                raise QualificationError("ICMPv6 PTB observer did not finish") from exc
+            if ptb_probe.returncode != 0 or not ptb_result_path.is_file():
+                raise QualificationError(
+                    "ICMPv6 PTB observer did not capture a Packet Too Big message"
+                )
+            try:
+                ptb_observation = json.loads(ptb_result_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise QualificationError("ICMPv6 PTB observer returned invalid JSON") from exc
+            expected_ptb = {
+                "status": "passed",
+                "icmpv6_type": 2,
+                "icmpv6_code": 0,
+                "reported_mtu": PATH_EFFECTIVE_IPV6_MTU,
+            }
+            if ptb_observation != expected_ptb:
+                raise QualificationError(
+                    "ICMPv6 PTB observation did not report the multihop path MTU"
+                )
+            _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    node_a_namespace,
+                    "ping",
+                    "-6",
+                    "-c",
+                    "2",
+                    "-W",
+                    "10",
+                    "-s",
+                    str(PATH_BOUNDARY_ICMP_PAYLOAD),
+                    destination,
+                ],
+                label="post-PTB multihop boundary ICMPv6 probe",
+                timeout=30,
+            )
+            path_mtu_observation = {
+                "endpoint_effective_ipv6_mtu": EFFECTIVE_IPV6_MTU,
+                "transit_transport_mtu": TRANSIT_UDP_MTU,
+                "learned_transport_path_mtu": learned_coordinate_path_mtu,
+                "endpoint_session_path_mtus": learned_session_path_mtus,
+                "effective_ipv6_path_mtu": PATH_EFFECTIVE_IPV6_MTU,
+                "boundary_icmp_payload_bytes": PATH_BOUNDARY_ICMP_PAYLOAD,
+                "above_boundary_icmp_payload_bytes": PATH_ABOVE_BOUNDARY_ICMP_PAYLOAD,
+                "above_boundary_ipv6_packet_bytes": PATH_ABOVE_BOUNDARY_IPV6_BYTES,
+                "echo_reply_received": False,
+                "icmpv6_type": ptb_observation["icmpv6_type"],
+                "icmpv6_code": ptb_observation["icmpv6_code"],
+                "reported_mtu": ptb_observation["reported_mtu"],
+                "post_ptb_boundary_probe_passed": True,
+            }
 
         phase = "multihop-payload-identity"
         ready_path = work / "payload-server.ready"
@@ -557,7 +767,7 @@ def run_fips_g2_linux_managed_transit(
                 "--port",
                 str(UDP_PROBE_PORT),
                 "--count",
-                str(len(UDP_PAYLOAD_SIZES)),
+                str(len(payload_sizes)),
                 "--ready",
                 str(ready_path),
                 "--output",
@@ -589,7 +799,7 @@ def run_fips_g2_linux_managed_transit(
                 "--port",
                 str(UDP_PROBE_PORT),
                 "--sizes",
-                *[str(size) for size in UDP_PAYLOAD_SIZES],
+                *[str(size) for size in payload_sizes],
                 "--output",
                 str(client_result_path),
             ],
@@ -612,7 +822,7 @@ def run_fips_g2_linux_managed_transit(
         payload_records = client_result.get("records")
         if (
             not isinstance(payload_records, list)
-            or [item.get("bytes") for item in payload_records] != list(UDP_PAYLOAD_SIZES)
+            or [item.get("bytes") for item in payload_records] != list(payload_sizes)
             or not all(item.get("exact_echo") is True for item in payload_records)
         ):
             raise QualificationError("payload identity result is incomplete")
@@ -679,7 +889,7 @@ def run_fips_g2_linux_managed_transit(
             "icmpv6": {
                 "path": "endpoint-a-via-managed-transit-r-to-endpoint-b",
                 "small_payload_bytes": 32,
-                "effective_mtu_boundary_payload_bytes": 1155,
+                "effective_mtu_boundary_payload_bytes": boundary_icmp_payload,
                 "passed": True,
             },
             "payload_identity": {
@@ -700,6 +910,10 @@ def run_fips_g2_linux_managed_transit(
                 "links_per_node_after": [0, 0, 0],
             },
         }
+        if _heterogeneous_mtu:
+            if path_mtu_observation is None:
+                raise QualificationError("multihop path MTU observation is unavailable")
+            observations["path_mtu"] = path_mtu_observation
     except Exception as exc:
         error = exc
         for stream in daemon_streams:
@@ -708,6 +922,7 @@ def run_fips_g2_linux_managed_transit(
     finally:
         phase_at_failure = phase
         _stop_process(payload_server)
+        _stop_process(ptb_probe)
         cleanup["daemons_stopped"] = all(_stop_process(process) for process in daemon_processes)
         for stream in daemon_streams:
             stream.close()
@@ -741,6 +956,7 @@ def run_fips_g2_linux_managed_transit(
             project_revision=project_revision,
             cleanup=cleanup,
             error=error,
+            evidence_type=evidence_type,
         )
         _write_result(output, result)
         raise QualificationError(
@@ -749,7 +965,7 @@ def run_fips_g2_linux_managed_transit(
 
     result = {
         "schema_version": 1,
-        "evidence_type": "fips-g2-linux-managed-transit",
+        "evidence_type": evidence_type,
         "run_id": run_id,
         "status": "passed",
         "classification": "experiment",
@@ -786,5 +1002,44 @@ def run_fips_g2_linux_managed_transit(
             "This run qualifies Linux TUN transit connectivity for the pinned host architecture only.",
         ],
     }
+    if _heterogeneous_mtu:
+        result["topology"] = {
+            "node_count": 3,
+            "namespace_count": 3,
+            "authenticated_link_count": 2,
+            "isolation": "linux-network-namespaces",
+            "underlay": "two-segment-line-ipv4-udp",
+            "path_role": "managed-fips-transit",
+            "public_discovery": False,
+            "nostr_relay": False,
+            "tun_name": "fips0",
+            "configured_tun_mtu_per_node": [TUN_MTU, TUN_MTU, TUN_MTU],
+            "configured_udp_mtu_per_node": list(udp_mtus),
+            "bottleneck_node": "r",
+        }
+        result["limitations"] = [
+            "A static, explicitly connected three-node FIPS line was exercised; public discovery, Nostr relays, and NAT traversal were not part of this run.",
+            "The heterogeneous constraint was the transit node's configured FIPS UDP transport MTU, not a changing physical underlay MTU or a black-holed ICMP path.",
+            "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+            "This run qualifies one proactive discovery/session PMTUD case on Linux for the pinned host architecture only.",
+        ]
     _write_result(output, result)
     return result
+
+
+def run_fips_g2_linux_multihop_mtu(
+    *,
+    fips_source: Path,
+    fips_binary: Path,
+    fipsctl_binary: Path,
+    output: Path,
+    project_revision: str,
+) -> dict:
+    return run_fips_g2_linux_managed_transit(
+        fips_source=fips_source,
+        fips_binary=fips_binary,
+        fipsctl_binary=fipsctl_binary,
+        output=output,
+        project_revision=project_revision,
+        _heterogeneous_mtu=True,
+    )

@@ -49,7 +49,11 @@ def sha256_file(path: Path) -> str:
 
 
 def render_config(
-    control_socket: Path, bind_address: str, *, dns_enabled: bool = False
+    control_socket: Path,
+    bind_address: str,
+    *,
+    dns_enabled: bool = False,
+    udp_mtu: int = TUN_MTU,
 ) -> str:
     dns_config = (
         '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
@@ -75,7 +79,7 @@ dns:
 transports:
   udp:
     bind_addr: "{bind_address}:2121"
-    mtu: {TUN_MTU}
+    mtu: {udp_mtu}
 
 peers: []
 """

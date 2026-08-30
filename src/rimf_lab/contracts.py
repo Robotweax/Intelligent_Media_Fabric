@@ -777,6 +777,158 @@ def validate_fips_g2_linux_managed_transit_result(data: Any) -> None:
         raise ContractError("managed-transit limitations must be a non-empty string array")
 
 
+def validate_fips_g2_linux_multihop_mtu_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux multihop-MTU result")
+    expected_root_fields = {
+        "schema_version",
+        "evidence_type",
+        "run_id",
+        "status",
+        "classification",
+        "gate_ids",
+        "started_at",
+        "finished_at",
+        "provenance",
+        "platform",
+        "topology",
+        "observations",
+        "cleanup",
+        "limitations",
+    }
+    if set(root) != expected_root_fields:
+        raise ContractError("FIPS G2 multihop-MTU result contains unexpected fields")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 multihop-MTU result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-multihop-mtu":
+        raise ContractError("FIPS G2 multihop-MTU result evidence_type is invalid")
+
+    topology = _require_object(root.get("topology"), "multihop-MTU topology")
+    if topology != {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu_per_node": [1280, 1280, 1280],
+        "configured_udp_mtu_per_node": [1280, 1000, 1280],
+        "bottleneck_node": "r",
+    }:
+        raise ContractError("FIPS G2 multihop-MTU topology is invalid")
+
+    observations = _require_object(root.get("observations"), "multihop-MTU observations")
+    if set(observations) != {
+        "underlay_exclusion",
+        "line_topology",
+        "identity_resolution",
+        "nodes",
+        "mmp",
+        "icmpv6",
+        "path_mtu",
+        "payload_identity",
+        "transit_forwarding",
+        "disconnect",
+    }:
+        raise ContractError("multihop-MTU observations contain unexpected fields")
+
+    nodes = observations.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 3:
+        raise ContractError("multihop-MTU observations.nodes must contain exactly three nodes")
+    expected_nodes = (
+        ("a", "endpoint", 1203),
+        ("r", "managed-transit", 923),
+        ("b", "endpoint", 1203),
+    )
+    for index, (raw_node, (node_name, role, effective_mtu)) in enumerate(
+        zip(nodes, expected_nodes)
+    ):
+        node = _require_object(raw_node, f"multihop-MTU observations.nodes[{index}]")
+        if node != {
+            "node": node_name,
+            "role": role,
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": effective_mtu,
+        }:
+            raise ContractError(f"multihop-MTU observations.nodes[{index}] is invalid")
+
+    if observations.get("icmpv6") != {
+        "path": "endpoint-a-via-managed-transit-r-to-endpoint-b",
+        "small_payload_bytes": 32,
+        "effective_mtu_boundary_payload_bytes": 875,
+        "passed": True,
+    }:
+        raise ContractError("multihop-MTU observations.icmpv6 is invalid")
+
+    path_mtu = _require_object(observations.get("path_mtu"), "multihop path MTU")
+    if path_mtu != {
+        "endpoint_effective_ipv6_mtu": 1203,
+        "transit_transport_mtu": 1000,
+        "learned_transport_path_mtu": 1000,
+        "endpoint_session_path_mtus": [1000, 1000],
+        "effective_ipv6_path_mtu": 923,
+        "boundary_icmp_payload_bytes": 875,
+        "above_boundary_icmp_payload_bytes": 876,
+        "above_boundary_ipv6_packet_bytes": 924,
+        "echo_reply_received": False,
+        "icmpv6_type": 2,
+        "icmpv6_code": 0,
+        "reported_mtu": 923,
+        "post_ptb_boundary_probe_passed": True,
+    }:
+        raise ContractError("multihop-MTU observations.path_mtu is invalid")
+
+    payload = _require_object(observations.get("payload_identity"), "multihop payload identity")
+    records = payload.get("records")
+    if (
+        payload.get("protocol") != "udp-over-ipv6-over-fips0-multihop"
+        or payload.get("all_exact_echo") is not True
+        or not isinstance(records, list)
+        or len(records) != 3
+    ):
+        raise ContractError("multihop-MTU observations.payload_identity is invalid")
+    if [item.get("bytes") for item in records if isinstance(item, dict)] != [1, 512, 875]:
+        raise ContractError("multihop-MTU payload record sizes are invalid")
+
+    managed_shape = dict(root)
+    managed_shape["evidence_type"] = "fips-g2-linux-managed-transit"
+    managed_shape["topology"] = {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+    }
+    managed_observations = dict(observations)
+    managed_observations.pop("path_mtu")
+    managed_observations["nodes"] = [
+        {**node, "effective_ipv6_mtu": 1203} for node in nodes
+    ]
+    managed_observations["icmpv6"] = {
+        **observations["icmpv6"],
+        "effective_mtu_boundary_payload_bytes": 1155,
+    }
+    managed_observations["payload_identity"] = {
+        **payload,
+        "records": [
+            {**record, "bytes": size}
+            for record, size in zip(records, (1, 1024, 1155))
+        ],
+    }
+    managed_shape["observations"] = managed_observations
+    validate_fips_g2_linux_managed_transit_result(managed_shape)
+
+
 def validate_fips_g2_linux_lifecycle_result(data: Any) -> None:
     root = _require_object(data, "FIPS G2 Linux lifecycle result")
     if root.get("schema_version") != 1:
@@ -1439,6 +1591,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_g2_linux_nat_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-managed-transit":
                 validate_fips_g2_linux_managed_transit_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-multihop-mtu":
+                validate_fips_g2_linux_multihop_mtu_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-lifecycle":
                 validate_fips_g2_linux_lifecycle_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-alternate-route":

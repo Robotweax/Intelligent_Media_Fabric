@@ -10,6 +10,7 @@ from rimf_lab.contracts import (
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
     validate_fips_g2_linux_managed_transit_result,
+    validate_fips_g2_linux_multihop_mtu_result,
     validate_fips_g2_linux_nat_result,
 )
 from rimf_lab.fips_g2_linux_alternate_route import (
@@ -29,8 +30,10 @@ from rimf_lab.fips_g2_linux_lifecycle import (
     render_lifecycle_config,
 )
 from rimf_lab.fips_g2_linux_managed_transit import (
+    coordinate_cache_path_mtu,
     forwarding_counters,
     line_peer_relationships,
+    session_path_mtu,
 )
 from rimf_lab.icmpv6_ptb_probe import parse_packet_too_big
 from rimf_lab.payload_probe import deterministic_payload
@@ -260,6 +263,48 @@ def valid_managed_transit_result():
         },
     }
     result["limitations"] = ["Static managed transit only."]
+    return result
+
+
+def valid_multihop_mtu_result():
+    result = deepcopy(valid_managed_transit_result())
+    result["evidence_type"] = "fips-g2-linux-multihop-mtu"
+    result["topology"] = {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu_per_node": [1280, 1280, 1280],
+        "configured_udp_mtu_per_node": [1280, 1000, 1280],
+        "bottleneck_node": "r",
+    }
+    result["observations"]["nodes"][1]["effective_ipv6_mtu"] = 923
+    result["observations"]["icmpv6"]["effective_mtu_boundary_payload_bytes"] = 875
+    result["observations"]["path_mtu"] = {
+        "endpoint_effective_ipv6_mtu": 1203,
+        "transit_transport_mtu": 1000,
+        "learned_transport_path_mtu": 1000,
+        "endpoint_session_path_mtus": [1000, 1000],
+        "effective_ipv6_path_mtu": 923,
+        "boundary_icmp_payload_bytes": 875,
+        "above_boundary_icmp_payload_bytes": 876,
+        "above_boundary_ipv6_packet_bytes": 924,
+        "echo_reply_received": False,
+        "icmpv6_type": 2,
+        "icmpv6_code": 0,
+        "reported_mtu": 923,
+        "post_ptb_boundary_probe_passed": True,
+    }
+    for record, size in zip(
+        result["observations"]["payload_identity"]["records"], (1, 512, 875)
+    ):
+        record["bytes"] = size
+    result["limitations"] = ["One heterogeneous managed-transit MTU only."]
     return result
 
 
@@ -579,6 +624,15 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         )
         self.assertIn('dns:\n  enabled: true\n  bind_addr: "::1"\n  port: 5354', config)
 
+    def test_config_can_freeze_a_smaller_udp_transport_mtu(self):
+        config = render_config(
+            Path("/tmp/rimf/control.sock"),
+            "10.203.0.1",
+            udp_mtu=1000,
+        )
+        self.assertIn("tun:\n  enabled: true\n  name: \"fips0\"\n  mtu: 1280", config)
+        self.assertIn('bind_addr: "10.203.0.1:2121"\n    mtu: 1000', config)
+
     def test_accepts_actual_release_connect_acknowledgement_shape(self):
         peer = "npub1test"
         address = "10.203.0.2:2121"
@@ -689,6 +743,46 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
 
     def test_accepts_complete_managed_transit_result(self):
         validate_fips_g2_linux_managed_transit_result(valid_managed_transit_result())
+
+    def test_extracts_learned_multihop_path_mtu(self):
+        identity = "npub1remote"
+        self.assertEqual(
+            session_path_mtu(
+                {
+                    "sessions": [
+                        {
+                            "npub": identity,
+                            "state": "established",
+                            "mmp": {"path_mtu": 1000},
+                        }
+                    ]
+                },
+                identity,
+            ),
+            1000,
+        )
+        self.assertEqual(
+            coordinate_cache_path_mtu(
+                {"entries": [{"ipv6_addr": "fd00::2", "path_mtu": 1000}]},
+                "fd00::2",
+            ),
+            1000,
+        )
+
+    def test_accepts_complete_multihop_mtu_result(self):
+        validate_fips_g2_linux_multihop_mtu_result(valid_multihop_mtu_result())
+
+    def test_rejects_multihop_mtu_without_learned_bottleneck(self):
+        result = valid_multihop_mtu_result()
+        result["observations"]["path_mtu"]["learned_transport_path_mtu"] = 1280
+        with self.assertRaisesRegex(ContractError, "path_mtu"):
+            validate_fips_g2_linux_multihop_mtu_result(result)
+
+    def test_rejects_multihop_mtu_with_wrong_ptb_value(self):
+        result = valid_multihop_mtu_result()
+        result["observations"]["path_mtu"]["reported_mtu"] = 1203
+        with self.assertRaisesRegex(ContractError, "path_mtu"):
+            validate_fips_g2_linux_multihop_mtu_result(result)
 
     def test_rejects_managed_transit_without_forwarding(self):
         result = valid_managed_transit_result()
