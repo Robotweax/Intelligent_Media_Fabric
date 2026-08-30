@@ -1,0 +1,188 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "ephemeral_identity_directory_removed": true,
+    "namespaces_removed": true,
+    "netem_removed": true,
+    "stimulus_process_stopped": true
+  },
+  "evidence_type": "fips-g2-linux-loss-mmp",
+  "finished_at": "2026-08-30T11:02:33.379633Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "limitations": [
+    "One direct veth underlay and one independent random-loss step were exercised.",
+    "The Ubuntu 24.04 runner's stock iproute2 does not expose netem PRNG seeding, so no exact packet-drop trace is reproducible.",
+    "No burst model, jitter, reordering, duplication, corruption, bandwidth limit, or queue pressure was injected.",
+    "MMP loss bounds are qualification controls for this CI runner class, not production SLOs.",
+    "Exact UDP identity was required after recovery, not during stochastic loss.",
+    "No route change, NAT, discovery service, process restart, or SRT media stream was exercised."
+  ],
+  "observations": {
+    "baseline_mmp": {
+      "loss_rate_per_node": [
+        0.0,
+        0.0
+      ],
+      "maximum_loss_rate": 0.01,
+      "mode": "full"
+    },
+    "connection": {
+      "authenticated_peers_per_node": 1,
+      "control_acknowledged": true,
+      "estimated_mesh_size": 2,
+      "links_per_node": 1,
+      "transport": "udp"
+    },
+    "degraded_mmp": {
+      "convergence_budget_secs": 60,
+      "convergence_elapsed_ms": 4027,
+      "loss_rate_per_node": [
+        0.22077922077922071,
+        0.15555555555555556
+      ],
+      "maximum_loss_rate": 0.6,
+      "minimum_increase": 0.04,
+      "minimum_loss_rate": 0.05,
+      "smoothed_loss_per_node": [
+        0.006899350649350648,
+        0.024002241347532847
+      ]
+    },
+    "disconnect": {
+      "control_acknowledged": true,
+      "fsp_sessions_per_node_after": 0,
+      "links_per_node_after": 0,
+      "peers_per_node_after": 0
+    },
+    "impaired_probe": {
+      "interval_ms": 20,
+      "maximum_loss_percent": 70.0,
+      "minimum_loss_percent": 10.0,
+      "observed_loss_percent": 35.8333,
+      "protocol": "icmpv6-over-fips0",
+      "requests": 600
+    },
+    "loss_injection": {
+      "configured_loss_percent_per_direction": 20.0,
+      "impaired_underlay_directions": 2,
+      "loss_model": "independent-random",
+      "mechanism": "linux-tc-netem",
+      "verified_netem_qdiscs": 2
+    },
+    "nodes": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "recovered_icmpv6": {
+      "echo_requests": 2,
+      "effective_mtu_boundary_payload_bytes": 1155,
+      "passed": true
+    },
+    "recovered_payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    },
+    "recovery_mmp": {
+      "convergence_budget_secs": 60,
+      "convergence_elapsed_ms": 6285,
+      "loss_rate_per_node": [
+        0.0,
+        0.0
+      ],
+      "maximum_loss_rate": 0.01,
+      "netem_removed_per_direction": [
+        true,
+        true
+      ],
+      "smoothed_loss_per_node": [
+        0.03409894460318859,
+        0.04768728552301382
+      ]
+    },
+    "session_continuity": {
+      "fsp_session_counts_during_loss": [
+        1,
+        1
+      ],
+      "link_counts_during_loss": [
+        1,
+        1
+      ],
+      "peer_counts_during_loss": [
+        1,
+        1
+      ],
+      "session_start_unchanged_after_recovery": [
+        true,
+        true
+      ],
+      "session_start_unchanged_during_loss": [
+        true,
+        true
+      ]
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83",
+    "fips_binary_sha256": "737287bff9a0bf783e85cf1d2877425b4df7899b91e9c3f485c042bb19bef03b",
+    "fips_commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "070e2b51095f50ba6520e025849895fcf68c5a5447d312434906ad54644a210d",
+    "project_revision": "84c854e0e264951c9b828456c3fed92218badda2",
+    "reported_version": "fips 0.4.2 (rev 487fa86f65)\ntarget: x86_64-unknown-linux-gnu",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
+  },
+  "run_id": "1e08d806-a6f7-4946-a4d3-2565ce976de9",
+  "schema_version": 1,
+  "started_at": "2026-08-30T11:02:09.155610Z",
+  "status": "passed",
+  "topology": {
+    "configured_tun_mtu": 1280,
+    "configured_udp_mtu": 1280,
+    "heartbeat_interval_secs": 1,
+    "isolation": "linux-network-namespaces",
+    "namespace_count": 2,
+    "node_count": 2,
+    "tun_name": "fips0",
+    "underlay": "direct-veth-ipv4-udp"
+  }
+}
