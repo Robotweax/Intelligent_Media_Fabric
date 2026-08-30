@@ -45,7 +45,8 @@ TICK_INTERVAL_SECS = 1
 RETRY_BASE_INTERVAL_SECS = 5
 RETRY_MAX_BACKOFF_SECS = 300
 REPARENT_BUDGET_SECS = 60
-PAYLOAD_RECOVERY_BUDGET_SECS = 120
+PAYLOAD_RECOVERY_BUDGET_SECS = 180
+SESSION_IDLE_TIMEOUT_SECS = 90
 SESSION_POLL_INTERVAL_SECS = 0.25
 UDP_PROBE_PORT = 42045
 NPUB_RE = re.compile(r"^npub1[023456789acdefghjklmnpqrstuvwxyz]+$")
@@ -179,6 +180,8 @@ def render_alternate_route_config(
     max_retries: 5
     base_interval_secs: {RETRY_BASE_INTERVAL_SECS}
     max_backoff_secs: {RETRY_MAX_BACKOFF_SECS}
+  session:
+    idle_timeout_secs: {SESSION_IDLE_TIMEOUT_SECS}
   log_level: warn
 
 tun:
@@ -865,7 +868,6 @@ def run_fips_g2_linux_alternate_route(
         phase = "post-failure-data-plane"
 
         def recovered_route():
-            endpoint_session_records(session_views(), identities, initial_session_starts)
             result = _run(
                 [
                     "ip",
@@ -888,7 +890,16 @@ def run_fips_g2_linux_alternate_route(
             )
             return result.returncode == 0
 
-        _wait_for(recovered_route, label="post-failure overlay route", timeout=45, interval=1)
+        recovery_timeout = max(
+            1.0,
+            PAYLOAD_RECOVERY_BUDGET_SECS - (time.monotonic() - failure_started),
+        )
+        _wait_for(
+            recovered_route,
+            label="post-failure overlay route and automatic FSP session recovery",
+            timeout=recovery_timeout,
+            interval=1,
+        )
         _run(
             [
                 "ip",
@@ -908,7 +919,20 @@ def run_fips_g2_linux_alternate_route(
             label="post-failure effective-MTU-boundary ICMPv6 probe",
             timeout=20,
         )
-        endpoint_session_records(session_views(), identities, initial_session_starts)
+        recovered_sessions = endpoint_session_records(session_views(), identities)
+        recovered_session_starts = (
+            recovered_sessions[0]["session_start_ms"],
+            recovered_sessions[1]["session_start_ms"],
+        )
+        if any(
+            recovered == initial
+            for recovered, initial in zip(
+                recovered_session_starts, initial_session_starts
+            )
+        ):
+            raise QualificationError(
+                "FSP session was not automatically re-established after route loss"
+            )
         alternate_before = forwarding_counters(
             control(alternate_index, "show", "routing")
         )
@@ -922,8 +946,8 @@ def run_fips_g2_linux_alternate_route(
             raise QualificationError(
                 "alternate transit did not forward the recovered exact payload"
             )
-        final_sessions = endpoint_session_records(
-            session_views(), identities, initial_session_starts
+        endpoint_session_records(
+            session_views(), identities, recovered_session_starts
         )
         if status(alternate_index).get("session_count") != 0:
             raise QualificationError("surviving transit terminated an end-to-end FSP session")
@@ -996,14 +1020,18 @@ def run_fips_g2_linux_alternate_route(
                 "remaining_peer_counts": {"a": 1, "alternate": 2, "b": 1},
                 "remaining_link_counts": {"a": 1, "alternate": 2, "b": 1},
             },
-            "fsp_session_continuity_observation": {
+            "fsp_session_recovery": {
                 "target_control_poll_interval_ms": round(
                     SESSION_POLL_INTERVAL_SECS * 1000
                 ),
                 "control_poll_count": session_poll_count,
-                "established_at_every_control_poll": True,
-                "session_start_unchanged_per_endpoint": [True, True],
-                "endpoint_session_counts_after": [
+                "established_through_reparent_control_polls": True,
+                "original_session_start_unchanged_through_reparent": [True, True],
+                "idle_timeout_secs": SESSION_IDLE_TIMEOUT_SECS,
+                "manual_session_reset_commands": 0,
+                "automatic_session_reestablishment_observed": True,
+                "session_start_changed_per_endpoint": [True, True],
+                "endpoint_session_counts_after_recovery": [
                     len(control(0, "show", "sessions")["sessions"]),
                     len(control(3, "show", "sessions")["sessions"]),
                 ],
@@ -1029,7 +1057,6 @@ def run_fips_g2_linux_alternate_route(
                 "payload_recovery_elapsed_ms": payload_recovery_elapsed_ms,
             },
         }
-        del final_sessions
     except Exception as exc:
         error = exc
         for stream in daemon_streams:
@@ -1117,7 +1144,7 @@ def run_fips_g2_linux_alternate_route(
         "cleanup": cleanup,
         "limitations": [
             "This run qualifies one four-node Linux UDP diamond on the pinned host architecture only.",
-            "The control polling bounds observed FSP session continuity but is not a packet-by-packet proof.",
+            "Tree reparenting is automatic but not hitless: the stale FSP session recovers through the configured 90-second idle timeout and automatic re-discovery.",
             "It does not qualify NAT rebinding, public discovery, Nostr relays, heterogeneous PMTUD, or impaired links.",
             "It is FIPS G2 evidence, not SRT media-continuity or G6 evidence.",
         ],

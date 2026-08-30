@@ -1129,7 +1129,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         "initial_path_selection",
         "failure_injection",
         "automatic_reparenting",
-        "fsp_session_continuity_observation",
+        "fsp_session_recovery",
         "post_failure_icmpv6",
         "post_failure_payload_identity",
         "post_failure_path",
@@ -1293,23 +1293,27 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
     if reparenting != expected_reparenting:
         raise ContractError("observations.automatic_reparenting is invalid")
 
-    continuity = _require_object(
-        observations.get("fsp_session_continuity_observation"),
-        "FSP session continuity observation",
+    session_recovery = _require_object(
+        observations.get("fsp_session_recovery"),
+        "FSP session recovery",
     )
-    poll_count = continuity.get("control_poll_count")
+    poll_count = session_recovery.get("control_poll_count")
     if not isinstance(poll_count, int) or isinstance(poll_count, bool) or poll_count < 1:
-        raise ContractError("FSP session continuity control_poll_count is invalid")
-    if continuity != {
+        raise ContractError("FSP session recovery control_poll_count is invalid")
+    if session_recovery != {
         "target_control_poll_interval_ms": 250,
         "control_poll_count": poll_count,
-        "established_at_every_control_poll": True,
-        "session_start_unchanged_per_endpoint": [True, True],
-        "endpoint_session_counts_after": [1, 1],
+        "established_through_reparent_control_polls": True,
+        "original_session_start_unchanged_through_reparent": [True, True],
+        "idle_timeout_secs": 90,
+        "manual_session_reset_commands": 0,
+        "automatic_session_reestablishment_observed": True,
+        "session_start_changed_per_endpoint": [True, True],
+        "endpoint_session_counts_after_recovery": [1, 1],
         "alternate_transit_fsp_session_count": 0,
         "identity_values_retained": False,
     }:
-        raise ContractError("observations.fsp_session_continuity_observation is invalid")
+        raise ContractError("observations.fsp_session_recovery is invalid")
 
     if observations.get("post_failure_icmpv6") != {
         "effective_mtu_boundary_payload_bytes": 1155,
@@ -1326,7 +1330,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
     if (
         not isinstance(recovery_elapsed, int)
         or isinstance(recovery_elapsed, bool)
-        or not reparent_elapsed <= recovery_elapsed <= 120_000
+        or not reparent_elapsed <= recovery_elapsed <= 180_000
     ):
         raise ContractError("observations.post_failure_path recovery timing is invalid")
     for field in ("forwarded_packets_delta", "forwarded_bytes_delta"):
@@ -1345,7 +1349,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         }
         or post_path.get("forwarding_transit") != alternate
         or post_path.get("failed_transit_unavailable") is not True
-        or post_path.get("payload_recovery_budget_secs") != 120
+        or post_path.get("payload_recovery_budget_secs") != 180
     ):
         raise ContractError("observations.post_failure_path is invalid")
 

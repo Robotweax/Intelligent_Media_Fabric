@@ -79,7 +79,7 @@
         "initial_path_selection",
         "failure_injection",
         "automatic_reparenting",
-        "fsp_session_continuity_observation",
+        "fsp_session_recovery",
         "post_failure_icmpv6",
         "post_failure_payload_identity",
         "post_failure_path"
@@ -232,23 +232,31 @@
           },
           "additionalProperties": false
         },
-        "fsp_session_continuity_observation": {
+        "fsp_session_recovery": {
           "type": "object",
           "required": [
             "target_control_poll_interval_ms",
             "control_poll_count",
-            "established_at_every_control_poll",
-            "session_start_unchanged_per_endpoint",
-            "endpoint_session_counts_after",
+            "established_through_reparent_control_polls",
+            "original_session_start_unchanged_through_reparent",
+            "idle_timeout_secs",
+            "manual_session_reset_commands",
+            "automatic_session_reestablishment_observed",
+            "session_start_changed_per_endpoint",
+            "endpoint_session_counts_after_recovery",
             "alternate_transit_fsp_session_count",
             "identity_values_retained"
           ],
           "properties": {
             "target_control_poll_interval_ms": {"const": 250},
             "control_poll_count": {"type": "integer", "minimum": 1},
-            "established_at_every_control_poll": {"const": true},
-            "session_start_unchanged_per_endpoint": {"const": [true, true]},
-            "endpoint_session_counts_after": {"const": [1, 1]},
+            "established_through_reparent_control_polls": {"const": true},
+            "original_session_start_unchanged_through_reparent": {"const": [true, true]},
+            "idle_timeout_secs": {"const": 90},
+            "manual_session_reset_commands": {"const": 0},
+            "automatic_session_reestablishment_observed": {"const": true},
+            "session_start_changed_per_endpoint": {"const": [true, true]},
+            "endpoint_session_counts_after_recovery": {"const": [1, 1]},
             "alternate_transit_fsp_session_count": {"const": 0},
             "identity_values_retained": {"const": false}
           },
@@ -280,8 +288,8 @@
             "forwarded_packets_delta": {"type": "integer", "minimum": 1},
             "forwarded_bytes_delta": {"type": "integer", "minimum": 1},
             "failed_transit_unavailable": {"const": true},
-            "payload_recovery_budget_secs": {"const": 120},
-            "payload_recovery_elapsed_ms": {"type": "integer", "minimum": 1, "maximum": 120000}
+            "payload_recovery_budget_secs": {"const": 180},
+            "payload_recovery_elapsed_ms": {"type": "integer", "minimum": 1, "maximum": 180000}
           },
           "additionalProperties": false
         }

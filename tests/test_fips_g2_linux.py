@@ -492,12 +492,16 @@ def valid_alternate_route_result():
             "remaining_peer_counts": {"a": 1, "alternate": 2, "b": 1},
             "remaining_link_counts": {"a": 1, "alternate": 2, "b": 1},
         },
-        "fsp_session_continuity_observation": {
+        "fsp_session_recovery": {
             "target_control_poll_interval_ms": 250,
             "control_poll_count": 80,
-            "established_at_every_control_poll": True,
-            "session_start_unchanged_per_endpoint": [True, True],
-            "endpoint_session_counts_after": [1, 1],
+            "established_through_reparent_control_polls": True,
+            "original_session_start_unchanged_through_reparent": [True, True],
+            "idle_timeout_secs": 90,
+            "manual_session_reset_commands": 0,
+            "automatic_session_reestablishment_observed": True,
+            "session_start_changed_per_endpoint": [True, True],
+            "endpoint_session_counts_after_recovery": [1, 1],
             "alternate_transit_fsp_session_count": 0,
             "identity_values_retained": False,
         },
@@ -512,8 +516,8 @@ def valid_alternate_route_result():
             "forwarded_packets_delta": 6,
             "forwarded_bytes_delta": 4096,
             "failed_transit_unavailable": True,
-            "payload_recovery_budget_secs": 120,
-            "payload_recovery_elapsed_ms": 36_000,
+            "payload_recovery_budget_secs": 180,
+            "payload_recovery_elapsed_ms": 95_000,
         },
     }
     result["cleanup"] = {
@@ -771,12 +775,13 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         self.assertEqual(config.count("auto_reconnect: true"), 2)
         self.assertIn("persistent: true", config)
         self.assertIn("link_dead_timeout_secs: 30", config)
+        self.assertIn("idle_timeout_secs: 90", config)
         self.assertIn('bind_addr: "0.0.0.0:2121"', config)
 
     def test_alternate_route_timing_contract_is_bounded(self):
-        self.assertTrue(alternate_route_timings_within_contract(31_500, 36_000))
+        self.assertTrue(alternate_route_timings_within_contract(31_500, 95_000))
         self.assertFalse(alternate_route_timings_within_contract(60_001, 61_000))
-        self.assertFalse(alternate_route_timings_within_contract(31_500, 120_001))
+        self.assertFalse(alternate_route_timings_within_contract(31_500, 180_001))
         self.assertFalse(alternate_route_timings_within_contract(31_500, 31_000))
 
     def test_accepts_complete_alternate_route_result(self):
@@ -798,12 +803,12 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "automatic_reparenting"):
             validate_fips_g2_linux_alternate_route_result(result)
 
-    def test_rejects_alternate_route_fsp_session_restart(self):
+    def test_rejects_alternate_route_without_fsp_session_restart(self):
         result = valid_alternate_route_result()
-        result["observations"]["fsp_session_continuity_observation"][
-            "session_start_unchanged_per_endpoint"
+        result["observations"]["fsp_session_recovery"][
+            "session_start_changed_per_endpoint"
         ] = [True, False]
-        with self.assertRaisesRegex(ContractError, "continuity"):
+        with self.assertRaisesRegex(ContractError, "session_recovery"):
             validate_fips_g2_linux_alternate_route_result(result)
 
 
