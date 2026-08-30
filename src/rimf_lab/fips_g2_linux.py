@@ -56,6 +56,7 @@ def render_config(
     udp_mtu: int = TUN_MTU,
     persistent_identity: bool = False,
     tick_interval_secs: int | None = None,
+    log_level: str = "warn",
 ) -> str:
     dns_config = (
         '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
@@ -73,7 +74,7 @@ def render_config(
   control:
     enabled: true
     socket_path: "{control_socket}"
-{tick_config}  log_level: warn
+{tick_config}  log_level: {log_level}
 
 tun:
   enabled: true

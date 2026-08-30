@@ -320,6 +320,7 @@ def run_fips_g2_linux_managed_transit(
                     tick_interval_secs=(
                         REACTIVE_TICK_INTERVAL_SECS if _reactive_mtu else None
                     ),
+                    log_level="info" if _reactive_mtu else "warn",
                 ),
                 encoding="utf-8",
             )
@@ -749,6 +750,7 @@ def run_fips_g2_linux_managed_transit(
                     udp_mtu=TRANSIT_UDP_MTU,
                     persistent_identity=True,
                     tick_interval_secs=REACTIVE_TICK_INTERVAL_SECS,
+                    log_level="info",
                 ),
                 encoding="utf-8",
             )
@@ -839,6 +841,7 @@ def run_fips_g2_linux_managed_transit(
             transit_drop_before = mtu_drop_counters(control(1, "show", "routing"))
             reactive_started = time.monotonic()
             phase = "reactive-mtu-exceeded"
+            reactive_diagnostic: dict = {}
 
             def reactive_signal_observed():
                 _run(
@@ -861,10 +864,33 @@ def run_fips_g2_linux_managed_transit(
                     timeout=3,
                     check=False,
                 )
-                endpoint_errors = mtu_error_counters(control(0, "show", "routing"))
-                transit_drops = mtu_drop_counters(control(1, "show", "routing"))
+                endpoint_routing = control(0, "show", "routing")
+                transit_routing = control(1, "show", "routing")
+                endpoint_errors = mtu_error_counters(endpoint_routing)
+                transit_drops = mtu_drop_counters(transit_routing)
                 current_mtu = session_path_mtu(
                     control(0, "show", "sessions"), identities[2]
+                )
+                current_statuses = [status(index) for index in range(3)]
+                transit_forwarding = transit_routing.get("forwarding", {})
+                reactive_diagnostic.clear()
+                reactive_diagnostic.update(
+                    {
+                        "peer_counts": [item.get("peer_count") for item in current_statuses],
+                        "link_counts": [item.get("link_count") for item in current_statuses],
+                        "endpoint_error_counters": list(endpoint_errors),
+                        "transit_mtu_drop_counters": list(transit_drops),
+                        "transit_forwarded_packets": transit_forwarding.get(
+                            "forwarded_packets"
+                        ),
+                        "transit_no_route_packets": transit_forwarding.get(
+                            "drop_no_route_packets"
+                        ),
+                        "session_path_mtu": current_mtu,
+                        "coordinate_cache_path_mtu": coordinate_cache_path_mtu(
+                            control(0, "show", "cache"), statuses[2]["ipv6_addr"]
+                        ),
+                    }
                 )
                 if (
                     endpoint_errors[0] <= endpoint_error_before[0]
@@ -874,12 +900,18 @@ def run_fips_g2_linux_managed_transit(
                     return None
                 return endpoint_errors, transit_drops
 
-            endpoint_error_after, transit_drop_after = _wait_for(
-                reactive_signal_observed,
-                label="reactive MtuExceeded convergence",
-                timeout=REACTIVE_CONVERGENCE_BUDGET_SECS,
-                interval=0.1,
-            )
+            try:
+                endpoint_error_after, transit_drop_after = _wait_for(
+                    reactive_signal_observed,
+                    label="reactive MtuExceeded convergence",
+                    timeout=REACTIVE_CONVERGENCE_BUDGET_SECS,
+                    interval=0.1,
+                )
+            except QualificationError as exc:
+                raise QualificationError(
+                    "reactive MtuExceeded convergence diagnostics: "
+                    + json.dumps(reactive_diagnostic, sort_keys=True)
+                ) from exc
             reactive_elapsed_ms = round((time.monotonic() - reactive_started) * 1000)
 
             def final_path_mtu_learned():
