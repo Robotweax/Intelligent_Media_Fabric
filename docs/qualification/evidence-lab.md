@@ -240,3 +240,27 @@ result excludes identities, addresses, session timestamps, raw payloads, packets
 This is one deterministic fixed-delay response test; it does not qualify loss, jitter, reordering,
 duplication, corruption, bandwidth limits, queue pressure, route changes, NAT, SRT, or production
 telemetry thresholds.
+
+## Privileged FIPS G2 Linux fixed-loss MMP runner
+
+The manually dispatched `FIPS G2 Linux Loss MMP Qualification` workflow freezes one direct-link
+loss-telemetry response experiment. It is not part of push or pull-request CI. The runner establishes
+a two-node UDP FIPS link and endpoint FSP session with a one-second heartbeat interval, then requires
+both full-MMP peer views to report a baseline current loss rate at or below 0.01.
+
+It applies seeded Linux `tc netem` with 20 percent random egress loss to both underlay directions and
+sends 600 ICMPv6 overlay probes at 20 ms intervals. Within 60 seconds both peer views must report a
+current loss rate from 0.05 through 0.60 and at least 0.04 above their own baseline. The aggregate
+overlay probe loss must remain within a 10–70 percent sanity bound, while peer, link, and endpoint FSP
+session identity remain unchanged. After removing both qdiscs, 300 recovery probes must return both
+current loss views to at most 0.01 within a second 60-second budget without replacing the FSP session.
+Effective-MTU-boundary ICMPv6 and exact UDP payloads of 1, 1024, and 1155 bytes are required after
+recovery; stochastic loss deliberately carries no exact-delivery claim.
+
+Successful output must pass
+`schema/qualification/fips-g2-linux-loss-mmp-result.schema.json` and the repository contract. The
+result excludes identities, addresses, session timestamps, raw payloads, packets, and daemon logs.
+This is one seeded random-loss response test; the seed improves repeatability but does not freeze an
+identical drop trace across kernels. It does not qualify bursts, jitter, reordering, duplication,
+corruption, bandwidth limits, queue pressure, route changes, NAT, SRT, or production telemetry
+thresholds.

@@ -10,6 +10,7 @@ from rimf_lab.contracts import (
     validate_fips_g2_linux_delay_mmp_result,
     validate_fips_g2_linux_direct_result,
     validate_fips_g2_linux_lifecycle_result,
+    validate_fips_g2_linux_loss_mmp_result,
     validate_fips_g2_linux_managed_transit_result,
     validate_fips_g2_linux_multihop_mtu_result,
     validate_fips_g2_linux_nat_result,
@@ -33,6 +34,10 @@ from rimf_lab.fips_g2_linux_nat import translated_peer_observed
 from rimf_lab.fips_g2_linux_lifecycle import (
     lifecycle_timings_within_contract,
     render_lifecycle_config,
+)
+from rimf_lab.fips_g2_linux_loss_mmp import (
+    loss_mmp_transition_within_contract,
+    parse_ping_loss,
 )
 from rimf_lab.fips_g2_linux_managed_transit import (
     coordinate_cache_path_mtu,
@@ -678,6 +683,88 @@ def valid_delay_mmp_result():
     return result
 
 
+def valid_loss_mmp_result():
+    result = deepcopy(valid_delay_mmp_result())
+    result["evidence_type"] = "fips-g2-linux-loss-mmp"
+    digest = "a" * 64
+    result["observations"] = {
+        "nodes": result["observations"]["nodes"],
+        "connection": result["observations"]["connection"],
+        "baseline_mmp": {
+            "mode": "full",
+            "loss_rate_per_node": [0.0, 0.0],
+            "maximum_loss_rate": 0.01,
+        },
+        "loss_injection": {
+            "mechanism": "linux-tc-netem",
+            "configured_loss_percent_per_direction": 20.0,
+            "netem_seeds": [4242, 4243],
+            "impaired_underlay_directions": 2,
+            "verified_netem_qdiscs": 2,
+        },
+        "degraded_mmp": {
+            "loss_rate_per_node": [0.18, 0.22],
+            "smoothed_loss_per_node": [0.09, 0.11],
+            "minimum_loss_rate": 0.05,
+            "maximum_loss_rate": 0.60,
+            "minimum_increase": 0.04,
+            "convergence_budget_secs": 60,
+            "convergence_elapsed_ms": 9_500,
+        },
+        "impaired_probe": {
+            "protocol": "icmpv6-over-fips0",
+            "requests": 600,
+            "interval_ms": 20,
+            "observed_loss_percent": 35.2,
+            "minimum_loss_percent": 10.0,
+            "maximum_loss_percent": 70.0,
+        },
+        "session_continuity": {
+            "session_start_unchanged_during_loss": [True, True],
+            "session_start_unchanged_after_recovery": [True, True],
+            "peer_counts_during_loss": [1, 1],
+            "link_counts_during_loss": [1, 1],
+            "fsp_session_counts_during_loss": [1, 1],
+        },
+        "recovery_mmp": {
+            "netem_removed_per_direction": [True, True],
+            "loss_rate_per_node": [0.0, 0.0],
+            "smoothed_loss_per_node": [0.08, None],
+            "maximum_loss_rate": 0.01,
+            "convergence_budget_secs": 60,
+            "convergence_elapsed_ms": 12_000,
+        },
+        "recovered_icmpv6": {
+            "effective_mtu_boundary_payload_bytes": 1155,
+            "echo_requests": 2,
+            "passed": True,
+        },
+        "recovered_payload_identity": {
+            "protocol": "udp-over-ipv6-over-fips0",
+            "records": [
+                {"bytes": size, "sha256": digest, "exact_echo": True}
+                for size in (1, 1024, 1155)
+            ],
+            "all_exact_echo": True,
+        },
+        "disconnect": {
+            "control_acknowledged": True,
+            "peers_per_node_after": 0,
+            "links_per_node_after": 0,
+            "fsp_sessions_per_node_after": 0,
+        },
+    }
+    result["cleanup"] = {
+        "netem_removed": True,
+        "stimulus_process_stopped": True,
+        "daemons_stopped": True,
+        "namespaces_removed": True,
+        "ephemeral_identity_directory_removed": True,
+    }
+    result["limitations"] = ["One seeded fixed-loss direct-link experiment only."]
+    return result
+
+
 class PayloadProbeTests(unittest.TestCase):
     def test_payload_is_deterministic_and_exact_length(self):
         first = deterministic_payload(1155)
@@ -1012,6 +1099,48 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
 
     def test_accepts_complete_delay_mmp_result(self):
         validate_fips_g2_linux_delay_mmp_result(valid_delay_mmp_result())
+
+    def test_ping_loss_parser_requires_one_bounded_summary(self):
+        self.assertEqual(
+            parse_ping_loss("600 packets transmitted, 389 received, 35.1667% packet loss"),
+            35.1667,
+        )
+        with self.assertRaisesRegex(ValueError, "one packet-loss summary"):
+            parse_ping_loss("no summary")
+
+    def test_loss_mmp_transition_contract_is_bounded(self):
+        self.assertTrue(
+            loss_mmp_transition_within_contract(
+                [0.0, 0.0], [0.18, 0.22], [0.0, 0.0], 9_500, 12_000
+            )
+        )
+        self.assertFalse(
+            loss_mmp_transition_within_contract(
+                [0.0, 0.0], [0.04, 0.22], [0.0, 0.0], 9_500, 12_000
+            )
+        )
+        self.assertFalse(
+            loss_mmp_transition_within_contract(
+                [0.0, 0.0], [0.18, 0.22], [0.0, 0.02], 9_500, 12_000
+            )
+        )
+
+    def test_accepts_complete_loss_mmp_result(self):
+        validate_fips_g2_linux_loss_mmp_result(valid_loss_mmp_result())
+
+    def test_rejects_loss_mmp_without_session_continuity(self):
+        result = valid_loss_mmp_result()
+        result["observations"]["session_continuity"][
+            "session_start_unchanged_during_loss"
+        ] = [True, False]
+        with self.assertRaisesRegex(ContractError, "session_continuity"):
+            validate_fips_g2_linux_loss_mmp_result(result)
+
+    def test_rejects_loss_mmp_outside_degraded_bound(self):
+        result = valid_loss_mmp_result()
+        result["observations"]["degraded_mmp"]["loss_rate_per_node"] = [0.049, 0.22]
+        with self.assertRaisesRegex(ContractError, "degraded MMP loss"):
+            validate_fips_g2_linux_loss_mmp_result(result)
 
     def test_rejects_delay_mmp_without_session_continuity(self):
         result = valid_delay_mmp_result()

@@ -1451,6 +1451,308 @@ def validate_fips_g2_linux_delay_mmp_result(data: Any) -> None:
         raise ContractError("delay/MMP limitations must be a non-empty string array")
 
 
+def validate_fips_g2_linux_loss_mmp_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux loss/MMP result")
+    if set(root) != {
+        "schema_version",
+        "evidence_type",
+        "run_id",
+        "status",
+        "classification",
+        "gate_ids",
+        "started_at",
+        "finished_at",
+        "provenance",
+        "platform",
+        "topology",
+        "observations",
+        "cleanup",
+        "limitations",
+    }:
+        raise ContractError("FIPS G2 loss/MMP result contains unexpected fields")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 loss/MMP result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-loss-mmp":
+        raise ContractError("FIPS G2 loss/MMP result evidence_type is invalid")
+    if root.get("status") != "passed" or root.get("classification") != "experiment":
+        raise ContractError("FIPS G2 loss/MMP retained result must be a passed experiment")
+    if root.get("gate_ids") != ["G2"]:
+        raise ContractError("FIPS G2 loss/MMP result gate_ids must be exactly ['G2']")
+    for field in ("run_id", "started_at", "finished_at"):
+        _require_string(root.get(field), f"FIPS G2 loss/MMP result.{field}")
+
+    provenance = _require_object(root.get("provenance"), "loss/MMP provenance")
+    for field in ("project_revision", "fips_commit"):
+        commit = _require_string(provenance.get(field), f"provenance.{field}")
+        if not COMMIT_RE.fullmatch(commit):
+            raise ContractError(f"provenance.{field} must be a full lowercase Git commit")
+    if provenance.get("fips_repository") != "https://github.com/jmcorgan/fips.git":
+        raise ContractError("provenance.fips_repository is invalid")
+    if provenance.get("fips_source_tree_state") != "clean":
+        raise ContractError("provenance.fips_source_tree_state must be clean")
+    for field in (
+        "cargo_lock_sha256",
+        "rust_toolchain_sha256",
+        "fips_binary_sha256",
+        "fipsctl_binary_sha256",
+    ):
+        digest = _require_string(provenance.get(field), f"provenance.{field}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"provenance.{field} is invalid")
+    _require_string(provenance.get("reported_version"), "provenance.reported_version")
+
+    platform_data = _require_object(root.get("platform"), "loss/MMP platform")
+    if platform_data.get("system") != "Linux":
+        raise ContractError("loss/MMP retained result must come from Linux")
+    for field in ("release", "machine", "python"):
+        _require_string(platform_data.get(field), f"platform.{field}")
+
+    topology = _require_object(root.get("topology"), "loss/MMP topology")
+    if topology != {
+        "node_count": 2,
+        "namespace_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv4-udp",
+        "tun_name": "fips0",
+        "configured_tun_mtu": 1280,
+        "configured_udp_mtu": 1280,
+        "heartbeat_interval_secs": 1,
+    }:
+        raise ContractError("FIPS G2 loss/MMP topology is invalid")
+
+    observations = _require_object(root.get("observations"), "loss/MMP observations")
+    if set(observations) != {
+        "nodes",
+        "connection",
+        "baseline_mmp",
+        "loss_injection",
+        "degraded_mmp",
+        "impaired_probe",
+        "session_continuity",
+        "recovery_mmp",
+        "recovered_icmpv6",
+        "recovered_payload_identity",
+        "disconnect",
+    }:
+        raise ContractError("loss/MMP observations contain unexpected fields")
+
+    expected_nodes = [
+        {
+            "node": node,
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": 1203,
+        }
+        for node in ("a", "b")
+    ]
+    if observations.get("nodes") != expected_nodes:
+        raise ContractError("observations.nodes is invalid")
+    if observations.get("connection") != {
+        "control_acknowledged": True,
+        "authenticated_peers_per_node": 1,
+        "links_per_node": 1,
+        "estimated_mesh_size": 2,
+        "transport": "udp",
+    }:
+        raise ContractError("observations.connection is invalid")
+
+    def metric_values(raw: Any, context: str, minimum: float, maximum: float) -> list[float]:
+        if not isinstance(raw, list) or len(raw) != 2:
+            raise ContractError(f"{context} must contain two values")
+        values: list[float] = []
+        for index, value in enumerate(raw):
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not minimum <= value <= maximum
+            ):
+                raise ContractError(f"{context}[{index}] is outside the frozen bound")
+            values.append(float(value))
+        return values
+
+    def smoothed_values(raw: Any, context: str) -> None:
+        if not isinstance(raw, list) or len(raw) != 2:
+            raise ContractError(f"{context} must contain two values")
+        for index, value in enumerate(raw):
+            if value is not None and (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not 0 <= value <= 1
+            ):
+                raise ContractError(f"{context}[{index}] is invalid")
+
+    baseline = _require_object(observations.get("baseline_mmp"), "baseline_mmp")
+    if set(baseline) != {"mode", "loss_rate_per_node", "maximum_loss_rate"}:
+        raise ContractError("observations.baseline_mmp contains unexpected fields")
+    if baseline.get("mode") != "full" or baseline.get("maximum_loss_rate") != 0.01:
+        raise ContractError("observations.baseline_mmp controls are invalid")
+    baseline_values = metric_values(
+        baseline.get("loss_rate_per_node"), "baseline MMP loss", 0, 0.01
+    )
+
+    if observations.get("loss_injection") != {
+        "mechanism": "linux-tc-netem",
+        "configured_loss_percent_per_direction": 20.0,
+        "netem_seeds": [4242, 4243],
+        "impaired_underlay_directions": 2,
+        "verified_netem_qdiscs": 2,
+    }:
+        raise ContractError("observations.loss_injection is invalid")
+
+    degraded = _require_object(observations.get("degraded_mmp"), "degraded_mmp")
+    if set(degraded) != {
+        "loss_rate_per_node",
+        "smoothed_loss_per_node",
+        "minimum_loss_rate",
+        "maximum_loss_rate",
+        "minimum_increase",
+        "convergence_budget_secs",
+        "convergence_elapsed_ms",
+    }:
+        raise ContractError("observations.degraded_mmp contains unexpected fields")
+    if any(
+        degraded.get(field) != expected
+        for field, expected in {
+            "minimum_loss_rate": 0.05,
+            "maximum_loss_rate": 0.60,
+            "minimum_increase": 0.04,
+            "convergence_budget_secs": 60,
+        }.items()
+    ):
+        raise ContractError("observations.degraded_mmp controls are invalid")
+    degraded_values = metric_values(
+        degraded.get("loss_rate_per_node"), "degraded MMP loss", 0.05, 0.60
+    )
+    if any(after - before < 0.04 for before, after in zip(baseline_values, degraded_values)):
+        raise ContractError("degraded MMP loss did not increase by the frozen minimum")
+    smoothed_values(degraded.get("smoothed_loss_per_node"), "degraded smoothed MMP loss")
+    degraded_elapsed = degraded.get("convergence_elapsed_ms")
+    if (
+        not isinstance(degraded_elapsed, int)
+        or isinstance(degraded_elapsed, bool)
+        or not 0 < degraded_elapsed <= 60_000
+    ):
+        raise ContractError("degraded MMP convergence time is invalid")
+
+    probe = _require_object(observations.get("impaired_probe"), "impaired_probe")
+    if set(probe) != {
+        "protocol",
+        "requests",
+        "interval_ms",
+        "observed_loss_percent",
+        "minimum_loss_percent",
+        "maximum_loss_percent",
+    }:
+        raise ContractError("observations.impaired_probe contains unexpected fields")
+    if any(
+        probe.get(field) != expected
+        for field, expected in {
+            "protocol": "icmpv6-over-fips0",
+            "requests": 600,
+            "interval_ms": 20,
+            "minimum_loss_percent": 10.0,
+            "maximum_loss_percent": 70.0,
+        }.items()
+    ):
+        raise ContractError("observations.impaired_probe controls are invalid")
+    observed_loss = probe.get("observed_loss_percent")
+    if (
+        not isinstance(observed_loss, (int, float))
+        or isinstance(observed_loss, bool)
+        or not 10 <= observed_loss <= 70
+    ):
+        raise ContractError("observations.impaired_probe observed loss is invalid")
+
+    if observations.get("session_continuity") != {
+        "session_start_unchanged_during_loss": [True, True],
+        "session_start_unchanged_after_recovery": [True, True],
+        "peer_counts_during_loss": [1, 1],
+        "link_counts_during_loss": [1, 1],
+        "fsp_session_counts_during_loss": [1, 1],
+    }:
+        raise ContractError("observations.session_continuity is invalid")
+
+    recovery = _require_object(observations.get("recovery_mmp"), "recovery_mmp")
+    if set(recovery) != {
+        "netem_removed_per_direction",
+        "loss_rate_per_node",
+        "smoothed_loss_per_node",
+        "maximum_loss_rate",
+        "convergence_budget_secs",
+        "convergence_elapsed_ms",
+    }:
+        raise ContractError("observations.recovery_mmp contains unexpected fields")
+    if (
+        recovery.get("netem_removed_per_direction") != [True, True]
+        or recovery.get("maximum_loss_rate") != 0.01
+        or recovery.get("convergence_budget_secs") != 60
+    ):
+        raise ContractError("observations.recovery_mmp controls are invalid")
+    metric_values(recovery.get("loss_rate_per_node"), "recovered MMP loss", 0, 0.01)
+    smoothed_values(recovery.get("smoothed_loss_per_node"), "recovered smoothed MMP loss")
+    recovery_elapsed = recovery.get("convergence_elapsed_ms")
+    if (
+        not isinstance(recovery_elapsed, int)
+        or isinstance(recovery_elapsed, bool)
+        or not 0 < recovery_elapsed <= 60_000
+    ):
+        raise ContractError("recovery MMP convergence time is invalid")
+
+    if observations.get("recovered_icmpv6") != {
+        "effective_mtu_boundary_payload_bytes": 1155,
+        "echo_requests": 2,
+        "passed": True,
+    }:
+        raise ContractError("observations.recovered_icmpv6 is invalid")
+    payload = _require_object(
+        observations.get("recovered_payload_identity"), "recovered_payload_identity"
+    )
+    if (
+        set(payload) != {"protocol", "records", "all_exact_echo"}
+        or payload.get("protocol") != "udp-over-ipv6-over-fips0"
+        or payload.get("all_exact_echo") is not True
+    ):
+        raise ContractError("observations.recovered_payload_identity is invalid")
+    records = payload.get("records")
+    if (
+        not isinstance(records, list)
+        or [record.get("bytes") for record in records if isinstance(record, dict)]
+        != [1, 1024, 1155]
+    ):
+        raise ContractError("recovered payload records have invalid sizes")
+    for index, raw_record in enumerate(records):
+        record = _require_object(raw_record, f"recovered payload record {index}")
+        digest = _require_string(record.get("sha256"), f"payload record {index}.sha256")
+        if (
+            set(record) != {"bytes", "sha256", "exact_echo"}
+            or not re.fullmatch(r"[0-9a-f]{64}", digest)
+            or record.get("exact_echo") is not True
+        ):
+            raise ContractError(f"recovered payload record {index} is invalid")
+
+    if observations.get("disconnect") != {
+        "control_acknowledged": True,
+        "peers_per_node_after": 0,
+        "links_per_node_after": 0,
+        "fsp_sessions_per_node_after": 0,
+    }:
+        raise ContractError("observations.disconnect is invalid")
+    if root.get("cleanup") != {
+        "netem_removed": True,
+        "stimulus_process_stopped": True,
+        "daemons_stopped": True,
+        "namespaces_removed": True,
+        "ephemeral_identity_directory_removed": True,
+    }:
+        raise ContractError("loss/MMP cleanup is incomplete")
+    limitations = root.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item for item in limitations
+    ):
+        raise ContractError("loss/MMP limitations must be a non-empty string array")
+
+
 def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
     root = _require_object(data, "FIPS G2 Linux alternate-route result")
     if set(root) != {
@@ -1853,6 +2155,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_g2_linux_alternate_route_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-delay-mmp":
                 validate_fips_g2_linux_delay_mmp_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-loss-mmp":
+                validate_fips_g2_linux_loss_mmp_result(retained)
             else:
                 errors.append(f"{path.relative_to(root)}: unknown retained evidence_type")
         except ContractError as exc:
