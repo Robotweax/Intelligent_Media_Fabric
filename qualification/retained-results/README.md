@@ -46,9 +46,16 @@ adds a static A–R–B path with FIPS UDP MTUs 1280/1000/1280. It proves learne
 endpoint session PMTU 1000, inner IPv6 PMTU 923, explicit ICMPv6 PTB/923 one byte above the path
 boundary, and exact payload delivery at and below that boundary.
 
-G2 remains in progress because broader NAT traversal, public/private discovery, dynamic or
-impaired-network PMTUD cases, other impaired-network classes, and resource-bound classes are not
-covered.
+The
+[FIPS G2 Linux fixed-delay MMP result](2026-08-30-fips-g2-linux-delay-mmp-x86_64.json) adds one
+direct-link `tc netem` step with fixed 40 ms egress delay in both directions. It records bounded
+peer-SRTT degradation and recovery, unchanged authenticated peer/link/FSP session state, exact
+effective-MTU payload delivery under delay, verified qdisc removal, and complete teardown.
+
+G2 remains in progress because broader NAT traversal, public/private discovery, dynamic PMTUD,
+loss/jitter/reordering/bandwidth/queue impairment classes, and resource-bound classes are not
+covered. The stock-daemon blocker for the reactive dynamic-PMTUD slice is recorded separately in
+the qualification documentation.
 
 Do not commit generated output automatically. A retained result must pass review for provenance,
 reproducibility, secrets, privacy, customer payload, size, licensing, and evidence classification.
@@ -80,4 +87,7 @@ PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-alternate-route \
 
 PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-multihop-mtu \
   qualification/retained-results/2026-08-30-fips-g2-linux-multihop-mtu-x86_64.json
+
+PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-delay-mmp \
+  qualification/retained-results/2026-08-30-fips-g2-linux-delay-mmp-x86_64.json
 ```
