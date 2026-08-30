@@ -1116,6 +1116,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         "configured_udp_mtu": 1280,
         "identity_storage": "temporary-config-adjacent-key-files",
         "root_assignment": "lowest-derived-node-address-to-endpoint-a",
+        "path_cost_bias": "r2-b-20ms-one-way-netem-delay",
     }:
         raise ContractError("FIPS G2 alternate-route topology is invalid")
 
@@ -1170,9 +1171,8 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
     active = initial_path.get("active_transit")
     alternate = initial_path.get("alternate_transit")
     if (
-        active not in {"r1", "r2"}
-        or alternate not in {"r1", "r2"}
-        or active == alternate
+        active != "r1"
+        or alternate != "r2"
     ):
         raise ContractError("observations.initial_path_selection transit roles are invalid")
     if set(initial_path) != {
@@ -1211,11 +1211,11 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         "manual_connect_commands": 0,
         "authenticated_peer_counts": [2, 2, 2, 2],
         "authenticated_link_counts": [2, 2, 2, 2],
-        "estimated_mesh_size": 4,
         "root_role": "a",
         "tree_depths": [0, 1, 1, 2],
         "endpoint_b_parent_role": active,
         "alternate_transit_authenticated": True,
+        "alternate_path_one_way_delay_ms": 20,
         "full_mmp_link_views": 8,
         "transport": "udp",
     }:

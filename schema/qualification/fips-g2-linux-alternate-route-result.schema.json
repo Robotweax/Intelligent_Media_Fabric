@@ -49,7 +49,8 @@
         "configured_tun_mtu",
         "configured_udp_mtu",
         "identity_storage",
-        "root_assignment"
+        "root_assignment",
+        "path_cost_bias"
       ],
       "properties": {
         "node_count": {"const": 4},
@@ -64,7 +65,8 @@
         "configured_tun_mtu": {"const": 1280},
         "configured_udp_mtu": {"const": 1280},
         "identity_storage": {"const": "temporary-config-adjacent-key-files"},
-        "root_assignment": {"const": "lowest-derived-node-address-to-endpoint-a"}
+        "root_assignment": {"const": "lowest-derived-node-address-to-endpoint-a"},
+        "path_cost_bias": {"const": "r2-b-20ms-one-way-netem-delay"}
       },
       "additionalProperties": false
     },
@@ -116,11 +118,11 @@
             "manual_connect_commands",
             "authenticated_peer_counts",
             "authenticated_link_counts",
-            "estimated_mesh_size",
             "root_role",
             "tree_depths",
             "endpoint_b_parent_role",
             "alternate_transit_authenticated",
+            "alternate_path_one_way_delay_ms",
             "full_mmp_link_views",
             "transport"
           ],
@@ -129,11 +131,11 @@
             "manual_connect_commands": {"const": 0},
             "authenticated_peer_counts": {"const": [2, 2, 2, 2]},
             "authenticated_link_counts": {"const": [2, 2, 2, 2]},
-            "estimated_mesh_size": {"const": 4},
             "root_role": {"const": "a"},
             "tree_depths": {"const": [0, 1, 1, 2]},
-            "endpoint_b_parent_role": {"enum": ["r1", "r2"]},
+            "endpoint_b_parent_role": {"const": "r1"},
             "alternate_transit_authenticated": {"const": true},
+            "alternate_path_one_way_delay_ms": {"const": 20},
             "full_mmp_link_views": {"const": 8},
             "transport": {"const": "udp"}
           },
@@ -167,8 +169,8 @@
             "transit_fsp_session_counts"
           ],
           "properties": {
-            "active_transit": {"enum": ["r1", "r2"]},
-            "alternate_transit": {"enum": ["r1", "r2"]},
+            "active_transit": {"const": "r1"},
+            "alternate_transit": {"const": "r2"},
             "endpoint_b_parent_was_active_transit": {"const": true},
             "active_forwarded_packets_delta": {"type": "integer", "minimum": 1},
             "active_forwarded_bytes_delta": {"type": "integer", "minimum": 1},

@@ -48,6 +48,7 @@ REPARENT_BUDGET_SECS = 60
 PAYLOAD_RECOVERY_BUDGET_SECS = 180
 SESSION_IDLE_TIMEOUT_SECS = 90
 SESSION_POLL_INTERVAL_SECS = 0.25
+ALTERNATE_PATH_ONE_WAY_DELAY_MS = 20
 UDP_PROBE_PORT = 42045
 NPUB_RE = re.compile(r"^npub1[023456789acdefghjklmnpqrstuvwxyz]+$")
 NODE_ADDR_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -266,7 +267,7 @@ def run_fips_g2_linux_alternate_route(
         raise QualificationError("the G2 alternate-route runner requires root")
     if not COMMIT_RE.fullmatch(project_revision):
         raise QualificationError("project revision must be a full lowercase Git commit")
-    for utility in ("dig", "git", "ip", "ping", "sysctl"):
+    for utility in ("dig", "git", "ip", "ping", "sysctl", "tc"):
         if shutil.which(utility) is None:
             raise QualificationError(f"required utility is unavailable: {utility}")
 
@@ -578,6 +579,25 @@ def run_fips_g2_linux_alternate_route(
                 ],
                 label=f"disable IPv4 forwarding on {ROLE_NAMES[index]}",
             )
+        for index, interface in ((2, interfaces[6]), (3, interfaces[7])):
+            _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    namespaces[index],
+                    "tc",
+                    "qdisc",
+                    "add",
+                    "dev",
+                    interface,
+                    "root",
+                    "netem",
+                    "delay",
+                    f"{ALTERNATE_PATH_ONE_WAY_DELAY_MS}ms",
+                ],
+                label="apply deterministic alternate-path cost bias",
+            )
 
         phase = "direct-underlay-exclusion"
         direct_probe = _run(
@@ -640,10 +660,6 @@ def run_fips_g2_linux_alternate_route(
                 for item in current_statuses
             ):
                 return None
-            if not all(
-                item.get("estimated_mesh_size") == 4 for item in current_statuses
-            ):
-                return None
             peer_views = [control(index, "show", "peers") for index in range(4)]
             if not diamond_peer_relationships(peer_views, list(identities)):
                 return None
@@ -653,7 +669,7 @@ def run_fips_g2_linux_alternate_route(
                 or [item.get("depth") for item in tree_views] != [0, 1, 1, 2]
                 or tree_views[1].get("parent") != node_addrs[0]
                 or tree_views[2].get("parent") != node_addrs[0]
-                or tree_views[3].get("parent") not in node_addrs[1:3]
+                or tree_views[3].get("parent") != node_addrs[1]
             ):
                 return None
             return current_statuses, peer_views, tree_views
@@ -808,6 +824,8 @@ def run_fips_g2_linux_alternate_route(
             raise QualificationError("endpoint B parent was not a managed transit")
         active_index = node_addrs.index(active_addr)
         alternate_index = 1 if active_index == 2 else 2
+        if active_index != 1 or alternate_index != 2:
+            raise QualificationError("path-cost bias did not select r1 as B's active parent")
         if packet_deltas[active_index - 1] < 1 or byte_deltas[active_index - 1] < 1:
             raise QualificationError("B's parent did not forward the initial exact payload")
         if (
@@ -1000,11 +1018,11 @@ def run_fips_g2_linux_alternate_route(
                 "manual_connect_commands": 0,
                 "authenticated_peer_counts": [2, 2, 2, 2],
                 "authenticated_link_counts": [2, 2, 2, 2],
-                "estimated_mesh_size": 4,
                 "root_role": "a",
                 "tree_depths": [0, 1, 1, 2],
                 "endpoint_b_parent_role": ROLE_NAMES[active_index],
                 "alternate_transit_authenticated": True,
+                "alternate_path_one_way_delay_ms": ALTERNATE_PATH_ONE_WAY_DELAY_MS,
                 "full_mmp_link_views": 8,
                 "transport": "udp",
             },
@@ -1171,6 +1189,7 @@ def run_fips_g2_linux_alternate_route(
             "configured_udp_mtu": TUN_MTU,
             "identity_storage": "temporary-config-adjacent-key-files",
             "root_assignment": "lowest-derived-node-address-to-endpoint-a",
+            "path_cost_bias": "r2-b-20ms-one-way-netem-delay",
         },
         "observations": observations,
         "cleanup": cleanup,

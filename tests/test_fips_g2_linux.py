@@ -404,6 +404,7 @@ def valid_alternate_route_result():
         "configured_udp_mtu": 1280,
         "identity_storage": "temporary-config-adjacent-key-files",
         "root_assignment": "lowest-derived-node-address-to-endpoint-a",
+        "path_cost_bias": "r2-b-20ms-one-way-netem-delay",
     }
     digest = "a" * 64
 
@@ -445,11 +446,11 @@ def valid_alternate_route_result():
             "manual_connect_commands": 0,
             "authenticated_peer_counts": [2, 2, 2, 2],
             "authenticated_link_counts": [2, 2, 2, 2],
-            "estimated_mesh_size": 4,
             "root_role": "a",
             "tree_depths": [0, 1, 1, 2],
             "endpoint_b_parent_role": "r1",
             "alternate_transit_authenticated": True,
+            "alternate_path_one_way_delay_ms": 20,
             "full_mmp_link_views": 8,
             "transport": "udp",
         },
