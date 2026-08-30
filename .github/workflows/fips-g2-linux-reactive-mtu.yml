@@ -102,8 +102,9 @@ jobs:
             echo
             echo "- Status: $(jq -r '.status' "$RESULT_PATH")"
             echo "- FIPS revision: $(jq -r '.provenance.fips_commit' "$RESULT_PATH")"
-            echo "- UDP MTU transition at R: $(jq -r '.observations.transit_restart.transport_mtu_before' "$RESULT_PATH") → $(jq -r '.observations.transit_restart.transport_mtu_after' "$RESULT_PATH") bytes"
-            echo "- Endpoint session retained: $(jq -r '.observations.transit_restart.endpoint_session_start_ms_before == .observations.transit_restart.endpoint_session_start_ms_after' "$RESULT_PATH")"
+            echo "- R-B transport transition: $(jq -r '.observations.transport_transition.bottleneck_link_transport_before' "$RESULT_PATH") → $(jq -r '.observations.transport_transition.bottleneck_link_transport_after' "$RESULT_PATH")"
+            echo "- Path MTU transition: $(jq -r '.observations.transport_transition.transport_mtu_before' "$RESULT_PATH") → $(jq -r '.observations.transport_transition.transport_mtu_after' "$RESULT_PATH") bytes"
+            echo "- Endpoint session retained: $(jq -r '.observations.transport_transition.endpoint_session_start_ms_before == .observations.transport_transition.endpoint_session_start_ms_after' "$RESULT_PATH")"
             echo "- Reactive convergence: $(jq -r '.observations.reactive_mtu.convergence_elapsed_ms' "$RESULT_PATH") ms"
             echo "- MtuExceeded / transit-drop deltas: $(jq -r '.observations.reactive_mtu.endpoint_mtu_exceeded_delta' "$RESULT_PATH") / $(jq -r '.observations.reactive_mtu.transit_drop_packets_delta' "$RESULT_PATH")"
             echo "- Effective IPv6 PMTU / PTB: $(jq -r '.observations.path_mtu.effective_ipv6_path_mtu' "$RESULT_PATH") / $(jq -r '.observations.path_mtu.reported_mtu' "$RESULT_PATH") bytes"

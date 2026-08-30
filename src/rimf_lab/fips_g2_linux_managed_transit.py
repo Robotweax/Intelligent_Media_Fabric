@@ -5,7 +5,6 @@ import json
 import os
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
@@ -47,11 +46,11 @@ PATH_BOUNDARY_ICMP_PAYLOAD = 875
 PATH_ABOVE_BOUNDARY_ICMP_PAYLOAD = 876
 PATH_ABOVE_BOUNDARY_IPV6_BYTES = 924
 PATH_UDP_PAYLOAD_SIZES = (1, 512, 875)
-REACTIVE_TICK_INTERVAL_SECS = 5
+REACTIVE_TICK_INTERVAL_SECS = 10
 REACTIVE_CONVERGENCE_BUDGET_SECS = 20
-RESTART_EPOCH_ADMISSION_SECS = 15
-RESTART_RECONNECT_BUDGET_SECS = 20
-PEER_PROMOTION_LOG_MARKER = "Peer promoted to active"
+TRANSPORT_TRANSITION_BUDGET_SECS = 45
+TCP_PORT = 3121
+CROSS_CONNECTION_WON_LOG_MARKER = "Cross-connection resolved: this connection won"
 
 
 def line_peer_relationships(peer_views: list[dict], identities: list[str]) -> bool:
@@ -139,18 +138,16 @@ def endpoint_session_record(value: dict, remote_identity: str) -> dict | None:
     return matches[0] if len(matches) == 1 else None
 
 
-def _kill_process_abruptly(process: subprocess.Popen | None) -> bool:
-    if process is None or process.poll() is not None:
-        return True
-    try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        return False
-    return process.poll() is not None
+def active_peer_record(value: dict, remote_identity: str) -> dict | None:
+    peers = value.get("peers")
+    if not isinstance(peers, list):
+        return None
+    matches = [
+        peer
+        for peer in peers
+        if isinstance(peer, dict) and peer.get("npub") == remote_identity
+    ]
+    return matches[0] if len(matches) == 1 else None
 
 
 def session_path_mtu(value: dict, remote_identity: str) -> int | None:
@@ -238,9 +235,13 @@ def run_fips_g2_linux_managed_transit(
         else (TUN_MTU,) * 3
     )
     effective_ipv6_mtus = (
-        (EFFECTIVE_IPV6_MTU, PATH_EFFECTIVE_IPV6_MTU, EFFECTIVE_IPV6_MTU)
-        if _heterogeneous_mtu
-        else (EFFECTIVE_IPV6_MTU,) * 3
+        (EFFECTIVE_IPV6_MTU, PATH_EFFECTIVE_IPV6_MTU, PATH_EFFECTIVE_IPV6_MTU)
+        if _reactive_mtu
+        else (
+            (EFFECTIVE_IPV6_MTU, PATH_EFFECTIVE_IPV6_MTU, EFFECTIVE_IPV6_MTU)
+            if _heterogeneous_mtu
+            else (EFFECTIVE_IPV6_MTU,) * 3
+        )
     )
     boundary_icmp_payload = PATH_BOUNDARY_ICMP_PAYLOAD if path_mtu_mode else 1155
     payload_sizes = PATH_UDP_PAYLOAD_SIZES if path_mtu_mode else UDP_PAYLOAD_SIZES
@@ -253,7 +254,7 @@ def run_fips_g2_linux_managed_transit(
         raise QualificationError("the G2 managed-transit runner requires root")
     if not COMMIT_RE.fullmatch(project_revision):
         raise QualificationError("project revision must be a full lowercase Git commit")
-    for utility in ("dig", "git", "ip", "ping", "sysctl"):
+    for utility in ("dig", "git", "ip", "ping", "sysctl", "tc"):
         if shutil.which(utility) is None:
             raise QualificationError(f"required utility is unavailable: {utility}")
 
@@ -295,7 +296,7 @@ def run_fips_g2_linux_managed_transit(
     ptb_probe: subprocess.Popen | None = None
     path_mtu_observation: dict | None = None
     initial_path_mtu_observation: dict | None = None
-    transit_restart_observation: dict | None = None
+    transport_transition_observation: dict | None = None
     reactive_mtu_observation: dict | None = None
     observations: dict = {}
     cleanup = {
@@ -310,8 +311,8 @@ def run_fips_g2_linux_managed_transit(
         for node_dir in node_dirs:
             node_dir.mkdir(mode=0o700)
         bind_addresses = (NODE_A_ADDRESS, "0.0.0.0", NODE_B_ADDRESS)
-        for config, socket_path, address, udp_mtu in zip(
-            configs, sockets, bind_addresses, udp_mtus
+        for index, (config, socket_path, address, udp_mtu) in enumerate(
+            zip(configs, sockets, bind_addresses, udp_mtus)
         ):
             config.write_text(
                 render_config(
@@ -323,7 +324,11 @@ def run_fips_g2_linux_managed_transit(
                     tick_interval_secs=(
                         REACTIVE_TICK_INTERVAL_SECS if _reactive_mtu else None
                     ),
-                    log_level="info" if _reactive_mtu else "warn",
+                    log_level="debug" if _reactive_mtu else "warn",
+                    tcp_mtu=(
+                        TRANSIT_UDP_MTU if _reactive_mtu and index in (1, 2) else None
+                    ),
+                    tcp_bind_port=TCP_PORT,
                 ),
                 encoding="utf-8",
             )
@@ -496,6 +501,118 @@ def run_fips_g2_linux_managed_transit(
             )
 
         phase = "line-link-connect"
+        transition_initiator_index: int | None = None
+        transition_target_identity: str | None = None
+        transition_target_address: str | None = None
+        transition_namespace: str | None = None
+        transition_interface: str | None = None
+        if _reactive_mtu:
+            transit_node_addr = statuses[1].get("node_addr")
+            endpoint_b_node_addr = statuses[2].get("node_addr")
+            if not isinstance(transit_node_addr, str) or not isinstance(
+                endpoint_b_node_addr, str
+            ):
+                raise QualificationError("node addresses were unavailable for link arbitration")
+            if transit_node_addr < endpoint_b_node_addr:
+                transition_initiator_index = 1
+                transition_target_identity = identities[2]
+                transition_target_address = f"{NODE_B_ADDRESS}:{TCP_PORT}"
+                transition_namespace = transit_namespace
+                transition_interface = transit_right_interface
+            else:
+                transition_initiator_index = 2
+                transition_target_identity = identities[1]
+                transition_target_address = f"{TRANSIT_RIGHT_ADDRESS}:{TCP_PORT}"
+                transition_namespace = node_b_namespace
+                transition_interface = node_b_interface
+
+            _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    transition_namespace,
+                    "tc",
+                    "qdisc",
+                    "add",
+                    "dev",
+                    transition_interface,
+                    "root",
+                    "handle",
+                    "1:",
+                    "prio",
+                ],
+                label="install transition-path priority qdisc",
+            )
+            _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    transition_namespace,
+                    "tc",
+                    "qdisc",
+                    "add",
+                    "dev",
+                    transition_interface,
+                    "parent",
+                    "1:3",
+                    "handle",
+                    "30:",
+                    "netem",
+                    "loss",
+                    "100%",
+                ],
+                label="hold transition TCP candidate",
+            )
+            _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    transition_namespace,
+                    "tc",
+                    "filter",
+                    "add",
+                    "dev",
+                    transition_interface,
+                    "protocol",
+                    "ip",
+                    "parent",
+                    "1:0",
+                    "prio",
+                    "3",
+                    "u32",
+                    "match",
+                    "ip",
+                    "protocol",
+                    "6",
+                    "0xff",
+                    "match",
+                    "ip",
+                    "dport",
+                    str(TCP_PORT),
+                    "0xffff",
+                    "flowid",
+                    "1:3",
+                ],
+                label="select only transition TCP candidate",
+            )
+            transition_ack = control(
+                transition_initiator_index,
+                "connect",
+                transition_target_identity,
+                transition_target_address,
+                "tcp",
+            )
+            if not valid_connect_acknowledgement(
+                transition_ack,
+                transition_target_identity,
+                transition_target_address,
+                "tcp",
+            ):
+                raise QualificationError("pending TCP transition acknowledgement was invalid")
+
         connect_a = control(
             0,
             "connect",
@@ -524,9 +641,19 @@ def run_fips_g2_linux_managed_transit(
         def converged_line():
             current_statuses = [status(index) for index in range(3)]
             expected_counts = (1, 2, 1)
+            expected_link_counts = expected_counts
+            if _reactive_mtu:
+                expected_link_counts = (
+                    (1, 3, 1)
+                    if transition_initiator_index == 1
+                    else (1, 2, 2)
+                )
             if not all(
-                item.get("peer_count") == count and item.get("link_count") == count
-                for item, count in zip(current_statuses, expected_counts)
+                item.get("peer_count") == peer_count
+                and item.get("link_count") == link_count
+                for item, peer_count, link_count in zip(
+                    current_statuses, expected_counts, expected_link_counts
+                )
             ):
                 return None
             if not all(item.get("estimated_mesh_size") == 3 for item in current_statuses):
@@ -712,21 +839,40 @@ def run_fips_g2_linux_managed_transit(
                 "endpoint_session_path_mtus": initial_session_path_mtus,
                 "coordinate_cache_path_mtu": initial_cache_path_mtu,
             }
-            initial_endpoint_link_ids = [
-                peer_views[index]["peers"][0].get("link_id") for index in (0, 2)
+            initial_source_peer = active_peer_record(peer_views[0], identities[1])
+            initial_bottleneck_peers = [
+                active_peer_record(peer_views[1], identities[2]),
+                active_peer_record(peer_views[2], identities[1]),
             ]
-            if any(
-                not isinstance(link_id, int) or isinstance(link_id, bool)
-                for link_id in initial_endpoint_link_ids
+            if initial_source_peer is None or any(
+                peer is None for peer in initial_bottleneck_peers
             ):
-                raise QualificationError("endpoint FMP link IDs were unavailable")
+                raise QualificationError("initial FMP link records were unavailable")
+            initial_source_link_id = initial_source_peer.get("link_id")
+            initial_bottleneck_link_ids = [
+                peer.get("link_id") for peer in initial_bottleneck_peers
+            ]
+            if (
+                not isinstance(initial_source_link_id, int)
+                or isinstance(initial_source_link_id, bool)
+                or any(
+                    not isinstance(link_id, int) or isinstance(link_id, bool)
+                    for link_id in initial_bottleneck_link_ids
+                )
+                or initial_source_peer.get("transport_type") != "udp"
+                or any(
+                    peer.get("transport_type") != "udp"
+                    for peer in initial_bottleneck_peers
+                )
+            ):
+                raise QualificationError("initial line did not use the expected UDP links")
 
             before_reactive_records = [
                 endpoint_session_record(control(0, "show", "sessions"), identities[2]),
                 endpoint_session_record(control(2, "show", "sessions"), identities[0]),
             ]
             if any(record is None for record in before_reactive_records):
-                raise QualificationError("endpoint FSP session disappeared before transit restart")
+                raise QualificationError("endpoint FSP session disappeared before link transition")
             before_reactive_starts = [
                 before_reactive_records[0]["session_start_ms"],
                 before_reactive_records[1]["session_start_ms"],
@@ -746,92 +892,63 @@ def run_fips_g2_linux_managed_transit(
                     "route loss or proactive PMTU feedback pre-empted the reactive baseline"
                 )
             endpoint_error_before = mtu_error_counters(control(0, "show", "routing"))
-            transit_promotions_before = daemon_logs[1].read_text(
-                encoding="utf-8", errors="replace"
-            ).count(PEER_PROMOTION_LOG_MARKER)
+            transit_drop_before = mtu_drop_counters(control(1, "show", "routing"))
+            transition_markers_before = [
+                daemon_logs[index]
+                .read_text(encoding="utf-8", errors="replace")
+                .count(CROSS_CONNECTION_WON_LOG_MARKER)
+                for index in (1, 2)
+            ]
 
-            phase = "transit-mtu-restart"
-            old_transit_pid = daemon_processes[1].pid
-            if not _kill_process_abruptly(daemon_processes[1]):
-                raise QualificationError("transit daemon did not stop for the MTU change")
-            daemon_streams[1].flush()
-            daemon_streams[1].close()
-            configs[1].write_text(
-                render_config(
-                    sockets[1],
-                    "0.0.0.0",
-                    dns_enabled=True,
-                    udp_mtu=TRANSIT_UDP_MTU,
-                    persistent_identity=True,
-                    tick_interval_secs=REACTIVE_TICK_INTERVAL_SECS,
-                    log_level="info",
-                    static_udp_peers=(
-                        (identities[0], f"{NODE_A_ADDRESS}:2121"),
-                        (identities[2], f"{NODE_B_ADDRESS}:2121"),
-                    ),
-                ),
-                encoding="utf-8",
-            )
-            configs[1].chmod(0o600)
-            sockets[1].unlink(missing_ok=True)
-            daemon_streams[1] = daemon_logs[1].open("a", encoding="utf-8")
-            daemon_processes[1] = subprocess.Popen(
+            phase = "bottleneck-link-transport-transition"
+            if (
+                transition_initiator_index is None
+                or transition_namespace is None
+                or transition_interface is None
+            ):
+                raise QualificationError("pending TCP transition state was unavailable")
+            initiator_index = transition_initiator_index
+            transition_started = time.monotonic()
+            _run(
                 [
                     "ip",
                     "netns",
                     "exec",
-                    transit_namespace,
-                    str(fips_binary),
-                    "-c",
-                    str(configs[1]),
+                    transition_namespace,
+                    "tc",
+                    "qdisc",
+                    "del",
+                    "dev",
+                    transition_interface,
+                    "root",
                 ],
-                stdout=daemon_streams[1],
-                stderr=subprocess.STDOUT,
-                text=True,
-                start_new_session=True,
+                label="release pending TCP transition candidate",
             )
 
-            def restarted_transit_ready():
-                process = daemon_processes[1]
-                if process is None or process.poll() is not None:
-                    raise QualificationError(
-                        "transit daemon exited before its replacement control socket was ready"
+            def cross_transport_link_promoted():
+                current_counts = [
+                    daemon_logs[index]
+                    .read_text(encoding="utf-8", errors="replace")
+                    .count(CROSS_CONNECTION_WON_LOG_MARKER)
+                    for index in (1, 2)
+                ]
+                if any(
+                    after <= before
+                    for before, after in zip(
+                        transition_markers_before, current_counts
                     )
-                if not sockets[1].is_socket():
-                    return None
-                current = status(1)
-                if current.get("npub") != identities[1]:
-                    raise QualificationError("transit identity changed across the MTU restart")
-                if current.get("effective_ipv6_mtu") != PATH_EFFECTIVE_IPV6_MTU:
-                    return None
-                return current
-
-            restarted_transit_status = _wait_for(
-                restarted_transit_ready,
-                label="identity-preserving transit restart at MTU 1000",
-                timeout=15,
-            )
-            transit_drop_before = mtu_drop_counters(control(1, "show", "routing"))
-
-            phase = "post-restart-line-reconnect"
-            restart_reconnect_started = time.monotonic()
-
-            def transit_peer_promotions_logged():
-                transit_promotions = daemon_logs[1].read_text(
-                    encoding="utf-8", errors="replace"
-                ).count(PEER_PROMOTION_LOG_MARKER)
-                if transit_promotions < transit_promotions_before + 2:
+                ):
                     return None
                 return True
 
             _wait_for(
-                transit_peer_promotions_logged,
-                label="restart-epoch promotion of both transit FMP peers",
-                timeout=RESTART_RECONNECT_BUDGET_SECS,
+                cross_transport_link_promoted,
+                label="hitless R-B FMP transition from UDP to TCP",
+                timeout=TRANSPORT_TRANSITION_BUDGET_SECS,
                 interval=0.01,
             )
-            restart_reconnect_elapsed_ms = round(
-                (time.monotonic() - restart_reconnect_started) * 1000
+            transport_transition_elapsed_ms = round(
+                (time.monotonic() - transition_started) * 1000
             )
             time.sleep(0.05)
 
@@ -944,10 +1061,10 @@ def run_fips_g2_linux_managed_transit(
             ]
             if final_session_starts != initial_session_starts:
                 raise QualificationError(
-                    "endpoint FSP session start changed across the transit MTU restart"
+                    "endpoint FSP session start changed across the link transition"
                 )
 
-            def transit_reconnected_line():
+            def transitioned_line():
                 current_statuses = [status(index) for index in range(3)]
                 expected_counts = (1, 2, 1)
                 if not all(
@@ -960,50 +1077,72 @@ def run_fips_g2_linux_managed_transit(
                 ]
                 if not line_peer_relationships(current_peer_views, identities):
                     return None
-                endpoint_link_ids = [
-                    current_peer_views[index]["peers"][0].get("link_id")
-                    for index in (0, 2)
+                source_peer = active_peer_record(current_peer_views[0], identities[1])
+                bottleneck_peers = [
+                    active_peer_record(current_peer_views[1], identities[2]),
+                    active_peer_record(current_peer_views[2], identities[1]),
                 ]
-                if any(
-                    not isinstance(link_id, int) or isinstance(link_id, bool)
-                    for link_id in endpoint_link_ids
-                ):
+                if source_peer is None or any(peer is None for peer in bottleneck_peers):
                     return None
-                if any(
-                    after == before
-                    for before, after in zip(
-                        initial_endpoint_link_ids, endpoint_link_ids
+                source_link_id = source_peer.get("link_id")
+                bottleneck_link_ids = [
+                    peer.get("link_id") for peer in bottleneck_peers
+                ]
+                if (
+                    not isinstance(source_link_id, int)
+                    or isinstance(source_link_id, bool)
+                    or any(
+                        not isinstance(link_id, int) or isinstance(link_id, bool)
+                        for link_id in bottleneck_link_ids
                     )
                 ):
                     return None
-                return endpoint_link_ids
+                if (
+                    source_link_id != initial_source_link_id
+                    or source_peer.get("transport_type") != "udp"
+                    or any(
+                        peer.get("transport_type") != "tcp"
+                        for peer in bottleneck_peers
+                    )
+                    or any(
+                        after == before
+                        for before, after in zip(
+                            initial_bottleneck_link_ids, bottleneck_link_ids
+                        )
+                    )
+                ):
+                    return None
+                return source_link_id, bottleneck_link_ids
 
-            final_endpoint_link_ids = _wait_for(
-                transit_reconnected_line,
-                label="post-trigger line snapshot with replaced endpoint FMP links",
+            final_source_link_id, final_bottleneck_link_ids = _wait_for(
+                transitioned_line,
+                label="post-trigger UDP/TCP line snapshot",
                 timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
             )
-            transit_restart_observation = {
-                "configuration_application": "identity-preserving-process-restart",
-                "transport_config_hot_reload_supported": False,
-                "endpoint_daemons_restarted": False,
-                "transit_identity_preserved": True,
-                "transit_process_restarted": daemon_processes[1].pid != old_transit_pid,
+            transport_transition_observation = {
+                "mechanism": "prestarted-delayed-cross-transport-link-replacement",
+                "daemon_restarts": 0,
+                "node_identities_preserved": True,
                 "endpoint_links_explicitly_withdrawn": False,
-                "transit_reconnect_mode": "configured-auto-connect",
-                "manual_link_reconnect_commands": 0,
-                "endpoint_link_ids_before": initial_endpoint_link_ids,
-                "endpoint_link_ids_after": final_endpoint_link_ids,
-                "restart_epoch_admission_floor_ms": (
-                    RESTART_EPOCH_ADMISSION_SECS * 1000
-                ),
-                "reconnect_elapsed_ms": restart_reconnect_elapsed_ms,
-                "reconnect_budget_ms": RESTART_RECONNECT_BUDGET_SECS * 1000,
+                "transition_initiator": ("r" if initiator_index == 1 else "b"),
+                "transition_connect_commands": 1,
+                "tcp_candidate_started_before_udp": True,
+                "tcp_candidate_release": "port-selective-tc-qdisc-removal",
+                "source_link_transport_before": "udp",
+                "source_link_transport_after": "udp",
+                "bottleneck_link_transport_before": "udp",
+                "bottleneck_link_transport_after": "tcp",
+                "source_link_id_before": initial_source_link_id,
+                "source_link_id_after": final_source_link_id,
+                "bottleneck_link_ids_before": initial_bottleneck_link_ids,
+                "bottleneck_link_ids_after": final_bottleneck_link_ids,
+                "transition_elapsed_ms": transport_transition_elapsed_ms,
+                "transition_budget_ms": TRANSPORT_TRANSITION_BUDGET_SECS * 1000,
                 "post_change_application_packets_before_trigger": 0,
                 "source_coordinate_cache_path_mtu_before_trigger": (
                     before_reactive_cache_mtu
                 ),
-                "source_pmtu_snapshot_phase": "pre-restart-reactive-baseline",
+                "source_pmtu_snapshot_phase": "pre-transition-reactive-baseline",
                 "transport_mtu_before": TUN_MTU,
                 "transport_mtu_after": TRANSIT_UDP_MTU,
                 "endpoint_session_start_ms_before": initial_session_starts,
@@ -1364,12 +1503,12 @@ def run_fips_g2_linux_managed_transit(
         if _reactive_mtu:
             if (
                 initial_path_mtu_observation is None
-                or transit_restart_observation is None
+                or transport_transition_observation is None
                 or reactive_mtu_observation is None
             ):
                 raise QualificationError("reactive MTU observations are unavailable")
             observations["initial_path_mtu"] = initial_path_mtu_observation
-            observations["transit_restart"] = transit_restart_observation
+            observations["transport_transition"] = transport_transition_observation
             observations["reactive_mtu"] = reactive_mtu_observation
     except Exception as exc:
         error = exc
@@ -1486,23 +1625,24 @@ def run_fips_g2_linux_managed_transit(
             "namespace_count": 3,
             "authenticated_link_count": 2,
             "isolation": "linux-network-namespaces",
-            "underlay": "two-segment-line-ipv4-udp",
+            "underlay": "two-segment-line-ipv4",
             "path_role": "managed-fips-transit",
             "public_discovery": False,
             "nostr_relay": False,
             "tun_name": "fips0",
             "configured_tun_mtu_per_node": [TUN_MTU, TUN_MTU, TUN_MTU],
-            "initial_udp_mtu_per_node": [TUN_MTU, TUN_MTU, TUN_MTU],
-            "final_udp_mtu_per_node": [TUN_MTU, TRANSIT_UDP_MTU, TUN_MTU],
-            "bottleneck_node": "r",
+            "configured_udp_mtu_per_node": [TUN_MTU, TUN_MTU, TUN_MTU],
+            "configured_tcp_mtu_per_node": [None, TRANSIT_UDP_MTU, TRANSIT_UDP_MTU],
+            "initial_link_transports": ["udp", "udp"],
+            "final_link_transports": ["udp", "tcp"],
+            "bottleneck_hop": "r-b",
         }
         result["limitations"] = [
-            "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
-            "The transit restarted with static auto-connect peers; the endpoint FMP peer slots were replaced through FIPS restart-epoch handling without explicit endpoint link withdrawal.",
-            "FIPS restart replay protection imposed a 15-second admission floor; the bounded reconnect observation remained below the 30-second link-dead timeout.",
-            "No post-change application packet preceded the oversized trigger; the last pre-restart source coordinate-cache and endpoint-session snapshot reported transport PMTU 1280, and unchanged session timestamps were verified after convergence.",
-            "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
-            "A five-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
+            "FIPS v0.4.2 does not hot-reload transport MTU configuration and its public connect API skips an already-active peer; the changing constraint was therefore modeled with a prestarted TCP candidate held by a port-selective Linux tc rule until the UDP baseline was proven.",
+            "The deterministic cross-connection winner replaced only the bottleneck link without explicit withdrawal, process restart, node-identity change, or endpoint FSP session replacement.",
+            "No post-change application packet preceded the oversized trigger; the last pre-transition source coordinate-cache and endpoint-session snapshot reported path MTU 1280, and unchanged session timestamps were verified after convergence.",
+            "The changing constraint was a FIPS transport/link transition, not a physical underlay MTU change or an ICMP black hole.",
+            "A ten-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
         ]
     _write_result(output, result)

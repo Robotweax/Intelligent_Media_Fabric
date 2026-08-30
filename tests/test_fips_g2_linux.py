@@ -319,39 +319,47 @@ def valid_reactive_mtu_result():
         "namespace_count": 3,
         "authenticated_link_count": 2,
         "isolation": "linux-network-namespaces",
-        "underlay": "two-segment-line-ipv4-udp",
+        "underlay": "two-segment-line-ipv4",
         "path_role": "managed-fips-transit",
         "public_discovery": False,
         "nostr_relay": False,
         "tun_name": "fips0",
         "configured_tun_mtu_per_node": [1280, 1280, 1280],
-        "initial_udp_mtu_per_node": [1280, 1280, 1280],
-        "final_udp_mtu_per_node": [1280, 1000, 1280],
-        "bottleneck_node": "r",
+        "configured_udp_mtu_per_node": [1280, 1280, 1280],
+        "configured_tcp_mtu_per_node": [None, 1000, 1000],
+        "initial_link_transports": ["udp", "udp"],
+        "final_link_transports": ["udp", "tcp"],
+        "bottleneck_hop": "r-b",
     }
-    result["observations"]["nodes"][1]["effective_ipv6_mtu"] = 1203
+    result["observations"]["nodes"][1]["effective_ipv6_mtu"] = 923
+    result["observations"]["nodes"][2]["effective_ipv6_mtu"] = 923
     result["observations"]["initial_path_mtu"] = {
         "configured_transport_path_mtu": 1280,
         "endpoint_session_path_mtus": [1280, 1280],
         "coordinate_cache_path_mtu": 1280,
     }
-    result["observations"]["transit_restart"] = {
-        "configuration_application": "identity-preserving-process-restart",
-        "transport_config_hot_reload_supported": False,
-        "endpoint_daemons_restarted": False,
-        "transit_identity_preserved": True,
-        "transit_process_restarted": True,
+    result["observations"]["transport_transition"] = {
+        "mechanism": "prestarted-delayed-cross-transport-link-replacement",
+        "daemon_restarts": 0,
+        "node_identities_preserved": True,
         "endpoint_links_explicitly_withdrawn": False,
-        "transit_reconnect_mode": "configured-auto-connect",
-        "manual_link_reconnect_commands": 0,
-        "endpoint_link_ids_before": [10, 20],
-        "endpoint_link_ids_after": [11, 21],
-        "restart_epoch_admission_floor_ms": 15000,
-        "reconnect_elapsed_ms": 15100,
-        "reconnect_budget_ms": 20000,
+        "transition_initiator": "r",
+        "transition_connect_commands": 1,
+        "tcp_candidate_started_before_udp": True,
+        "tcp_candidate_release": "port-selective-tc-qdisc-removal",
+        "source_link_transport_before": "udp",
+        "source_link_transport_after": "udp",
+        "bottleneck_link_transport_before": "udp",
+        "bottleneck_link_transport_after": "tcp",
+        "source_link_id_before": 10,
+        "source_link_id_after": 10,
+        "bottleneck_link_ids_before": [20, 30],
+        "bottleneck_link_ids_after": [21, 31],
+        "transition_elapsed_ms": 100,
+        "transition_budget_ms": 45000,
         "post_change_application_packets_before_trigger": 0,
         "source_coordinate_cache_path_mtu_before_trigger": 1280,
-        "source_pmtu_snapshot_phase": "pre-restart-reactive-baseline",
+        "source_pmtu_snapshot_phase": "pre-transition-reactive-baseline",
         "transport_mtu_before": 1280,
         "transport_mtu_after": 1000,
         "endpoint_session_start_ms_before": [1000, 1001],
@@ -372,7 +380,7 @@ def valid_reactive_mtu_result():
         "convergence_elapsed_ms": 250,
         "convergence_budget_ms": 20000,
     }
-    result["limitations"] = ["Identity-preserving transit restart only."]
+    result["limitations"] = ["Preconfigured UDP-to-TCP link transition only."]
     return result
 
 
@@ -859,12 +867,15 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
             dns_enabled=True,
             udp_mtu=1000,
             persistent_identity=True,
-            tick_interval_secs=5,
+            tick_interval_secs=10,
             static_udp_peers=(("npub1test", "10.206.0.1:2121"),),
+            tcp_mtu=1000,
         )
         self.assertIn("persistent: true", config)
-        self.assertIn("tick_interval_secs: 5", config)
+        self.assertIn("tick_interval_secs: 10", config)
         self.assertIn("mtu: 1000", config)
+        self.assertIn('bind_addr: "0.0.0.0:3121"', config)
+        self.assertIn("connect_timeout_ms: 180000", config)
         self.assertIn('npub: "npub1test"', config)
         self.assertIn('addr: "10.206.0.1:2121"', config)
         self.assertIn("connect_policy: auto_connect", config)
@@ -901,17 +912,17 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
 
     def test_rejects_reactive_mtu_session_replacement(self):
         result = valid_reactive_mtu_result()
-        result["observations"]["transit_restart"][
+        result["observations"]["transport_transition"][
             "endpoint_session_start_ms_after"
         ][1] += 1
         with self.assertRaisesRegex(ContractError, "continuity"):
             validate_fips_g2_linux_reactive_mtu_result(result)
 
-    def test_rejects_reactive_mtu_without_link_epoch_replacement(self):
+    def test_rejects_reactive_mtu_without_bottleneck_link_replacement(self):
         result = valid_reactive_mtu_result()
-        result["observations"]["transit_restart"]["endpoint_link_ids_after"] = [
-            10,
-            21,
+        result["observations"]["transport_transition"]["bottleneck_link_ids_after"] = [
+            20,
+            31,
         ]
         with self.assertRaisesRegex(ContractError, "continuity"):
             validate_fips_g2_linux_reactive_mtu_result(result)

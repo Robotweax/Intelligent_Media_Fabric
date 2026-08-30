@@ -58,6 +58,9 @@ def render_config(
     tick_interval_secs: int | None = None,
     log_level: str = "warn",
     static_udp_peers: tuple[tuple[str, str], ...] = (),
+    tcp_mtu: int | None = None,
+    tcp_bind_port: int = 3121,
+    tcp_connect_timeout_ms: int = 180_000,
 ) -> str:
     dns_config = (
         '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
@@ -80,6 +83,13 @@ def render_config(
     auto_reconnect: false'''
             for npub, address in static_udp_peers
         )
+    tcp_config = ""
+    if tcp_mtu is not None:
+        tcp_config = f'''  tcp:
+    bind_addr: "{bind_address}:{tcp_bind_port}"
+    mtu: {tcp_mtu}
+    connect_timeout_ms: {tcp_connect_timeout_ms}
+'''
     return f"""node:
   identity:
     persistent: {str(persistent_identity).lower()}
@@ -100,16 +110,19 @@ transports:
   udp:
     bind_addr: "{bind_address}:2121"
     mtu: {udp_mtu}
+{tcp_config}
 
 {peers_config}
 """
 
 
-def valid_connect_acknowledgement(result: dict, peer: str, address: str) -> bool:
+def valid_connect_acknowledgement(
+    result: dict, peer: str, address: str, transport: str = "udp"
+) -> bool:
     return (
         result.get("npub") == peer
         and result.get("address") == address
-        and result.get("transport") == "udp"
+        and result.get("transport") == transport
     )
 
 

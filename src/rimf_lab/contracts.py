@@ -960,15 +960,17 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "namespace_count": 3,
         "authenticated_link_count": 2,
         "isolation": "linux-network-namespaces",
-        "underlay": "two-segment-line-ipv4-udp",
+        "underlay": "two-segment-line-ipv4",
         "path_role": "managed-fips-transit",
         "public_discovery": False,
         "nostr_relay": False,
         "tun_name": "fips0",
         "configured_tun_mtu_per_node": [1280, 1280, 1280],
-        "initial_udp_mtu_per_node": [1280, 1280, 1280],
-        "final_udp_mtu_per_node": [1280, 1000, 1280],
-        "bottleneck_node": "r",
+        "configured_udp_mtu_per_node": [1280, 1280, 1280],
+        "configured_tcp_mtu_per_node": [None, 1000, 1000],
+        "initial_link_transports": ["udp", "udp"],
+        "final_link_transports": ["udp", "tcp"],
+        "bottleneck_hop": "r-b",
     }:
         raise ContractError("FIPS G2 reactive-MTU topology is invalid")
 
@@ -981,7 +983,7 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "mmp",
         "icmpv6",
         "initial_path_mtu",
-        "transit_restart",
+        "transport_transition",
         "reactive_mtu",
         "path_mtu",
         "payload_identity",
@@ -1003,7 +1005,7 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
             "tun_state": "active",
             "tun_name": "fips0",
             "kernel_tun_mtu": 1280,
-            "effective_ipv6_mtu": 1203,
+            "effective_ipv6_mtu": 923 if index in (1, 2) else 1203,
         }:
             raise ContractError(f"reactive-MTU observations.nodes[{index}] is invalid")
 
@@ -1014,21 +1016,28 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
     }:
         raise ContractError("reactive-MTU initial_path_mtu is invalid")
 
-    restart = _require_object(observations.get("transit_restart"), "reactive transit restart")
-    if set(restart) != {
-        "configuration_application",
-        "transport_config_hot_reload_supported",
-        "endpoint_daemons_restarted",
-        "transit_identity_preserved",
-        "transit_process_restarted",
+    transition = _require_object(
+        observations.get("transport_transition"), "reactive transport transition"
+    )
+    if set(transition) != {
+        "mechanism",
+        "daemon_restarts",
+        "node_identities_preserved",
         "endpoint_links_explicitly_withdrawn",
-        "transit_reconnect_mode",
-        "manual_link_reconnect_commands",
-        "endpoint_link_ids_before",
-        "endpoint_link_ids_after",
-        "restart_epoch_admission_floor_ms",
-        "reconnect_elapsed_ms",
-        "reconnect_budget_ms",
+        "transition_initiator",
+        "transition_connect_commands",
+        "tcp_candidate_started_before_udp",
+        "tcp_candidate_release",
+        "source_link_transport_before",
+        "source_link_transport_after",
+        "bottleneck_link_transport_before",
+        "bottleneck_link_transport_after",
+        "source_link_id_before",
+        "source_link_id_after",
+        "bottleneck_link_ids_before",
+        "bottleneck_link_ids_after",
+        "transition_elapsed_ms",
+        "transition_budget_ms",
         "post_change_application_packets_before_trigger",
         "source_coordinate_cache_path_mtu_before_trigger",
         "source_pmtu_snapshot_phase",
@@ -1037,22 +1046,32 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "endpoint_session_start_ms_before",
         "endpoint_session_start_ms_after",
     }:
-        raise ContractError("reactive-MTU transit_restart contains unexpected fields")
-    starts_before = restart.get("endpoint_session_start_ms_before")
-    starts_after = restart.get("endpoint_session_start_ms_after")
-    link_ids_before = restart.get("endpoint_link_ids_before")
-    link_ids_after = restart.get("endpoint_link_ids_after")
-    reconnect_elapsed = restart.get("reconnect_elapsed_ms")
+        raise ContractError("reactive-MTU transport_transition contains unexpected fields")
+    starts_before = transition.get("endpoint_session_start_ms_before")
+    starts_after = transition.get("endpoint_session_start_ms_after")
+    link_ids_before = transition.get("bottleneck_link_ids_before")
+    link_ids_after = transition.get("bottleneck_link_ids_after")
+    transition_elapsed = transition.get("transition_elapsed_ms")
+    source_link_before = transition.get("source_link_id_before")
+    source_link_after = transition.get("source_link_id_after")
     if (
-        restart.get("configuration_application")
-        != "identity-preserving-process-restart"
-        or restart.get("transport_config_hot_reload_supported") is not False
-        or restart.get("endpoint_daemons_restarted") is not False
-        or restart.get("transit_identity_preserved") is not True
-        or restart.get("transit_process_restarted") is not True
-        or restart.get("endpoint_links_explicitly_withdrawn") is not False
-        or restart.get("transit_reconnect_mode") != "configured-auto-connect"
-        or restart.get("manual_link_reconnect_commands") != 0
+        transition.get("mechanism")
+        != "prestarted-delayed-cross-transport-link-replacement"
+        or transition.get("daemon_restarts") != 0
+        or transition.get("node_identities_preserved") is not True
+        or transition.get("endpoint_links_explicitly_withdrawn") is not False
+        or transition.get("transition_initiator") not in {"r", "b"}
+        or transition.get("transition_connect_commands") != 1
+        or transition.get("tcp_candidate_started_before_udp") is not True
+        or transition.get("tcp_candidate_release")
+        != "port-selective-tc-qdisc-removal"
+        or transition.get("source_link_transport_before") != "udp"
+        or transition.get("source_link_transport_after") != "udp"
+        or transition.get("bottleneck_link_transport_before") != "udp"
+        or transition.get("bottleneck_link_transport_after") != "tcp"
+        or not isinstance(source_link_before, int)
+        or isinstance(source_link_before, bool)
+        or source_link_after != source_link_before
         or not isinstance(link_ids_before, list)
         or len(link_ids_before) != 2
         or any(not isinstance(value, int) or isinstance(value, bool) for value in link_ids_before)
@@ -1060,23 +1079,22 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or len(link_ids_after) != 2
         or any(not isinstance(value, int) or isinstance(value, bool) for value in link_ids_after)
         or any(before == after for before, after in zip(link_ids_before, link_ids_after))
-        or restart.get("restart_epoch_admission_floor_ms") != 15_000
-        or not isinstance(reconnect_elapsed, int)
-        or isinstance(reconnect_elapsed, bool)
-        or not 15_000 <= reconnect_elapsed <= 20_000
-        or restart.get("reconnect_budget_ms") != 20_000
-        or restart.get("post_change_application_packets_before_trigger") != 0
-        or restart.get("source_coordinate_cache_path_mtu_before_trigger") != 1280
-        or restart.get("source_pmtu_snapshot_phase")
-        != "pre-restart-reactive-baseline"
-        or restart.get("transport_mtu_before") != 1280
-        or restart.get("transport_mtu_after") != 1000
+        or not isinstance(transition_elapsed, int)
+        or isinstance(transition_elapsed, bool)
+        or not 0 < transition_elapsed <= 45_000
+        or transition.get("transition_budget_ms") != 45_000
+        or transition.get("post_change_application_packets_before_trigger") != 0
+        or transition.get("source_coordinate_cache_path_mtu_before_trigger") != 1280
+        or transition.get("source_pmtu_snapshot_phase")
+        != "pre-transition-reactive-baseline"
+        or transition.get("transport_mtu_before") != 1280
+        or transition.get("transport_mtu_after") != 1000
         or not isinstance(starts_before, list)
         or len(starts_before) != 2
         or any(not isinstance(value, int) or isinstance(value, bool) for value in starts_before)
         or starts_after != starts_before
     ):
-        raise ContractError("reactive-MTU transit_restart continuity is invalid")
+        raise ContractError("reactive-MTU transport_transition continuity is invalid")
 
     reactive = _require_object(observations.get("reactive_mtu"), "reactive MTU signal")
     if set(reactive) != {
@@ -1138,7 +1156,7 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "bottleneck_node": "r",
     }
     multihop_observations = dict(observations)
-    for field in ("initial_path_mtu", "transit_restart", "reactive_mtu"):
+    for field in ("initial_path_mtu", "transport_transition", "reactive_mtu"):
         multihop_observations.pop(field)
     multihop_observations["nodes"] = [
         {**node, "effective_ipv6_mtu": 923 if index == 1 else 1203}
