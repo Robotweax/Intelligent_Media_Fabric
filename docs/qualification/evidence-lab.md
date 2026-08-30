@@ -206,3 +206,16 @@ and credential-directory teardown. Successful output must pass
 `schema/qualification/fips-g2-linux-multihop-mtu-result.schema.json` and the repository contract.
 This is one static proactive discovery/session PMTUD case. It does not qualify a changing physical
 underlay MTU, lost PTB messages, NAT-specific PMTUD, SRT packetization, or media continuity.
+
+## Reactive path-MTU experiment status
+
+The follow-on attempt to lower an established A–R–B bottleneck at runtime is **not qualified**.
+The stock FIPS `v0.4.2` daemon exposes no control operation that can change an active transport MTU
+or invoke the library's runtime peer-update path. Restarting R invalidates the route state needed by
+the first reactive packet; waiting for recovery instead lets discovery learn the smaller MTU
+proactively. A concurrent TCP handshake also failed to migrate the active FMP link.
+
+The failed experimental workflow is not kept on `main`. The reviewed observations, source-level
+boundary, decision, and upstream acceptance contract are recorded in the
+[reactive path-MTU capability-gap assessment](fips-g2-reactive-mtu-gap-2026-08-30.md). It is not
+passing G2 or G6 evidence and does not weaken the retained static multihop-MTU result.

@@ -17,6 +17,11 @@ or an approved ADR can change a gate status.
 | G8 Route Control | not-started | Is FIPS control superior enough to justify upstream work or a patch stack? | SRT-group comparison, no flapping, fork/upstream ADR |
 | G9 Generic Multipath | not-started | Does cross-protocol value justify FIPS-near multipath? | ordering, crypto, congestion, recovery, and resource qualification |
 
+The stock FIPS `v0.4.2` daemon currently cannot place the reactive-MTU experiment into its required
+state without route/session disruption or prior proactive MTU discovery. This is recorded as a
+[capability gap](fips-g2-reactive-mtu-gap-2026-08-30.md), not a failed gate: G2 remains
+`in-progress`, and no G6 claim has started.
+
 ## Mandatory correctness rules
 
 Every applicable experiment must prove:
