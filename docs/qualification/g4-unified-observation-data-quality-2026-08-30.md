@@ -76,3 +76,25 @@ The next G4 evidence must be a simultaneous live SRT-over-FIPS capture with one 
 host monotonic domain or bounded synchronized clocks, route-epoch transitions, source-quality
 fault cases, and downstream media-consumer observations. Temporal order alone will still not be
 sufficient for a first-divergent-layer claim.
+
+## Live-pilot runner
+
+The manually dispatched `G4 SRT over FIPS Live Capture` workflow now freezes the first healthy
+two-endpoint pilot. It builds the exact pinned FIPS, Robotweax SRT, and SRT Telemetry revisions,
+creates two Linux network namespaces, connects their FIPS daemons, and binds the provider-linked
+SRT incident peers to the node-B `fips0` IPv6 address. One host coordinator supplies all SRT,
+FIPS, and application observations with the same Linux boot-scoped monotonic clock domain.
+
+The pilot transfers 240 deterministic 1,024-byte SRT messages, below the profile's conservative
+1,139-byte clear/CTR SRT payload ceiling. It records 14 SRT samples at each
+endpoint and 14 FIPS MMP observations, validates exact receiver delivery, converts both JSONL
+recordings through the strict Fabric adapter, and emits ordering-only SRT/FIPS and SRT/application
+assessments. Every bundle file is hashed and the adapter outputs are byte-replayed during bundle
+validation. Output is bounded to a 14-day workflow artifact unless it is separately reviewed for
+retention.
+
+Even a successful pilot result declares `G3: not-passed` and `G4: not-passed`. It contains one
+healthy direct-veth route epoch, no injected fault or route transition, and a provider-linked
+application receiver rather than an independent decoder. The next positive-diagnosis experiment
+must add a predeclared impairment, a route-epoch transition, and an independent downstream media
+observer before any first-divergent-layer claim can be considered.

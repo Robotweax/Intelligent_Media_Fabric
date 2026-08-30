@@ -284,3 +284,16 @@ ordering-only and never a root-cause or first-divergent-layer conclusion.
 The retained harness case deliberately pairs distinct `local-only` SRT and FIPS clocks and requires
 `insufficient-evidence`. It is synthetic contract material, not a simultaneous capture. See the
 [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).
+
+## Privileged G4 SRT-over-FIPS live pilot
+
+The manually dispatched `G4 SRT over FIPS Live Capture` workflow is the first cross-layer live
+adapter. It is not part of push or pull-request CI. It builds the exact dependency pins, creates a
+two-namespace FIPS topology, and runs the addressable SRT Telemetry incident peers on the FIPS
+overlay address. The host coordinator owns the shared monotonic clock, route epoch, explicit
+Fabric identity, bounded sample schedule, and deterministic application transfer.
+
+The bundle validator replays both SRT JSONL adapters byte-for-byte, checks all file digests,
+validates the separate `srt`, `fips.mmp`, and `media.application` namespaces, and checks that both
+ordering assessments cite the exact selected input artifacts. A successful experiment still
+records both G3 and G4 as `not-passed`; it qualifies the capture path, not diagnosis or control.

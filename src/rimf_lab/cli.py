@@ -34,6 +34,10 @@ from .fips_g2_linux_managed_transit import (
     run_fips_g2_linux_multihop_mtu,
 )
 from .fips_g2_linux_nat import run_fips_g2_linux_nat
+from .g4_srt_over_fips import (
+    run_g4_srt_over_fips_live,
+    validate_g4_live_capture_bundle,
+)
 from .runner import run_scenario
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
@@ -86,6 +90,27 @@ def _parser() -> argparse.ArgumentParser:
     ordering_parser.add_argument("--srt", type=Path, required=True)
     ordering_parser.add_argument("--peer", type=Path, required=True)
     ordering_parser.add_argument("--output", type=Path, required=True)
+
+    g4_live_validation_parser = subparsers.add_parser(
+        "validate-g4-srt-over-fips-live",
+        help="validate a G4 live SRT-over-FIPS capture bundle",
+    )
+    g4_live_validation_parser.add_argument("directory", type=Path)
+
+    g4_live_run_parser = subparsers.add_parser(
+        "run-g4-srt-over-fips-live",
+        help="run the privileged Linux two-node SRT-over-FIPS live capture",
+    )
+    g4_live_run_parser.add_argument("--fips-source", type=Path, required=True)
+    g4_live_run_parser.add_argument("--fips", type=Path, required=True)
+    g4_live_run_parser.add_argument("--fipsctl", type=Path, required=True)
+    g4_live_run_parser.add_argument("--srt-source", type=Path, required=True)
+    g4_live_run_parser.add_argument("--srt-library", type=Path, required=True)
+    g4_live_run_parser.add_argument("--telemetry-source", type=Path, required=True)
+    g4_live_run_parser.add_argument("--incident-peer", type=Path, required=True)
+    g4_live_run_parser.add_argument("--library-dir", type=Path, required=True)
+    g4_live_run_parser.add_argument("--output-dir", type=Path, required=True)
+    g4_live_run_parser.add_argument("--project-revision", required=True)
 
     fips_parser = subparsers.add_parser(
         "validate-fips-assessment", help="validate a retained FIPS source/build assessment"
@@ -256,6 +281,23 @@ def main(argv: list[str] | None = None) -> int:
                 "cross-layer ordering assessment: "
                 f"{result['outcome']} ({result['reason']}, {args.output})"
             )
+        elif args.command == "validate-g4-srt-over-fips-live":
+            validate_g4_live_capture_bundle(args.directory)
+            print(f"G4 SRT-over-FIPS live bundle validation: OK ({args.directory})")
+        elif args.command == "run-g4-srt-over-fips-live":
+            result = run_g4_srt_over_fips_live(
+                fips_source=args.fips_source,
+                fips_binary=args.fips,
+                fipsctl_binary=args.fipsctl,
+                srt_source=args.srt_source,
+                srt_library=args.srt_library,
+                telemetry_source=args.telemetry_source,
+                incident_peer=args.incident_peer,
+                library_dir=args.library_dir,
+                output_dir=args.output_dir,
+                project_revision=args.project_revision,
+            )
+            print(f"G4 SRT-over-FIPS live capture: {result['status']} ({args.output_dir})")
         elif args.command == "validate-fips-assessment":
             validate_fips_source_assessment(load_json(args.path))
             print(f"FIPS assessment validation: OK ({args.path})")

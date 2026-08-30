@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/g4-srt-over-fips-live-result-v1.json",
+  "title": "RIMF G4 live SRT-over-FIPS capture result v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "status",
+    "classification",
+    "gate_ids",
+    "run_id",
+    "started_at",
+    "finished_at",
+    "cleanup",
+    "gate_conclusion"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_type": {"const": "g4-srt-over-fips-live"},
+    "status": {"enum": ["passed", "failed"]},
+    "classification": {"const": "experiment"},
+    "gate_ids": {"const": ["G3", "G4"]},
+    "run_id": {"type": "string", "format": "uuid"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "project_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "failure_phase": {"type": "string", "minLength": 1},
+    "failure_class": {"type": "string", "minLength": 1},
+    "failure_detail": {"type": "string"},
+    "provenance": {"type": "object"},
+    "platform": {"type": "object"},
+    "clock": {
+      "type": "object",
+      "required": [
+        "domain_id",
+        "synchronization",
+        "max_error_ns",
+        "cross_host_ordering_allowed",
+        "same_host"
+      ],
+      "properties": {
+        "domain_id": {"type": "string", "minLength": 1},
+        "synchronization": {"const": "local-only"},
+        "max_error_ns": {"type": "null"},
+        "cross_host_ordering_allowed": {"const": false},
+        "same_host": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "route_epoch": {"const": 1},
+    "topology": {"type": "object"},
+    "capture": {"type": "object"},
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["bytes", "sha256"],
+        "properties": {
+          "bytes": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "required": [
+        "srt_peers_stopped",
+        "fips_daemons_stopped",
+        "namespaces_removed",
+        "ephemeral_identity_directory_removed"
+      ],
+      "properties": {
+        "srt_peers_stopped": {"type": "boolean"},
+        "fips_daemons_stopped": {"type": "boolean"},
+        "namespaces_removed": {"type": "boolean"},
+        "ephemeral_identity_directory_removed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "gate_conclusion": {
+      "type": "object",
+      "required": ["G3", "G4", "reason"],
+      "properties": {
+        "G3": {"const": "not-passed"},
+        "G4": {"const": "not-passed"},
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "passed"}}},
+      "then": {
+        "required": [
+          "provenance",
+          "platform",
+          "clock",
+          "route_epoch",
+          "topology",
+          "capture",
+          "files",
+          "limitations"
+        ]
+      },
+      "else": {
+        "required": [
+          "project_revision",
+          "failure_phase",
+          "failure_class",
+          "failure_detail"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

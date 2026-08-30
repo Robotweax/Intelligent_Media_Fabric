@@ -1,0 +1,173 @@
+name: G4 SRT over FIPS Live Capture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g4-srt-over-fips-live
+  cancel-in-progress: false
+
+env:
+  FIPS_COMMIT: 487fa86f65794071e3b91313c298d4f09b98b7fe
+  FIPS_CARGO_LOCK_SHA256: 6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83
+  FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
+  SRT_COMMIT: e3d61f77e852001224b6586c63bcff46a3200223
+  TELEMETRY_COMMIT: bf10da0431fdf23772210262755f745b62b6ff58
+  FIPS_SOURCE: /tmp/rimf-g4-fips
+  SRT_SOURCE: /tmp/rimf-g4-srt
+  SRT_BUILD: /tmp/rimf-g4-srt-build
+  TELEMETRY_SOURCE: /tmp/rimf-g4-telemetry
+  TELEMETRY_BUILD: /tmp/rimf-g4-telemetry-build
+  OUTPUT_DIR: artifacts/g4-srt-over-fips-live
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install bounded Linux build and network dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake \
+            g++ \
+            iproute2 \
+            libdbus-1-dev \
+            libssl-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Fetch immutable FIPS, SRT, and Telemetry sources
+        run: |
+          git init "$FIPS_SOURCE"
+          git -C "$FIPS_SOURCE" remote add origin https://github.com/jmcorgan/fips.git
+          git -C "$FIPS_SOURCE" fetch --depth=1 origin "$FIPS_COMMIT"
+          git -C "$FIPS_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$FIPS_SOURCE" rev-parse HEAD)" = "$FIPS_COMMIT"
+          printf '%s  %s\n' "$FIPS_CARGO_LOCK_SHA256" "$FIPS_SOURCE/Cargo.lock" |
+            sha256sum --check --strict
+          printf '%s  %s\n' "$FIPS_RUST_TOOLCHAIN_SHA256" "$FIPS_SOURCE/rust-toolchain.toml" |
+            sha256sum --check --strict
+
+          git init "$SRT_SOURCE"
+          git -C "$SRT_SOURCE" remote add origin https://github.com/Robotweax/srt.git
+          git -C "$SRT_SOURCE" fetch --depth=1 origin "$SRT_COMMIT"
+          git -C "$SRT_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$SRT_SOURCE" rev-parse HEAD)" = "$SRT_COMMIT"
+
+          git init "$TELEMETRY_SOURCE"
+          git -C "$TELEMETRY_SOURCE" remote add origin https://github.com/Robotweax/srt_telemetry.git
+          git -C "$TELEMETRY_SOURCE" fetch --depth=1 origin "$TELEMETRY_COMMIT"
+          git -C "$TELEMETRY_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$TELEMETRY_SOURCE" rev-parse HEAD)" = "$TELEMETRY_COMMIT"
+
+      - name: Prepare immutable FIPS toolchain
+        run: |
+          rustup toolchain install 1.94.1 \
+            --profile minimal \
+            --component rustfmt \
+            --component clippy \
+            --no-self-update
+
+      - name: Restore pinned FIPS build cache
+        id: fips-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-g4-fips/target
+          key: ${{ runner.os }}-fips-v0.4.2-rust-1.94.1-6a3016555299
+
+      - name: Build pinned FIPS binaries
+        working-directory: ${{ env.FIPS_SOURCE }}
+        run: cargo build --release --locked --bin fips --bin fipsctl
+
+      - name: Save pinned FIPS build cache
+        if: steps.fips-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-g4-fips/target
+          key: ${{ steps.fips-cache.outputs.cache-primary-key }}
+
+      - name: Build pinned shared Robotweax SRT
+        run: |
+          cmake -S "$SRT_SOURCE" -B "$SRT_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DROBOTWEAX_SRT_BUILD_TESTS=OFF \
+            -DROBOTWEAX_SRT_BUILD_BENCHMARKS=OFF \
+            -DROBOTWEAX_SRT_BUILD_TOOLS=OFF
+          cmake --build "$SRT_BUILD" --parallel --target robotweax_srt
+          test -f "$SRT_BUILD/libsrt.so"
+
+      - name: Build pinned addressable Telemetry incident peer
+        run: |
+          cmake -S "$TELEMETRY_SOURCE" -B "$TELEMETRY_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_TESTS=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_PUBLIC_SRT_ADAPTER=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_INCLUDE_DIR="$SRT_SOURCE/include" \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/libsrt.so" \
+            -DROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt
+          cmake --build "$TELEMETRY_BUILD" --parallel \
+            --target robotweax_srt_telemetry_public_srt_incident_peer
+          PEER_HELP="$(env LD_LIBRARY_PATH="$SRT_BUILD" \
+            "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" --help 2>&1 || true)"
+          grep --fixed-strings -- '--bind-address IP' <<< "$PEER_HELP"
+          grep --fixed-strings -- '--message-bytes 1..1316' <<< "$PEER_HELP"
+
+      - name: Run privileged simultaneous SRT, FIPS, and application capture
+        run: |
+          sudo env \
+            "PATH=$PATH" \
+            "PYTHONPATH=$GITHUB_WORKSPACE/src" \
+            python3 -m rimf_lab run-g4-srt-over-fips-live \
+              --fips-source "$FIPS_SOURCE" \
+              --fips "$FIPS_SOURCE/target/release/fips" \
+              --fipsctl "$FIPS_SOURCE/target/release/fipsctl" \
+              --srt-source "$SRT_SOURCE" \
+              --srt-library "$SRT_BUILD/libsrt.so" \
+              --telemetry-source "$TELEMETRY_SOURCE" \
+              --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
+              --library-dir "$SRT_BUILD" \
+              --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
+              --project-revision "$GITHUB_SHA"
+          sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+
+      - name: Validate fail-closed live evidence bundle
+        run: |
+          PYTHONPATH=src python3 -m rimf_lab validate-g4-srt-over-fips-live "$OUTPUT_DIR"
+
+      - name: Publish bounded job summary
+        if: success()
+        run: |
+          {
+            echo "## G4 SRT over FIPS live capture"
+            echo
+            echo "- Experiment status: $(jq -r '.status' "$OUTPUT_DIR/result.json")"
+            echo "- SRT samples per endpoint: $(jq -r '.capture.srt_samples_per_endpoint' "$OUTPUT_DIR/result.json")"
+            echo "- FIPS observations: $(jq -r '.capture.fips_observation_count' "$OUTPUT_DIR/result.json")"
+            echo "- Exact application delivery: $(jq -r '.capture.application_exact_delivery' "$OUTPUT_DIR/result.json")"
+            echo "- SRT/FIPS order: $(jq -r '.capture.srt_fips_ordering' "$OUTPUT_DIR/result.json")"
+            echo "- SRT/media order: $(jq -r '.capture.srt_media_ordering' "$OUTPUT_DIR/result.json")"
+            echo "- G3 conclusion: $(jq -r '.gate_conclusion.G3' "$OUTPUT_DIR/result.json")"
+            echo "- G4 conclusion: $(jq -r '.gate_conclusion.G4' "$OUTPUT_DIR/result.json")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bounded live-capture bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: g4-srt-over-fips-live-${{ github.run_id }}
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14

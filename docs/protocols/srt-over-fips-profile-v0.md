@@ -13,6 +13,11 @@
 - downstream payload and timing observer independent of socket state; and
 - retained OS, kernel, NIC, MTU, topology, build, and fault-plan provenance.
 
+The first automated live pilot deliberately uses a single Ubuntu-hosted two-namespace topology.
+Its shared boot-scoped host monotonic clock authorizes temporal ordering across the namespace
+boundary. This is a qualification convenience, not evidence that independent production hosts
+share a clock domain.
+
 ## Candidate matrix
 
 The first matrix is intentionally small:

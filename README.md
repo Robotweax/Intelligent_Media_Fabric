@@ -71,6 +71,10 @@ make smoke
 `make smoke` qualifies only the evidence harness. It is not SRT-over-FIPS evidence. Real
 experiments must use pinned binaries, approved scenarios, and the result contract.
 
+The manually dispatched `G4 SRT over FIPS Live Capture` workflow is the first privileged
+cross-layer pilot. Even a successful run remains experiment evidence and explicitly leaves G3 and
+G4 unpassed until faulted route transitions and independent downstream media validation exist.
+
 ## Authoritative context
 
 The internal strategy is maintained in the private SRT Knowledge Base at commit

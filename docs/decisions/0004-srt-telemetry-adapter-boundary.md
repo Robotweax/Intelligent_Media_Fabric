@@ -20,9 +20,16 @@ provider-linked JSONL recording, and bidirectional Haivision v1.5.5 interoperabi
 nine-field unencrypted Live/Message IPv4 loopback subset.
 
 Telemetry retention commit `9e879b13d94e9e4f62e1e9167012e98c5b945c9d` adds only qualification
-records and documentation over the tested revision. It is now the Fabric dependency pin. The newer
-Robotweax SRT profile does not inherit the older profile's loss, burst, pressure, recovery-margin,
-or operator-study claims.
+records and documentation over the tested revision. It was the initial Fabric dependency pin. The
+newer Robotweax SRT profile does not inherit the older profile's loss, burst, pressure,
+recovery-margin, or operator-study claims.
+
+Follow-up commits `40767f0a46018852853574b4c8651eb4f1b1f4a9` and
+`bf10da0431fdf23772210262755f745b62b6ff58` make the provider-linked incident peer explicitly
+addressable over IPv4 or IPv6 and its 1–1,316-byte test payload explicit, with an IPv6-loopback
+1,024-byte JSONL regression. Fabric pins the latter commit so its external coordinator can place
+the unchanged peer on a declared `fips0` address within the frozen MTU budget; SRT sampling
+semantics remain owned by SRT Telemetry.
 
 ## Decision
 
@@ -84,7 +91,8 @@ The integration is observation-only. It grants no route, SRT, encoder, or relay 
 ## Consequences
 
 - OD-08 is closed. The deterministic adapter and negative clock-boundary fixture start G4 but do
-  not pass it; simultaneous live cross-layer golden incidents are still required.
+  not pass it. A fail-closed healthy live-pilot runner is now frozen; retained live results,
+  faulted route transitions, and first-divergent-layer evidence are still required.
 - The adapter must validate the upstream JSONL line against the pinned upstream schema before
   constructing the Fabric observation, then pass the executable Fabric validator.
 - The pinned upstream schema ID is
