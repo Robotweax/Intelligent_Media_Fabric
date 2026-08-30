@@ -51,6 +51,10 @@ REACTIVE_TICK_INTERVAL_SECS = 5
 REACTIVE_CONVERGENCE_BUDGET_SECS = 20
 RESTART_EPOCH_ADMISSION_SECS = 15
 RESTART_RECONNECT_BUDGET_SECS = 20
+RESTART_PROMOTION_LOG_MARKER = (
+    "Peer restart detected during promotion, replacing stale active peer"
+)
+PEER_PROMOTION_LOG_MARKER = "Peer promoted to active"
 
 
 def line_peer_relationships(peer_views: list[dict], identities: list[str]) -> bool:
@@ -720,6 +724,41 @@ def run_fips_g2_linux_managed_transit(
             ):
                 raise QualificationError("endpoint FMP link IDs were unavailable")
 
+            before_reactive_records = [
+                endpoint_session_record(control(0, "show", "sessions"), identities[2]),
+                endpoint_session_record(control(2, "show", "sessions"), identities[0]),
+            ]
+            if any(record is None for record in before_reactive_records):
+                raise QualificationError("endpoint FSP session disappeared before transit restart")
+            before_reactive_starts = [
+                before_reactive_records[0]["session_start_ms"],
+                before_reactive_records[1]["session_start_ms"],
+            ]
+            before_reactive_mtu = session_path_mtu(
+                control(0, "show", "sessions"), identities[2]
+            )
+            before_reactive_cache_mtu = coordinate_cache_path_mtu(
+                control(0, "show", "cache"), statuses[2]["ipv6_addr"]
+            )
+            if (
+                before_reactive_starts != initial_session_starts
+                or before_reactive_mtu != TUN_MTU
+                or before_reactive_cache_mtu != TUN_MTU
+            ):
+                raise QualificationError(
+                    "route loss or proactive PMTU feedback pre-empted the reactive baseline"
+                )
+            endpoint_error_before = mtu_error_counters(control(0, "show", "routing"))
+            endpoint_restart_markers_before = [
+                daemon_logs[index]
+                .read_text(encoding="utf-8", errors="replace")
+                .count(RESTART_PROMOTION_LOG_MARKER)
+                for index in (0, 2)
+            ]
+            transit_promotions_before = daemon_logs[1].read_text(
+                encoding="utf-8", errors="replace"
+            ).count(PEER_PROMOTION_LOG_MARKER)
+
             phase = "transit-mtu-restart"
             old_transit_pid = daemon_processes[1].pid
             if not _kill_process_abruptly(daemon_processes[1]):
@@ -781,102 +820,69 @@ def run_fips_g2_linux_managed_transit(
                 label="identity-preserving transit restart at MTU 1000",
                 timeout=15,
             )
+            transit_drop_before = mtu_drop_counters(control(1, "show", "routing"))
 
             phase = "post-restart-line-reconnect"
             restart_reconnect_started = time.monotonic()
 
-            def transit_reconnected_line():
-                current_statuses = [status(index) for index in range(3)]
-                expected_counts = (1, 2, 1)
-                if not all(
-                    item.get("peer_count") == count and item.get("link_count") == count
-                    for item, count in zip(current_statuses, expected_counts)
-                ):
-                    return None
-                current_peer_views = [
-                    control(index, "show", "peers") for index in range(3)
-                ]
-                if not line_peer_relationships(current_peer_views, identities):
-                    return None
-                endpoint_link_ids = [
-                    current_peer_views[index]["peers"][0].get("link_id")
+            def restart_epoch_promotions_logged():
+                endpoint_counts = [
+                    daemon_logs[index]
+                    .read_text(encoding="utf-8", errors="replace")
+                    .count(RESTART_PROMOTION_LOG_MARKER)
                     for index in (0, 2)
                 ]
                 if any(
-                    not isinstance(link_id, int) or isinstance(link_id, bool)
-                    for link_id in endpoint_link_ids
-                ):
-                    return None
-                if any(
-                    after == before
+                    after <= before
                     for before, after in zip(
-                        initial_endpoint_link_ids, endpoint_link_ids
+                        endpoint_restart_markers_before, endpoint_counts
                     )
                 ):
                     return None
-                return endpoint_link_ids
+                transit_promotions = daemon_logs[1].read_text(
+                    encoding="utf-8", errors="replace"
+                ).count(PEER_PROMOTION_LOG_MARKER)
+                if transit_promotions < transit_promotions_before + 2:
+                    return None
+                return True
 
-            final_endpoint_link_ids = _wait_for(
-                transit_reconnected_line,
-                label="restart-epoch replacement of both endpoint FMP links",
+            _wait_for(
+                restart_epoch_promotions_logged,
+                label="restart-epoch promotion of both endpoint FMP links",
                 timeout=RESTART_RECONNECT_BUDGET_SECS,
+                interval=0.01,
             )
             restart_reconnect_elapsed_ms = round(
                 (time.monotonic() - restart_reconnect_started) * 1000
             )
 
-            before_reactive_records = [
-                endpoint_session_record(control(0, "show", "sessions"), identities[2]),
-                endpoint_session_record(control(2, "show", "sessions"), identities[0]),
-            ]
-            if any(record is None for record in before_reactive_records):
-                raise QualificationError("endpoint FSP session disappeared during transit restart")
-            before_reactive_starts = [
-                before_reactive_records[0]["session_start_ms"],
-                before_reactive_records[1]["session_start_ms"],
-            ]
-            before_reactive_mtu = session_path_mtu(
-                control(0, "show", "sessions"), identities[2]
-            )
-            before_reactive_cache_mtu = coordinate_cache_path_mtu(
-                control(0, "show", "cache"), statuses[2]["ipv6_addr"]
-            )
-            if (
-                before_reactive_starts != initial_session_starts
-                or before_reactive_mtu != TUN_MTU
-                or before_reactive_cache_mtu != TUN_MTU
-            ):
-                raise QualificationError(
-                    "route loss, proactive PMTU feedback, or session replacement pre-empted the reactive window"
-                )
-
-            endpoint_error_before = mtu_error_counters(control(0, "show", "routing"))
-            transit_drop_before = mtu_drop_counters(control(1, "show", "routing"))
             reactive_started = time.monotonic()
             phase = "reactive-mtu-exceeded"
             reactive_diagnostic: dict = {}
 
+            _run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    node_a_namespace,
+                    sys.executable,
+                    "-c",
+                    (
+                        "import socket,sys;"
+                        "sock=socket.socket(socket.AF_INET6,socket.SOCK_DGRAM);"
+                        "sock.sendto(bytes(int(sys.argv[3])),"
+                        "(sys.argv[1],int(sys.argv[2])))"
+                    ),
+                    destination,
+                    str(UDP_PROBE_PORT),
+                    "1155",
+                ],
+                label="reactive oversized UDP/IPv6 trigger",
+                timeout=3,
+            )
+
             def reactive_signal_observed():
-                _run(
-                    [
-                        "ip",
-                        "netns",
-                        "exec",
-                        node_a_namespace,
-                        "ping",
-                        "-6",
-                        "-c",
-                        "1",
-                        "-W",
-                        "1",
-                        "-s",
-                        "1155",
-                        destination,
-                    ],
-                    label="reactive oversized ICMPv6 trigger",
-                    timeout=3,
-                    check=False,
-                )
                 endpoint_routing = control(0, "show", "routing")
                 transit_routing = control(1, "show", "routing")
                 endpoint_errors = mtu_error_counters(endpoint_routing)
@@ -961,6 +967,43 @@ def run_fips_g2_linux_managed_transit(
                 raise QualificationError(
                     "endpoint FSP session start changed across the transit MTU restart"
                 )
+
+            def transit_reconnected_line():
+                current_statuses = [status(index) for index in range(3)]
+                expected_counts = (1, 2, 1)
+                if not all(
+                    item.get("peer_count") == count and item.get("link_count") == count
+                    for item, count in zip(current_statuses, expected_counts)
+                ):
+                    return None
+                current_peer_views = [
+                    control(index, "show", "peers") for index in range(3)
+                ]
+                if not line_peer_relationships(current_peer_views, identities):
+                    return None
+                endpoint_link_ids = [
+                    current_peer_views[index]["peers"][0].get("link_id")
+                    for index in (0, 2)
+                ]
+                if any(
+                    not isinstance(link_id, int) or isinstance(link_id, bool)
+                    for link_id in endpoint_link_ids
+                ):
+                    return None
+                if any(
+                    after == before
+                    for before, after in zip(
+                        initial_endpoint_link_ids, endpoint_link_ids
+                    )
+                ):
+                    return None
+                return endpoint_link_ids
+
+            final_endpoint_link_ids = _wait_for(
+                transit_reconnected_line,
+                label="post-trigger line snapshot with replaced endpoint FMP links",
+                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
+            )
             transit_restart_observation = {
                 "configuration_application": "identity-preserving-process-restart",
                 "transport_config_hot_reload_supported": False,
@@ -981,6 +1024,7 @@ def run_fips_g2_linux_managed_transit(
                 "source_coordinate_cache_path_mtu_before_trigger": (
                     before_reactive_cache_mtu
                 ),
+                "source_pmtu_snapshot_phase": "pre-restart-reactive-baseline",
                 "transport_mtu_before": TUN_MTU,
                 "transport_mtu_after": TRANSIT_UDP_MTU,
                 "endpoint_session_start_ms_before": initial_session_starts,
@@ -988,6 +1032,8 @@ def run_fips_g2_linux_managed_transit(
             }
             reactive_mtu_observation = {
                 "trigger_ipv6_packet_bytes": 1203,
+                "trigger_transport": "udp",
+                "trigger_count": 1,
                 "session_path_mtu_before": TUN_MTU,
                 "session_path_mtu_after": TRANSIT_UDP_MTU,
                 "coordinate_cache_path_mtu_after": learned_coordinate_path_mtu,
@@ -1475,7 +1521,7 @@ def run_fips_g2_linux_managed_transit(
             "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
             "The transit restarted with static auto-connect peers; the endpoint FMP peer slots were replaced through FIPS restart-epoch handling without explicit endpoint link withdrawal.",
             "FIPS restart replay protection imposed a 15-second admission floor; the bounded reconnect observation remained below the 30-second link-dead timeout.",
-            "No post-change application packet preceded the oversized trigger; the retained source coordinate cache and endpoint session both still reported transport PMTU 1280 immediately before it.",
+            "No post-change application packet preceded the oversized trigger; the last pre-restart source coordinate-cache and endpoint-session snapshot reported transport PMTU 1280, and unchanged session timestamps were verified after convergence.",
             "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
             "A five-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",

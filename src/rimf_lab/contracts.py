@@ -1031,6 +1031,7 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "reconnect_budget_ms",
         "post_change_application_packets_before_trigger",
         "source_coordinate_cache_path_mtu_before_trigger",
+        "source_pmtu_snapshot_phase",
         "transport_mtu_before",
         "transport_mtu_after",
         "endpoint_session_start_ms_before",
@@ -1066,6 +1067,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or restart.get("reconnect_budget_ms") != 20_000
         or restart.get("post_change_application_packets_before_trigger") != 0
         or restart.get("source_coordinate_cache_path_mtu_before_trigger") != 1280
+        or restart.get("source_pmtu_snapshot_phase")
+        != "pre-restart-reactive-baseline"
         or restart.get("transport_mtu_before") != 1280
         or restart.get("transport_mtu_after") != 1000
         or not isinstance(starts_before, list)
@@ -1078,6 +1081,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
     reactive = _require_object(observations.get("reactive_mtu"), "reactive MTU signal")
     if set(reactive) != {
         "trigger_ipv6_packet_bytes",
+        "trigger_transport",
+        "trigger_count",
         "session_path_mtu_before",
         "session_path_mtu_after",
         "coordinate_cache_path_mtu_after",
@@ -1093,6 +1098,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
     elapsed = reactive.get("convergence_elapsed_ms")
     if (
         reactive.get("trigger_ipv6_packet_bytes") != 1203
+        or reactive.get("trigger_transport") != "udp"
+        or reactive.get("trigger_count") != 1
         or reactive.get("session_path_mtu_before") != 1280
         or reactive.get("session_path_mtu_after") != 1000
         or reactive.get("coordinate_cache_path_mtu_after") != 1000

@@ -351,6 +351,7 @@ def valid_reactive_mtu_result():
         "reconnect_budget_ms": 20000,
         "post_change_application_packets_before_trigger": 0,
         "source_coordinate_cache_path_mtu_before_trigger": 1280,
+        "source_pmtu_snapshot_phase": "pre-restart-reactive-baseline",
         "transport_mtu_before": 1280,
         "transport_mtu_after": 1000,
         "endpoint_session_start_ms_before": [1000, 1001],
@@ -358,6 +359,8 @@ def valid_reactive_mtu_result():
     }
     result["observations"]["reactive_mtu"] = {
         "trigger_ipv6_packet_bytes": 1203,
+        "trigger_transport": "udp",
+        "trigger_count": 1,
         "session_path_mtu_before": 1280,
         "session_path_mtu_after": 1000,
         "coordinate_cache_path_mtu_after": 1000,
@@ -887,6 +890,12 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
     def test_rejects_reactive_mtu_without_transit_drop(self):
         result = valid_reactive_mtu_result()
         result["observations"]["reactive_mtu"]["transit_drop_packets_delta"] = 0
+        with self.assertRaisesRegex(ContractError, "signal convergence"):
+            validate_fips_g2_linux_reactive_mtu_result(result)
+
+    def test_rejects_reactive_mtu_with_wrong_trigger_transport(self):
+        result = valid_reactive_mtu_result()
+        result["observations"]["reactive_mtu"]["trigger_transport"] = "icmpv6"
         with self.assertRaisesRegex(ContractError, "signal convergence"):
             validate_fips_g2_linux_reactive_mtu_result(result)
 
