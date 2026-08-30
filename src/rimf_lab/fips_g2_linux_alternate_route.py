@@ -640,6 +640,10 @@ def run_fips_g2_linux_alternate_route(
                 for item in current_statuses
             ):
                 return None
+            if not all(
+                item.get("estimated_mesh_size") == 4 for item in current_statuses
+            ):
+                return None
             peer_views = [control(index, "show", "peers") for index in range(4)]
             if not diamond_peer_relationships(peer_views, list(identities)):
                 return None
@@ -712,6 +716,33 @@ def run_fips_g2_linux_alternate_route(
                     continue
             if str(ipaddress.IPv6Address(expected_address)) not in answers:
                 raise QualificationError("FIPS DNS did not return the remote overlay address")
+
+        def endpoint_identity_caches_ready():
+            endpoint_a_cache = control(0, "show", "identity-cache")
+            endpoint_b_cache = control(3, "show", "identity-cache")
+            endpoint_a_entries = endpoint_a_cache.get("entries")
+            endpoint_b_entries = endpoint_b_cache.get("entries")
+            if not isinstance(endpoint_a_entries, list) or not isinstance(
+                endpoint_b_entries, list
+            ):
+                return None
+            if not any(
+                isinstance(item, dict) and item.get("npub") == identities[3]
+                for item in endpoint_a_entries
+            ):
+                return None
+            if not any(
+                isinstance(item, dict) and item.get("npub") == identities[0]
+                for item in endpoint_b_entries
+            ):
+                return None
+            return True
+
+        _wait_for(
+            endpoint_identity_caches_ready,
+            label="endpoint remote-identity cache registration",
+            timeout=10,
+        )
 
         phase = "initial-data-plane"
         destination = statuses[3]["ipv6_addr"]
@@ -969,6 +1000,7 @@ def run_fips_g2_linux_alternate_route(
                 "manual_connect_commands": 0,
                 "authenticated_peer_counts": [2, 2, 2, 2],
                 "authenticated_link_counts": [2, 2, 2, 2],
+                "estimated_mesh_size": 4,
                 "root_role": "a",
                 "tree_depths": [0, 1, 1, 2],
                 "endpoint_b_parent_role": ROLE_NAMES[active_index],

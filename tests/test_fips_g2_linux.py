@@ -445,6 +445,7 @@ def valid_alternate_route_result():
             "manual_connect_commands": 0,
             "authenticated_peer_counts": [2, 2, 2, 2],
             "authenticated_link_counts": [2, 2, 2, 2],
+            "estimated_mesh_size": 4,
             "root_role": "a",
             "tree_depths": [0, 1, 1, 2],
             "endpoint_b_parent_role": "r1",
