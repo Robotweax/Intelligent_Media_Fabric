@@ -54,49 +54,19 @@ def render_config(
     *,
     dns_enabled: bool = False,
     udp_mtu: int = TUN_MTU,
-    persistent_identity: bool = False,
-    tick_interval_secs: int | None = None,
-    log_level: str = "warn",
-    static_udp_peers: tuple[tuple[str, str], ...] = (),
-    tcp_mtu: int | None = None,
-    tcp_bind_port: int = 3121,
-    tcp_connect_timeout_ms: int = 180_000,
 ) -> str:
     dns_config = (
         '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
         if dns_enabled
         else "  enabled: false"
     )
-    tick_config = (
-        f"  tick_interval_secs: {tick_interval_secs}\n"
-        if tick_interval_secs is not None
-        else ""
-    )
-    peers_config = "peers: []"
-    if static_udp_peers:
-        peers_config = "peers:\n" + "\n".join(
-            f'''  - npub: "{npub}"
-    addresses:
-      - transport: udp
-        addr: "{address}"
-    connect_policy: auto_connect
-    auto_reconnect: false'''
-            for npub, address in static_udp_peers
-        )
-    tcp_config = ""
-    if tcp_mtu is not None:
-        tcp_config = f'''  tcp:
-    bind_addr: "{bind_address}:{tcp_bind_port}"
-    mtu: {tcp_mtu}
-    connect_timeout_ms: {tcp_connect_timeout_ms}
-'''
     return f"""node:
   identity:
-    persistent: {str(persistent_identity).lower()}
+    persistent: false
   control:
     enabled: true
     socket_path: "{control_socket}"
-{tick_config}  log_level: {log_level}
+  log_level: warn
 
 tun:
   enabled: true
@@ -110,19 +80,16 @@ transports:
   udp:
     bind_addr: "{bind_address}:2121"
     mtu: {udp_mtu}
-{tcp_config}
 
-{peers_config}
+peers: []
 """
 
 
-def valid_connect_acknowledgement(
-    result: dict, peer: str, address: str, transport: str = "udp"
-) -> bool:
+def valid_connect_acknowledgement(result: dict, peer: str, address: str) -> bool:
     return (
         result.get("npub") == peer
         and result.get("address") == address
-        and result.get("transport") == transport
+        and result.get("transport") == "udp"
     )
 
 
