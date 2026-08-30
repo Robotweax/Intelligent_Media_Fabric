@@ -635,7 +635,7 @@ def run_fips_g2_linux_managed_transit(
         _wait_for(
             endpoint_identity_caches_ready,
             label="endpoint remote-identity cache registration",
-            timeout=10,
+            timeout=(REACTIVE_TICK_INTERVAL_SECS + 5 if _reactive_mtu else 10),
         )
 
         phase = "multihop-icmpv6"
