@@ -844,7 +844,11 @@ def run_fips_g2_linux_managed_transit(
             _wait_for(
                 post_restart_route_warmed,
                 label="post-restart route and coordinate warmup",
-                timeout=8,
+                # Reconnected tree state is published on the qualification
+                # tick.  Keep retrying through one complete tick, then verify
+                # below that no proactive PMTU notification pre-empted the
+                # reactive window before accepting the warmup.
+                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
                 interval=0.1,
             )
 
