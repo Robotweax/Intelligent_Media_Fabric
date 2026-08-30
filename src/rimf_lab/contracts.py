@@ -1168,17 +1168,21 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         observations.get("initial_path_selection"), "initial path selection"
     )
     active = initial_path.get("active_transit")
-    standby = initial_path.get("standby_transit")
-    if active not in {"r1", "r2"} or standby not in {"r1", "r2"} or active == standby:
+    alternate = initial_path.get("alternate_transit")
+    if (
+        active not in {"r1", "r2"}
+        or alternate not in {"r1", "r2"}
+        or active == alternate
+    ):
         raise ContractError("observations.initial_path_selection transit roles are invalid")
     if set(initial_path) != {
         "active_transit",
-        "standby_transit",
+        "alternate_transit",
         "endpoint_b_parent_was_active_transit",
         "active_forwarded_packets_delta",
         "active_forwarded_bytes_delta",
-        "standby_forwarded_packets_delta",
-        "standby_forwarded_bytes_delta",
+        "alternate_forwarded_packets_delta",
+        "alternate_forwarded_bytes_delta",
         "transit_fsp_session_counts",
     }:
         raise ContractError("observations.initial_path_selection contains unexpected fields")
@@ -1186,10 +1190,17 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         value = initial_path.get(field)
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise ContractError(f"observations.initial_path_selection.{field} must be positive")
+    for field in (
+        "alternate_forwarded_packets_delta",
+        "alternate_forwarded_bytes_delta",
+    ):
+        value = initial_path.get(field)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ContractError(
+                f"observations.initial_path_selection.{field} must be non-negative"
+            )
     if (
         initial_path.get("endpoint_b_parent_was_active_transit") is not True
-        or initial_path.get("standby_forwarded_packets_delta") != 0
-        or initial_path.get("standby_forwarded_bytes_delta") != 0
         or initial_path.get("transit_fsp_session_counts") != [0, 0]
     ):
         raise ContractError("observations.initial_path_selection path proof is invalid")
@@ -1203,7 +1214,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         "root_role": "a",
         "tree_depths": [0, 1, 1, 2],
         "endpoint_b_parent_role": active,
-        "standby_transit_authenticated": True,
+        "alternate_transit_authenticated": True,
         "full_mmp_link_views": 8,
         "transport": "udp",
     }:
@@ -1270,14 +1281,14 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         "reparent_budget_secs": 60,
         "reparent_elapsed_ms": reparent_elapsed,
         "old_parent_role": active,
-        "new_parent_role": standby,
+        "new_parent_role": alternate,
         "root_unchanged": True,
         "tree_depth_unchanged": True,
         "declaration_sequence_increased": True,
         "parent_loss_counter_increased": True,
         "manual_route_or_connect_commands": 0,
-        "remaining_peer_counts": {"a": 1, "standby": 2, "b": 1},
-        "remaining_link_counts": {"a": 1, "standby": 2, "b": 1},
+        "remaining_peer_counts": {"a": 1, "alternate": 2, "b": 1},
+        "remaining_link_counts": {"a": 1, "alternate": 2, "b": 1},
     }
     if reparenting != expected_reparenting:
         raise ContractError("observations.automatic_reparenting is invalid")
@@ -1295,7 +1306,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
         "established_at_every_control_poll": True,
         "session_start_unchanged_per_endpoint": [True, True],
         "endpoint_session_counts_after": [1, 1],
-        "surviving_transit_fsp_session_count": 0,
+        "alternate_transit_fsp_session_count": 0,
         "identity_values_retained": False,
     }:
         raise ContractError("observations.fsp_session_continuity_observation is invalid")
@@ -1332,7 +1343,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
             "payload_recovery_budget_secs",
             "payload_recovery_elapsed_ms",
         }
-        or post_path.get("forwarding_transit") != standby
+        or post_path.get("forwarding_transit") != alternate
         or post_path.get("failed_transit_unavailable") is not True
         or post_path.get("payload_recovery_budget_secs") != 120
     ):

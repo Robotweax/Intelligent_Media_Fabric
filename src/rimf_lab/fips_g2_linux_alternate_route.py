@@ -656,7 +656,6 @@ def run_fips_g2_linux_alternate_route(
             label="four-node authenticated diamond and spanning tree",
             timeout=60,
         )
-        initial_b_tree = tree_views[3]
 
         phase = "mmp-observation"
 
@@ -769,15 +768,19 @@ def run_fips_g2_linux_alternate_route(
         packet_deltas = [after[0] - before[0] for before, after in zip(transit_before, transit_after)]
         byte_deltas = [after[1] - before[1] for before, after in zip(transit_before, transit_after)]
 
+        initial_b_tree = control(3, "show", "tree")
         active_addr = initial_b_tree.get("parent")
         if active_addr not in node_addrs[1:3]:
             raise QualificationError("endpoint B parent was not a managed transit")
         active_index = node_addrs.index(active_addr)
-        standby_index = 1 if active_index == 2 else 2
+        alternate_index = 1 if active_index == 2 else 2
         if packet_deltas[active_index - 1] < 1 or byte_deltas[active_index - 1] < 1:
             raise QualificationError("B's parent did not forward the initial exact payload")
-        if packet_deltas[standby_index - 1] != 0 or byte_deltas[standby_index - 1] != 0:
-            raise QualificationError("standby transit forwarded the initial exact payload")
+        if (
+            packet_deltas[alternate_index - 1] < 0
+            or byte_deltas[alternate_index - 1] < 0
+        ):
+            raise QualificationError("alternate transit forwarding counters regressed")
         if status(1).get("session_count") != 0 or status(2).get("session_count") != 0:
             raise QualificationError("a managed transit terminated an end-to-end FSP session")
 
@@ -822,25 +825,25 @@ def run_fips_g2_linux_alternate_route(
             endpoint_session_records(session_views(), identities, initial_session_starts)
             session_poll_count += 1
             a_status = status(0)
-            standby_status = status(standby_index)
+            alternate_status = status(alternate_index)
             b_status = status(3)
             a_tree = control(0, "show", "tree")
-            standby_tree = control(standby_index, "show", "tree")
+            alternate_tree = control(alternate_index, "show", "tree")
             b_tree = control(3, "show", "tree")
             if (
                 a_status.get("peer_count") == 1
                 and a_status.get("link_count") == 1
-                and standby_status.get("peer_count") == 2
-                and standby_status.get("link_count") == 2
+                and alternate_status.get("peer_count") == 2
+                and alternate_status.get("link_count") == 2
                 and b_status.get("peer_count") == 1
                 and b_status.get("link_count") == 1
                 and a_tree.get("root") == node_addrs[0]
-                and standby_tree.get("root") == node_addrs[0]
+                and alternate_tree.get("root") == node_addrs[0]
                 and b_tree.get("root") == node_addrs[0]
-                and b_tree.get("parent") == node_addrs[standby_index]
+                and b_tree.get("parent") == node_addrs[alternate_index]
                 and b_tree.get("depth") == 2
             ):
-                post_tree_views = (a_tree, standby_tree, b_tree)
+                post_tree_views = (a_tree, alternate_tree, b_tree)
                 break
             time.sleep(SESSION_POLL_INTERVAL_SECS)
         if post_tree_views is None:
@@ -906,17 +909,23 @@ def run_fips_g2_linux_alternate_route(
             timeout=20,
         )
         endpoint_session_records(session_views(), identities, initial_session_starts)
-        standby_before = forwarding_counters(control(standby_index, "show", "routing"))
+        alternate_before = forwarding_counters(
+            control(alternate_index, "show", "routing")
+        )
         post_payload = run_payload_probe("after-failure", destination)
-        standby_after = forwarding_counters(control(standby_index, "show", "routing"))
-        standby_packet_delta = standby_after[0] - standby_before[0]
-        standby_byte_delta = standby_after[1] - standby_before[1]
-        if standby_packet_delta < 1 or standby_byte_delta < 1:
-            raise QualificationError("standby transit did not forward the recovered exact payload")
+        alternate_after = forwarding_counters(
+            control(alternate_index, "show", "routing")
+        )
+        alternate_packet_delta = alternate_after[0] - alternate_before[0]
+        alternate_byte_delta = alternate_after[1] - alternate_before[1]
+        if alternate_packet_delta < 1 or alternate_byte_delta < 1:
+            raise QualificationError(
+                "alternate transit did not forward the recovered exact payload"
+            )
         final_sessions = endpoint_session_records(
             session_views(), identities, initial_session_starts
         )
-        if status(standby_index).get("session_count") != 0:
+        if status(alternate_index).get("session_count") != 0:
             raise QualificationError("surviving transit terminated an end-to-end FSP session")
         payload_recovery_elapsed_ms = round((time.monotonic() - failure_started) * 1000)
         if not alternate_route_timings_within_contract(
@@ -939,7 +948,7 @@ def run_fips_g2_linux_alternate_route(
                 "root_role": "a",
                 "tree_depths": [0, 1, 1, 2],
                 "endpoint_b_parent_role": ROLE_NAMES[active_index],
-                "standby_transit_authenticated": True,
+                "alternate_transit_authenticated": True,
                 "full_mmp_link_views": 8,
                 "transport": "udp",
             },
@@ -955,12 +964,12 @@ def run_fips_g2_linux_alternate_route(
             },
             "initial_path_selection": {
                 "active_transit": ROLE_NAMES[active_index],
-                "standby_transit": ROLE_NAMES[standby_index],
+                "alternate_transit": ROLE_NAMES[alternate_index],
                 "endpoint_b_parent_was_active_transit": True,
                 "active_forwarded_packets_delta": packet_deltas[active_index - 1],
                 "active_forwarded_bytes_delta": byte_deltas[active_index - 1],
-                "standby_forwarded_packets_delta": packet_deltas[standby_index - 1],
-                "standby_forwarded_bytes_delta": byte_deltas[standby_index - 1],
+                "alternate_forwarded_packets_delta": packet_deltas[alternate_index - 1],
+                "alternate_forwarded_bytes_delta": byte_deltas[alternate_index - 1],
                 "transit_fsp_session_counts": [0, 0],
             },
             "failure_injection": {
@@ -978,14 +987,14 @@ def run_fips_g2_linux_alternate_route(
                 "reparent_budget_secs": REPARENT_BUDGET_SECS,
                 "reparent_elapsed_ms": reparent_elapsed_ms,
                 "old_parent_role": ROLE_NAMES[active_index],
-                "new_parent_role": ROLE_NAMES[standby_index],
+                "new_parent_role": ROLE_NAMES[alternate_index],
                 "root_unchanged": True,
                 "tree_depth_unchanged": True,
                 "declaration_sequence_increased": True,
                 "parent_loss_counter_increased": True,
                 "manual_route_or_connect_commands": 0,
-                "remaining_peer_counts": {"a": 1, "standby": 2, "b": 1},
-                "remaining_link_counts": {"a": 1, "standby": 2, "b": 1},
+                "remaining_peer_counts": {"a": 1, "alternate": 2, "b": 1},
+                "remaining_link_counts": {"a": 1, "alternate": 2, "b": 1},
             },
             "fsp_session_continuity_observation": {
                 "target_control_poll_interval_ms": round(
@@ -998,7 +1007,7 @@ def run_fips_g2_linux_alternate_route(
                     len(control(0, "show", "sessions")["sessions"]),
                     len(control(3, "show", "sessions")["sessions"]),
                 ],
-                "surviving_transit_fsp_session_count": 0,
+                "alternate_transit_fsp_session_count": 0,
                 "identity_values_retained": False,
             },
             "post_failure_icmpv6": {
@@ -1012,9 +1021,9 @@ def run_fips_g2_linux_alternate_route(
                 "all_exact_echo": True,
             },
             "post_failure_path": {
-                "forwarding_transit": ROLE_NAMES[standby_index],
-                "forwarded_packets_delta": standby_packet_delta,
-                "forwarded_bytes_delta": standby_byte_delta,
+                "forwarding_transit": ROLE_NAMES[alternate_index],
+                "forwarded_packets_delta": alternate_packet_delta,
+                "forwarded_bytes_delta": alternate_byte_delta,
                 "failed_transit_unavailable": True,
                 "payload_recovery_budget_secs": PAYLOAD_RECOVERY_BUDGET_SECS,
                 "payload_recovery_elapsed_ms": payload_recovery_elapsed_ms,

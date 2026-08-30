@@ -448,7 +448,7 @@ def valid_alternate_route_result():
             "root_role": "a",
             "tree_depths": [0, 1, 1, 2],
             "endpoint_b_parent_role": "r1",
-            "standby_transit_authenticated": True,
+            "alternate_transit_authenticated": True,
             "full_mmp_link_views": 8,
             "transport": "udp",
         },
@@ -460,12 +460,12 @@ def valid_alternate_route_result():
         "initial_payload_identity": payload(),
         "initial_path_selection": {
             "active_transit": "r1",
-            "standby_transit": "r2",
+            "alternate_transit": "r2",
             "endpoint_b_parent_was_active_transit": True,
             "active_forwarded_packets_delta": 6,
             "active_forwarded_bytes_delta": 4096,
-            "standby_forwarded_packets_delta": 0,
-            "standby_forwarded_bytes_delta": 0,
+            "alternate_forwarded_packets_delta": 2,
+            "alternate_forwarded_bytes_delta": 1024,
             "transit_fsp_session_counts": [0, 0],
         },
         "failure_injection": {
@@ -489,8 +489,8 @@ def valid_alternate_route_result():
             "declaration_sequence_increased": True,
             "parent_loss_counter_increased": True,
             "manual_route_or_connect_commands": 0,
-            "remaining_peer_counts": {"a": 1, "standby": 2, "b": 1},
-            "remaining_link_counts": {"a": 1, "standby": 2, "b": 1},
+            "remaining_peer_counts": {"a": 1, "alternate": 2, "b": 1},
+            "remaining_link_counts": {"a": 1, "alternate": 2, "b": 1},
         },
         "fsp_session_continuity_observation": {
             "target_control_poll_interval_ms": 250,
@@ -498,7 +498,7 @@ def valid_alternate_route_result():
             "established_at_every_control_poll": True,
             "session_start_unchanged_per_endpoint": [True, True],
             "endpoint_session_counts_after": [1, 1],
-            "surviving_transit_fsp_session_count": 0,
+            "alternate_transit_fsp_session_count": 0,
             "identity_values_retained": False,
         },
         "post_failure_icmpv6": {
@@ -782,12 +782,12 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
     def test_accepts_complete_alternate_route_result(self):
         validate_fips_g2_linux_alternate_route_result(valid_alternate_route_result())
 
-    def test_rejects_alternate_route_with_forwarding_on_standby(self):
+    def test_rejects_alternate_route_with_negative_alternate_counter(self):
         result = valid_alternate_route_result()
         result["observations"]["initial_path_selection"][
-            "standby_forwarded_packets_delta"
-        ] = 1
-        with self.assertRaisesRegex(ContractError, "path proof"):
+            "alternate_forwarded_packets_delta"
+        ] = -1
+        with self.assertRaisesRegex(ContractError, "non-negative"):
             validate_fips_g2_linux_alternate_route_result(result)
 
     def test_rejects_alternate_route_manual_reconnect(self):

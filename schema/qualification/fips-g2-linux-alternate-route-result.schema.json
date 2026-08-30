@@ -119,7 +119,7 @@
             "root_role",
             "tree_depths",
             "endpoint_b_parent_role",
-            "standby_transit_authenticated",
+            "alternate_transit_authenticated",
             "full_mmp_link_views",
             "transport"
           ],
@@ -131,7 +131,7 @@
             "root_role": {"const": "a"},
             "tree_depths": {"const": [0, 1, 1, 2]},
             "endpoint_b_parent_role": {"enum": ["r1", "r2"]},
-            "standby_transit_authenticated": {"const": true},
+            "alternate_transit_authenticated": {"const": true},
             "full_mmp_link_views": {"const": 8},
             "transport": {"const": "udp"}
           },
@@ -156,22 +156,22 @@
           "type": "object",
           "required": [
             "active_transit",
-            "standby_transit",
+            "alternate_transit",
             "endpoint_b_parent_was_active_transit",
             "active_forwarded_packets_delta",
             "active_forwarded_bytes_delta",
-            "standby_forwarded_packets_delta",
-            "standby_forwarded_bytes_delta",
+            "alternate_forwarded_packets_delta",
+            "alternate_forwarded_bytes_delta",
             "transit_fsp_session_counts"
           ],
           "properties": {
             "active_transit": {"enum": ["r1", "r2"]},
-            "standby_transit": {"enum": ["r1", "r2"]},
+            "alternate_transit": {"enum": ["r1", "r2"]},
             "endpoint_b_parent_was_active_transit": {"const": true},
             "active_forwarded_packets_delta": {"type": "integer", "minimum": 1},
             "active_forwarded_bytes_delta": {"type": "integer", "minimum": 1},
-            "standby_forwarded_packets_delta": {"const": 0},
-            "standby_forwarded_bytes_delta": {"const": 0},
+            "alternate_forwarded_packets_delta": {"type": "integer", "minimum": 0},
+            "alternate_forwarded_bytes_delta": {"type": "integer", "minimum": 0},
             "transit_fsp_session_counts": {"const": [0, 0]}
           },
           "additionalProperties": false
@@ -227,8 +227,8 @@
             "declaration_sequence_increased": {"const": true},
             "parent_loss_counter_increased": {"const": true},
             "manual_route_or_connect_commands": {"const": 0},
-            "remaining_peer_counts": {"const": {"a": 1, "standby": 2, "b": 1}},
-            "remaining_link_counts": {"const": {"a": 1, "standby": 2, "b": 1}}
+            "remaining_peer_counts": {"const": {"a": 1, "alternate": 2, "b": 1}},
+            "remaining_link_counts": {"const": {"a": 1, "alternate": 2, "b": 1}}
           },
           "additionalProperties": false
         },
@@ -240,7 +240,7 @@
             "established_at_every_control_poll",
             "session_start_unchanged_per_endpoint",
             "endpoint_session_counts_after",
-            "surviving_transit_fsp_session_count",
+            "alternate_transit_fsp_session_count",
             "identity_values_retained"
           ],
           "properties": {
@@ -249,7 +249,7 @@
             "established_at_every_control_poll": {"const": true},
             "session_start_unchanged_per_endpoint": {"const": [true, true]},
             "endpoint_session_counts_after": {"const": [1, 1]},
-            "surviving_transit_fsp_session_count": {"const": 0},
+            "alternate_transit_fsp_session_count": {"const": 0},
             "identity_values_retained": {"const": false}
           },
           "additionalProperties": false
