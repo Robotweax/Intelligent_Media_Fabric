@@ -67,6 +67,9 @@ opacity is classified only from the pinned FIPS protocol contract. The run also 
 Nostr signaling relay, public discovery, NAT-assisted relay selection, alternate routes, transit
 failure, restart, route reconvergence, impaired networks, or SRT media behavior.
 
-G2 therefore remains open for one-byte-above-boundary MTU behavior, broader NAT/discovery classes,
-link-dead and restart cases, reconvergence, impairment and resource bounds. Robotweax SRT payload,
-timing, and continuity over the qualified `fips0` paths remain G3 work.
+The subsequent
+[direct MTU-boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) closed the
+one-byte-above-boundary requirement for the direct topology. Heterogeneous multihop PMTUD remains
+unqualified. G2 therefore remains open for broader NAT/discovery classes, link-dead and restart
+cases, reconvergence, impairment and resource bounds. Robotweax SRT payload, timing, and continuity
+over the qualified `fips0` paths remain G3 work.

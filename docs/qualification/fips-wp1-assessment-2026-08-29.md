@@ -162,6 +162,11 @@ The [managed-transit qualification](fips-g2-linux-managed-transit-2026-08-30.md)
 proved exact A-to-B endpoint payloads across a static authenticated A–R–B FIPS line, with no direct
 endpoint peer or ordinary IPv4 forwarding path. R reported positive forwarding counters while FSP
 sessions terminated only at A and B. This completes the static managed-transit class, but it is not
-Nostr signaling-relay or public-discovery evidence. G2 remains `in-progress` for broader NAT and
-discovery classes, above-boundary MTU behavior, failure/restart and reconvergence cases, impaired
-networks, and resource bounds.
+Nostr signaling-relay or public-discovery evidence.
+
+The [effective-MTU boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) subsequently
+proved explicit ICMPv6 Packet Too Big type 2/code 0 with MTU 1203 for a 1204-byte direct-path IPv6
+packet, followed by successful boundary-sized and exact UDP traffic. This completes the direct
+below/at/one-byte-above MTU class. G2 remains `in-progress` for broader NAT and discovery classes,
+failure/restart and reconvergence cases, impaired networks, heterogeneous multihop PMTUD, and
+resource bounds.

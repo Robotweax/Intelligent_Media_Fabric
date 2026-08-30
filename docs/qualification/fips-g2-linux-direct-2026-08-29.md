@@ -62,14 +62,13 @@ provide an operating `fips0` data path, FSP session establishment, exact payload
 effective MTU boundary, correlated control observations, and deterministic cleanup in isolated
 Linux namespaces.
 
-It does not pass G2 as a whole and is not G3 media evidence. The following remain:
+It does not pass G2 as a whole and is not G3 media evidence. After the later MTU-boundary follow-up,
+the following remain:
 
-1. payload behavior one byte above the effective boundary, including explicit ICMPv6 Packet Too Big
-   observation rather than silent loss;
-2. broader NAT traversal and public/private discovery classes;
-3. link-dead timeout, daemon restart, and route-reconvergence behavior;
-4. loss, delay, reordering, queue, and resource bounds; and
-5. Robotweax SRT payload and downstream media timing over the qualified `fips0` path.
+1. broader NAT traversal and public/private discovery classes;
+2. link-dead timeout, daemon restart, and route-reconvergence behavior;
+3. loss, delay, reordering, queue, and resource bounds; and
+4. Robotweax SRT payload and downstream media timing over the qualified `fips0` path.
 
 The subsequent
 [one-sided NAT qualification](fips-g2-linux-nat-2026-08-29.md) added a third router namespace and
@@ -80,3 +79,7 @@ The later
 [managed-transit qualification](fips-g2-linux-managed-transit-2026-08-30.md) also proved exact
 endpoint payload forwarding through a third authenticated FIPS node without a direct endpoint link.
 It is data-plane transit evidence, not Nostr signaling-relay or public-discovery evidence.
+
+The [effective-MTU boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) subsequently
+proved that a 1204-byte IPv6 packet receives explicit ICMPv6 Packet Too Big feedback reporting MTU
+1203, while boundary-sized and exact UDP payloads continue to cross the established direct path.

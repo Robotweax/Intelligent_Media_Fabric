@@ -2,7 +2,7 @@
 
 - Status: Phase 0 draft
 - Scope: external FIPS daemon, Robotweax SRT endpoints, local observation adapters, retained evidence
-- Last updated: 2026-08-29
+- Last updated: 2026-08-30
 
 ## Assets
 

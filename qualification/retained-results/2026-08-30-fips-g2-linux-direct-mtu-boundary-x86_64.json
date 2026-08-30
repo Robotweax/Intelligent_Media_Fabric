@@ -1,0 +1,137 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "ephemeral_identity_directory_removed": true,
+    "namespaces_removed": true
+  },
+  "evidence_type": "fips-g2-linux-direct",
+  "finished_at": "2026-08-30T05:50:41.030458Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "limitations": [
+    "Direct veth underlay only; NAT and relay-assisted connectivity were not exercised.",
+    "No loss, delay, reordering, link failure, daemon restart, or route reconvergence was injected.",
+    "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+    "The ICMPv6 observer retained only type, code, and reported MTU; no packet capture or endpoint address was retained.",
+    "This run qualifies Linux TUN connectivity for the pinned host architecture only."
+  ],
+  "observations": {
+    "above_effective_mtu": {
+      "above_boundary_icmp_payload_bytes": 1156,
+      "above_boundary_ipv6_packet_bytes": 1204,
+      "boundary_icmp_payload_bytes": 1155,
+      "echo_reply_received": false,
+      "effective_ipv6_mtu": 1203,
+      "icmpv6_code": 0,
+      "icmpv6_type": 2,
+      "post_ptb_boundary_probe_passed": true,
+      "reported_mtu": 1203
+    },
+    "connection": {
+      "authenticated_peers_per_node": 1,
+      "control_acknowledged": true,
+      "estimated_mesh_size": 2,
+      "links_per_node": 1,
+      "transport": "udp"
+    },
+    "disconnect": {
+      "control_acknowledged": true,
+      "links_per_node_after": 0,
+      "peers_per_node_after": 0
+    },
+    "fsp_session_counts": [
+      1,
+      1
+    ],
+    "icmpv6": {
+      "echo_requests_per_size": 2,
+      "effective_mtu_boundary_payload_bytes": 1155,
+      "passed": true,
+      "small_payload_bytes": 32
+    },
+    "mmp": [
+      {
+        "etx": 1.0,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "a",
+        "srtt_ms_observed": true
+      },
+      {
+        "etx": 1.0,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "b",
+        "srtt_ms_observed": true
+      }
+    ],
+    "nodes": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83",
+    "fips_binary_sha256": "737287bff9a0bf783e85cf1d2877425b4df7899b91e9c3f485c042bb19bef03b",
+    "fips_commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "070e2b51095f50ba6520e025849895fcf68c5a5447d312434906ad54644a210d",
+    "project_revision": "c29d78aeae9dd76fc9560fb2dd3d5d7dc4c38a53",
+    "reported_version": "fips 0.4.2 (rev 487fa86f65)\ntarget: x86_64-unknown-linux-gnu",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
+  },
+  "run_id": "9bf8709f-695a-42e1-ae30-147414fef145",
+  "schema_version": 2,
+  "started_at": "2026-08-30T05:50:33.706928Z",
+  "status": "passed",
+  "topology": {
+    "configured_tun_mtu": 1280,
+    "configured_udp_mtu": 1280,
+    "isolation": "linux-network-namespaces",
+    "node_count": 2,
+    "tun_name": "fips0",
+    "underlay": "direct-veth-ipv4-udp"
+  }
+}

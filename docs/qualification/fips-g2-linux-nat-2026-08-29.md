@@ -64,8 +64,10 @@ cleanup assertions remain true.
 
 It is not a general NAT-traversal result. STUN, hole punching, endpoint-dependent/symmetric NAT,
 port remapping, discovery, and relays were not exercised. G2 also remains open for
-one-byte-above-boundary behavior, link-dead and restart cases, reconvergence, impaired networks, and resource
-bounds. SRT-over-FIPS media correctness and continuity remain G3 work.
+link-dead and restart cases, reconvergence, impaired networks, and resource bounds. SRT-over-FIPS
+media correctness and continuity remain G3 work. The later
+[direct MTU-boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) closed the
+one-byte-above-boundary behavior for the direct topology; NAT-specific PMTUD remains unqualified.
 
 The subsequent
 [managed-transit qualification](fips-g2-linux-managed-transit-2026-08-30.md) exercised a pinned

@@ -66,6 +66,8 @@ network adapter. It is not part of push or pull-request CI. It:
 - starts one FIPS daemon per namespace with TUN enabled, DNS disabled, and ephemeral identities;
 - confirms `fips0`, kernel and effective MTU, an authenticated UDP link, and full MMP visibility;
 - sends ICMPv6 below and at the effective inner-MTU boundary;
+- sends one 1204-byte IPv6 packet, requires no echo and explicit ICMPv6 Packet Too Big type 2/code
+  0 reporting MTU 1203, then rechecks boundary-sized delivery;
 - verifies exact deterministic UDP echo digests at 1, 1024, and 1155 payload bytes;
 - observes an FSP session, performs a control-socket disconnect, and checks peer/link removal; and
 - stops processes and removes namespaces and the temporary identity directory before reporting
@@ -74,7 +76,8 @@ network adapter. It is not part of push or pull-request CI. It:
 The runner requires Linux root only for namespace and TUN setup. Its host-visible state is bounded
 to the temporary veth setup, `/tmp` work directory, and the requested result path; teardown verifies
 that the processes, namespaces, and identity directory are gone. Private keys, npubs, addresses,
-raw payloads, and daemon logs are excluded from the result. On failure, only the failed phase,
+raw payloads, raw ICMP packets, and daemon logs are excluded from the result. The bounded raw-socket
+observer retains only ICMPv6 type, code, and reported MTU. On failure, only the failed phase,
 cleanup state, and redacted daemon-log tails are exposed.
 
 Successful output must pass
