@@ -49,6 +49,8 @@ PATH_ABOVE_BOUNDARY_IPV6_BYTES = 924
 PATH_UDP_PAYLOAD_SIZES = (1, 512, 875)
 REACTIVE_TICK_INTERVAL_SECS = 5
 REACTIVE_CONVERGENCE_BUDGET_SECS = 20
+RESTART_EPOCH_ADMISSION_SECS = 15
+RESTART_RECONNECT_BUDGET_SECS = 20
 
 
 def line_peer_relationships(peer_views: list[dict], identities: list[str]) -> bool:
@@ -781,6 +783,7 @@ def run_fips_g2_linux_managed_transit(
             )
 
             phase = "post-restart-line-reconnect"
+            restart_reconnect_started = time.monotonic()
 
             def transit_reconnected_line():
                 current_statuses = [status(index) for index in range(3)]
@@ -816,7 +819,10 @@ def run_fips_g2_linux_managed_transit(
             final_endpoint_link_ids = _wait_for(
                 transit_reconnected_line,
                 label="restart-epoch replacement of both endpoint FMP links",
-                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
+                timeout=RESTART_RECONNECT_BUDGET_SECS,
+            )
+            restart_reconnect_elapsed_ms = round(
+                (time.monotonic() - restart_reconnect_started) * 1000
             )
 
             phase = "post-restart-route-warmup"
@@ -998,6 +1004,11 @@ def run_fips_g2_linux_managed_transit(
                 "manual_link_reconnect_commands": 0,
                 "endpoint_link_ids_before": initial_endpoint_link_ids,
                 "endpoint_link_ids_after": final_endpoint_link_ids,
+                "restart_epoch_admission_floor_ms": (
+                    RESTART_EPOCH_ADMISSION_SECS * 1000
+                ),
+                "reconnect_elapsed_ms": restart_reconnect_elapsed_ms,
+                "reconnect_budget_ms": RESTART_RECONNECT_BUDGET_SECS * 1000,
                 "route_warmup_ipv6_packet_bytes": 80,
                 "route_warmup_echo_reply_received": True,
                 "transport_mtu_before": TUN_MTU,
@@ -1493,6 +1504,7 @@ def run_fips_g2_linux_managed_transit(
         result["limitations"] = [
             "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
             "The transit restarted with static auto-connect peers; the endpoint FMP peer slots were replaced through FIPS restart-epoch handling without explicit endpoint link withdrawal.",
+            "FIPS restart replay protection imposed a 15-second admission floor; the bounded reconnect observation remained below the 30-second link-dead timeout.",
             "One small ICMPv6 exchange verified the retained route coordinates; the oversized reactive trigger followed before the next five-second PMTU notification tick.",
             "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
             "A five-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",

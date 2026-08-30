@@ -1026,6 +1026,9 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "manual_link_reconnect_commands",
         "endpoint_link_ids_before",
         "endpoint_link_ids_after",
+        "restart_epoch_admission_floor_ms",
+        "reconnect_elapsed_ms",
+        "reconnect_budget_ms",
         "route_warmup_ipv6_packet_bytes",
         "route_warmup_echo_reply_received",
         "transport_mtu_before",
@@ -1038,6 +1041,7 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
     starts_after = restart.get("endpoint_session_start_ms_after")
     link_ids_before = restart.get("endpoint_link_ids_before")
     link_ids_after = restart.get("endpoint_link_ids_after")
+    reconnect_elapsed = restart.get("reconnect_elapsed_ms")
     if (
         restart.get("configuration_application")
         != "identity-preserving-process-restart"
@@ -1055,6 +1059,11 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or len(link_ids_after) != 2
         or any(not isinstance(value, int) or isinstance(value, bool) for value in link_ids_after)
         or any(before == after for before, after in zip(link_ids_before, link_ids_after))
+        or restart.get("restart_epoch_admission_floor_ms") != 15_000
+        or not isinstance(reconnect_elapsed, int)
+        or isinstance(reconnect_elapsed, bool)
+        or not 15_000 <= reconnect_elapsed <= 20_000
+        or restart.get("reconnect_budget_ms") != 20_000
         or restart.get("route_warmup_ipv6_packet_bytes") != 80
         or restart.get("route_warmup_echo_reply_received") is not True
         or restart.get("transport_mtu_before") != 1280
