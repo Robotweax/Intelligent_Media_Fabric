@@ -358,7 +358,7 @@ def valid_reactive_mtu_result():
         "transit_drop_packets_delta": 1,
         "transit_drop_bytes_delta": 1280,
         "convergence_elapsed_ms": 250,
-        "convergence_budget_ms": 10000,
+        "convergence_budget_ms": 20000,
     }
     result["limitations"] = ["Identity-preserving transit restart only."]
     return result

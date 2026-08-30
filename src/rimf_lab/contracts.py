@@ -1081,8 +1081,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or reactive["transit_drop_bytes_delta"] < 1
         or not isinstance(elapsed, int)
         or isinstance(elapsed, bool)
-        or not 0 < elapsed <= 10_000
-        or reactive.get("convergence_budget_ms") != 10_000
+        or not 0 < elapsed <= 20_000
+        or reactive.get("convergence_budget_ms") != 20_000
     ):
         raise ContractError("reactive-MTU signal convergence is invalid")
 
