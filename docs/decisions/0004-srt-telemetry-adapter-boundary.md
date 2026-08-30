@@ -83,8 +83,8 @@ The integration is observation-only. It grants no route, SRT, encoder, or relay 
 
 ## Consequences
 
-- OD-08 is closed. This ADR does not pass G4; retained cross-layer data-quality and golden-incident
-  experiments are still required.
+- OD-08 is closed. The deterministic adapter and negative clock-boundary fixture start G4 but do
+  not pass it; simultaneous live cross-layer golden incidents are still required.
 - The adapter must validate the upstream JSONL line against the pinned upstream schema before
   constructing the Fabric observation, then pass the executable Fabric validator.
 - The pinned upstream schema ID is
@@ -97,6 +97,7 @@ The integration is observation-only. It grants no route, SRT, encoder, or relay 
 
 ## Evidence
 
+- [G4 adapter and clock-boundary implementation result](../qualification/g4-unified-observation-data-quality-2026-08-30.md)
 - [Fabric-pinned Robotweax SRT candidate](https://github.com/Robotweax/srt_telemetry/blob/9e879b13d94e9e4f62e1e9167012e98c5b945c9d/qualification/candidates/robotweax-srt-0.2.0-11-ge3d61f7.json)
 - [Runtime and lifecycle result](https://github.com/Robotweax/srt_telemetry/blob/9e879b13d94e9e4f62e1e9167012e98c5b945c9d/qualification/results/2026-08-30-macos-arm64-public-srt-runtime-e3d61f7.json)
 - [Bidirectional interoperability result](https://github.com/Robotweax/srt_telemetry/blob/9e879b13d94e9e4f62e1e9167012e98c5b945c9d/qualification/results/2026-08-30-macos-arm64-public-srt-interop-e3d61f7.json)

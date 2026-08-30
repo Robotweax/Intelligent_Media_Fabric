@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "case_id": "srt-adapter-v1-first-sample",
+  "classification": "harness-only",
+  "gate_ids": ["G4"],
+  "adapter_contract": "rimf-srt-telemetry-adapter-v1",
+  "source_contract": {
+    "schema_id": "https://robotweax.com/schemas/srt-telemetry/telemetry-jsonl-line-v1alpha1.json",
+    "schema_sha256": "ec235ac4fcc4e1ffc0a3881dcb2fe7a206c80013de5f1b6e2a23a7de42ffcd8e",
+    "telemetry_revision": "9e879b13d94e9e4f62e1e9167012e98c5b945c9d",
+    "provider_revision": "e3d61f77e852001224b6586c63bcff46a3200223"
+  },
+  "files": {
+    "source.jsonl": "2ec272bfa3ec4698d4dbad21daa81adb4308ed178cbc487149c2fbf694d29439",
+    "context.json": "cdf5065b2d30be0afac60b32a3c4345345f919461812355ec17f0fabca9235ca",
+    "expected-observations.jsonl": "e6cca26c3abd83c09c659948e7e46678ff2fe03368a000b0b8334d205f08c616"
+  },
+  "expected": {
+    "sample_count": 1,
+    "event_id": "af5cdf11-8dd9-5934-b358-92ee554dd312",
+    "route_epoch": 7,
+    "availability": "partial",
+    "reason": "first-sample-delta-baseline",
+    "source_quality_flags": 1
+  },
+  "supported_claims": [
+    "The pinned upstream header and sample are preserved in the Fabric observation.",
+    "Explicit-policy Fabric identities and route epoch are attached without using SRT source identifiers as Fabric identities.",
+    "The first-sample quality boundary remains partial and the upstream bitmasks remain unchanged.",
+    "The event identifier and serialized output are deterministic for the frozen source and context."
+  ],
+  "non_claims": [
+    "This harness-only fixture is not a live SRT-over-FIPS observation.",
+    "It does not establish cross-host ordering, root cause, first divergent layer, or G4 passage.",
+    "It does not qualify Linux, IPv6, encryption, FEC, groups, fips0, or deployment performance."
+  ]
+}

@@ -24,10 +24,11 @@ replaced with an implicit implementation default.
 ## Immediate order
 
 OD-02 is closed by [ADR-0003](0003-fips-phase1-baseline.md) after the WP1 comparison. OD-08 is closed
-by [ADR-0004](0004-srt-telemetry-adapter-boundary.md); G4 still requires retained cross-layer
-data-quality and golden-incident evidence. OD-01, OD-03, OD-04, and OD-14 must close before G3 can
-pass. OD-12 must close before an external contributor or distributable artifact is accepted. OD-15
-must close before G6 can pass; the retained FIPS result proves route reparenting but not a usable
-session or media continuity. OD-16 must close before a reactive path-MTU result can contribute to
-G6; the current stock-daemon limitation and acceptance contract are documented in the
+by [ADR-0004](0004-srt-telemetry-adapter-boundary.md). G4 is in progress with a synthetic negative
+clock-boundary case; simultaneous live cross-layer incidents and first-divergent-layer evidence are
+still required. OD-01, OD-03, OD-04, and OD-14 must close before G3 can pass. OD-12 must close before
+an external contributor or distributable artifact is accepted. OD-15 must close before G6 can pass;
+the retained FIPS result proves route reparenting but not a usable session or media continuity.
+OD-16 must close before a reactive path-MTU result can contribute to G6; the current stock-daemon
+limitation and acceptance contract are documented in the
 [reactive path-MTU capability-gap assessment](../qualification/fips-g2-reactive-mtu-gap-2026-08-30.md).

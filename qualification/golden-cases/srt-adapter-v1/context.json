@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_namespace": "8a6314d8-7568-45f1-bf3d-7aec85b32f05",
+  "route_epoch": 7,
+  "clock": {
+    "domain_id": "lab-host-a-boot-0001",
+    "synchronization": "local-only",
+    "max_error_ns": null,
+    "cross_host_ordering_allowed": false
+  },
+  "fabric_identity": {
+    "tenant_id": "lab-tenant-0001",
+    "device_id": "lab-device-0001",
+    "stream_id": "lab-stream-0001",
+    "mapping": {
+      "tenant_id": "explicit-policy",
+      "device_id": "explicit-policy",
+      "stream_id": "explicit-policy"
+    }
+  },
+  "source_identifiers_pseudonymous": true,
+  "telemetry_revision": "9e879b13d94e9e4f62e1e9167012e98c5b945c9d"
+}

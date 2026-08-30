@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "event_id": "4a181b45-0a21-41d6-bfd0-dc1ba38a1b6a",
+  "source": "fips",
+  "observed_at": "2027-01-15T08:00:01Z",
+  "monotonic_ns": 2000000000,
+  "route_epoch": 7,
+  "clock": {
+    "domain_id": "lab-host-b-boot-0001",
+    "synchronization": "local-only",
+    "max_error_ns": null,
+    "cross_host_ordering_allowed": false
+  },
+  "tenant_id": "lab-tenant-0001",
+  "device_id": "lab-device-0001",
+  "stream_id": "lab-stream-0001",
+  "quality": {
+    "availability": "available",
+    "confidence": 1.0,
+    "reason": null
+  },
+  "payload": {
+    "metric_namespace": "fips.mmp",
+    "metric_semantics": "link-estimator",
+    "identity_mapping_authority": "explicit-policy",
+    "link_id": "psn-link-0001",
+    "loss_rate": 0.2,
+    "etx": 1.25,
+    "srtt_seconds": 0.08
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/telemetry/srt-telemetry-adapter-context-v1.json",
+  "title": "RIMF SRT Telemetry adapter context v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_namespace",
+    "route_epoch",
+    "clock",
+    "fabric_identity",
+    "source_identifiers_pseudonymous",
+    "telemetry_revision"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_namespace": {"type": "string", "format": "uuid"},
+    "route_epoch": {"type": "integer", "minimum": 0},
+    "clock": {
+      "$ref": "https://robotweax.example/schema/rimf/telemetry/srt-telemetry-observation-v1.json#/$defs/clock"
+    },
+    "fabric_identity": {
+      "$ref": "https://robotweax.example/schema/rimf/telemetry/srt-telemetry-observation-v1.json#/$defs/fabricIdentity"
+    },
+    "source_identifiers_pseudonymous": {"const": true},
+    "telemetry_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+  }
+}

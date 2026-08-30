@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
@@ -38,10 +41,39 @@ SRT_TELEMETRY_SCHEMA_SHA256 = (
 )
 SRT_TELEMETRY_VERSION = "0.1.0-alpha.0"
 SRT_ADAPTER_CONTRACT = "rimf-srt-telemetry-adapter-v1"
+RFC3339_NANO_RE = re.compile(
+    r"^(?P<base>[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2})"
+    r"(?:\.(?P<fraction>[0-9]{1,9}))?(?P<zone>[Zz]|[+-][0-9]{2}:[0-9]{2})$"
+)
 
 
 class ContractError(ValueError):
     """A repository or evidence contract is invalid."""
+
+
+def rfc3339_to_unix_nano(value: str, field: str = "timestamp") -> int:
+    match = RFC3339_NANO_RE.fullmatch(value)
+    if match is None:
+        raise ContractError(
+            f"{field} must be an RFC 3339 timestamp with at most 9 fractional digits"
+        )
+    zone = match.group("zone")
+    if zone.lower() == "z":
+        zone = "+00:00"
+    try:
+        parsed = datetime.fromisoformat(
+            f"{match.group('base').replace('t', 'T')}{zone}"
+        ).astimezone(timezone.utc)
+    except ValueError as exc:
+        raise ContractError(f"{field} must be an RFC 3339 timestamp") from exc
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    delta = parsed - epoch
+    fractional_nano = int((match.group("fraction") or "0").ljust(9, "0"))
+    return (
+        delta.days * 86_400 * 1_000_000_000
+        + delta.seconds * 1_000_000_000
+        + fractional_nano
+    )
 
 
 def load_json(path: Path) -> Any:
@@ -76,6 +108,17 @@ def _require_exact_fields(value: dict[str, Any], fields: set[str], context: str)
         raise ContractError(f"{context} is missing fields: {', '.join(sorted(missing))}")
     if unexpected:
         raise ContractError(f"{context} has unexpected fields: {', '.join(sorted(unexpected))}")
+
+
+def _require_finite_json_numbers(value: Any, context: str) -> None:
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ContractError(f"{context} contains a non-finite number")
+    if isinstance(value, dict):
+        for key, child in value.items():
+            _require_finite_json_numbers(child, f"{context}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _require_finite_json_numbers(child, f"{context}[{index}]")
 
 
 def validate_baselines(data: Any) -> None:
@@ -262,6 +305,156 @@ def validate_result(data: Any) -> None:
                 raise ContractError(f"result.cases[{index}].{stream_name}.sha256 is invalid")
 
 
+def _validate_observation_clock(value: Any) -> dict[str, Any]:
+    clock = _require_object(value, "clock")
+    _require_exact_fields(
+        clock,
+        {"domain_id", "synchronization", "max_error_ns", "cross_host_ordering_allowed"},
+        "clock",
+    )
+    _require_string(clock.get("domain_id"), "clock.domain_id")
+    synchronization = clock.get("synchronization")
+    if synchronization not in {"local-only", "unknown", "ntp", "ptp", "gps"}:
+        raise ContractError("clock.synchronization is invalid")
+    cross_host_ordering = clock.get("cross_host_ordering_allowed")
+    if not isinstance(cross_host_ordering, bool):
+        raise ContractError("clock.cross_host_ordering_allowed must be a boolean")
+    max_error_ns = clock.get("max_error_ns")
+    if synchronization in {"local-only", "unknown"}:
+        if max_error_ns is not None or cross_host_ordering:
+            raise ContractError(
+                "local-only or unknown clocks cannot authorize cross-host ordering"
+            )
+    else:
+        _require_nonnegative_integer(max_error_ns, "clock.max_error_ns")
+    return clock
+
+
+def _validate_fabric_identity(value: Any) -> dict[str, Any]:
+    fabric_identity = _require_object(value, "fabric_identity")
+    _require_exact_fields(
+        fabric_identity,
+        {"tenant_id", "device_id", "stream_id", "mapping"},
+        "fabric_identity",
+    )
+    mapping = _require_object(fabric_identity.get("mapping"), "fabric_identity.mapping")
+    identity_fields = {"tenant_id", "device_id", "stream_id"}
+    _require_exact_fields(mapping, identity_fields, "fabric_identity.mapping")
+    for field in sorted(identity_fields):
+        identity = fabric_identity.get(field)
+        authority = mapping.get(field)
+        if authority not in {"explicit-policy", "unavailable"}:
+            raise ContractError(f"fabric_identity.mapping.{field} is invalid")
+        if authority == "unavailable" and identity is not None:
+            raise ContractError(f"fabric_identity.{field} must be null when mapping is unavailable")
+        if authority == "explicit-policy":
+            _require_string(identity, f"fabric_identity.{field}")
+    return fabric_identity
+
+
+def validate_srt_adapter_context(data: Any) -> None:
+    root = _require_object(data, "SRT adapter context")
+    _require_exact_fields(
+        root,
+        {
+            "schema_version",
+            "event_namespace",
+            "route_epoch",
+            "clock",
+            "fabric_identity",
+            "source_identifiers_pseudonymous",
+            "telemetry_revision",
+        },
+        "SRT adapter context",
+    )
+    if root.get("schema_version") != 1:
+        raise ContractError("SRT adapter context schema_version must be 1")
+    event_namespace = _require_string(root.get("event_namespace"), "event_namespace")
+    if not UUID_RE.fullmatch(event_namespace):
+        raise ContractError("event_namespace must be a canonical lowercase UUID")
+    _require_nonnegative_integer(root.get("route_epoch"), "route_epoch")
+    _validate_observation_clock(root.get("clock"))
+    _validate_fabric_identity(root.get("fabric_identity"))
+    if root.get("source_identifiers_pseudonymous") is not True:
+        raise ContractError("source_identifiers_pseudonymous must be true")
+    telemetry_revision = _require_string(root.get("telemetry_revision"), "telemetry_revision")
+    if not COMMIT_RE.fullmatch(telemetry_revision):
+        raise ContractError("telemetry_revision must be a full lowercase Git commit")
+
+
+def validate_correlation_envelope(data: Any) -> None:
+    root = _require_object(data, "correlation envelope")
+    required = {
+        "schema_version",
+        "event_id",
+        "source",
+        "observed_at",
+        "monotonic_ns",
+        "route_epoch",
+        "clock",
+        "quality",
+        "payload",
+    }
+    allowed = required | {"tenant_id", "device_id", "stream_id"}
+    missing = required - set(root)
+    unexpected = set(root) - allowed
+    if missing:
+        raise ContractError(f"correlation envelope is missing fields: {', '.join(sorted(missing))}")
+    if unexpected:
+        raise ContractError(
+            f"correlation envelope has unexpected fields: {', '.join(sorted(unexpected))}"
+        )
+    if _require_nonnegative_integer(root.get("schema_version"), "schema_version") != 1:
+        raise ContractError("correlation envelope schema_version must be 1")
+    event_id = _require_string(root.get("event_id"), "event_id")
+    if not UUID_RE.fullmatch(event_id):
+        raise ContractError("event_id must be a canonical lowercase UUID")
+    if root.get("source") not in {"fips", "os", "media-validator", "fabric"}:
+        raise ContractError("correlation envelope source is invalid")
+    observed_at = _require_string(root.get("observed_at"), "observed_at")
+    rfc3339_to_unix_nano(observed_at, "observed_at")
+    _require_nonnegative_integer(root.get("monotonic_ns"), "monotonic_ns")
+    _require_nonnegative_integer(root.get("route_epoch"), "route_epoch")
+    _validate_observation_clock(root.get("clock"))
+    for field in ("tenant_id", "device_id", "stream_id"):
+        identity = root.get(field)
+        if identity is not None:
+            _require_string(identity, field)
+
+    quality = _require_object(root.get("quality"), "quality")
+    _require_exact_fields(quality, {"availability", "confidence", "reason"}, "quality")
+    availability = quality.get("availability")
+    if availability not in {"available", "partial", "unavailable"}:
+        raise ContractError("quality.availability is invalid")
+    confidence = quality.get("confidence")
+    if (
+        not isinstance(confidence, (int, float))
+        or isinstance(confidence, bool)
+        or not math.isfinite(confidence)
+        or not 0 <= confidence <= 1
+    ):
+        raise ContractError("quality.confidence must be a finite number in [0, 1]")
+    reason = quality.get("reason")
+    if availability == "available" and reason is not None:
+        raise ContractError("available quality requires a null reason")
+    if availability != "available":
+        _require_string(reason, "quality.reason")
+    payload = _require_object(root.get("payload"), "payload")
+    _require_finite_json_numbers(payload, "payload")
+    metric_namespace = _require_string(payload.get("metric_namespace"), "payload.metric_namespace")
+    _require_string(payload.get("metric_semantics"), "payload.metric_semantics")
+    namespace_prefix = {
+        "fips": "fips.",
+        "os": "os.",
+        "media-validator": "media.",
+        "fabric": "fabric.",
+    }[root["source"]]
+    if not metric_namespace.startswith(namespace_prefix):
+        raise ContractError(
+            f"payload.metric_namespace must begin with {namespace_prefix!r} for source {root['source']}"
+        )
+
+
 def validate_srt_telemetry_observation(data: Any) -> None:
     root = _require_object(data, "SRT telemetry observation")
     _require_exact_fields(
@@ -293,46 +486,8 @@ def validate_srt_telemetry_observation(data: Any) -> None:
     monotonic_ns = _require_nonnegative_integer(root.get("monotonic_ns"), "monotonic_ns")
     _require_nonnegative_integer(root.get("route_epoch"), "route_epoch")
 
-    clock = _require_object(root.get("clock"), "clock")
-    _require_exact_fields(
-        clock,
-        {"domain_id", "synchronization", "max_error_ns", "cross_host_ordering_allowed"},
-        "clock",
-    )
-    _require_string(clock.get("domain_id"), "clock.domain_id")
-    synchronization = clock.get("synchronization")
-    if synchronization not in {"local-only", "unknown", "ntp", "ptp", "gps"}:
-        raise ContractError("clock.synchronization is invalid")
-    cross_host_ordering = clock.get("cross_host_ordering_allowed")
-    if not isinstance(cross_host_ordering, bool):
-        raise ContractError("clock.cross_host_ordering_allowed must be a boolean")
-    max_error_ns = clock.get("max_error_ns")
-    if synchronization in {"local-only", "unknown"}:
-        if max_error_ns is not None or cross_host_ordering:
-            raise ContractError(
-                "local-only or unknown clocks cannot authorize cross-host ordering"
-            )
-    else:
-        _require_nonnegative_integer(max_error_ns, "clock.max_error_ns")
-
-    fabric_identity = _require_object(root.get("fabric_identity"), "fabric_identity")
-    _require_exact_fields(
-        fabric_identity,
-        {"tenant_id", "device_id", "stream_id", "mapping"},
-        "fabric_identity",
-    )
-    mapping = _require_object(fabric_identity.get("mapping"), "fabric_identity.mapping")
-    identity_fields = {"tenant_id", "device_id", "stream_id"}
-    _require_exact_fields(mapping, identity_fields, "fabric_identity.mapping")
-    for field in sorted(identity_fields):
-        value = fabric_identity.get(field)
-        authority = mapping.get(field)
-        if authority not in {"explicit-policy", "unavailable"}:
-            raise ContractError(f"fabric_identity.mapping.{field} is invalid")
-        if authority == "unavailable" and value is not None:
-            raise ContractError(f"fabric_identity.{field} must be null when mapping is unavailable")
-        if authority == "explicit-policy":
-            _require_string(value, f"fabric_identity.{field}")
+    _validate_observation_clock(root.get("clock"))
+    _validate_fabric_identity(root.get("fabric_identity"))
 
     source_identity = _require_object(root.get("source_identity"), "source_identity")
     _require_exact_fields(
@@ -514,6 +669,312 @@ def validate_srt_telemetry_observation(data: Any) -> None:
     for actual, expected, label in expected_equalities:
         if actual != expected:
             raise ContractError(f"{label} must be preserved without reinterpretation")
+
+
+def validate_srt_adapter_golden_case(directory: Path) -> None:
+    directory = directory.resolve()
+    manifest = _require_object(load_json(directory / "manifest.json"), "SRT adapter manifest")
+    _require_exact_fields(
+        manifest,
+        {
+            "schema_version",
+            "case_id",
+            "classification",
+            "gate_ids",
+            "adapter_contract",
+            "source_contract",
+            "files",
+            "expected",
+            "supported_claims",
+            "non_claims",
+        },
+        "SRT adapter manifest",
+    )
+    if manifest.get("schema_version") != 1:
+        raise ContractError("SRT adapter manifest schema_version must be 1")
+    case_id = _require_string(manifest.get("case_id"), "SRT adapter manifest.case_id")
+    if not SCENARIO_ID_RE.fullmatch(case_id):
+        raise ContractError("SRT adapter manifest.case_id is invalid")
+    if manifest.get("classification") != "harness-only" or manifest.get("gate_ids") != ["G4"]:
+        raise ContractError("SRT adapter manifest must be harness-only G4 material")
+    if manifest.get("adapter_contract") != SRT_ADAPTER_CONTRACT:
+        raise ContractError("SRT adapter manifest adapter_contract is invalid")
+
+    source_contract = _require_object(manifest.get("source_contract"), "source_contract")
+    _require_exact_fields(
+        source_contract,
+        {"schema_id", "schema_sha256", "telemetry_revision", "provider_revision"},
+        "source_contract",
+    )
+    if (
+        source_contract.get("schema_id") != SRT_TELEMETRY_SCHEMA_ID
+        or source_contract.get("schema_sha256") != SRT_TELEMETRY_SCHEMA_SHA256
+    ):
+        raise ContractError("SRT adapter manifest source schema pin is invalid")
+    for field in ("telemetry_revision", "provider_revision"):
+        revision = _require_string(source_contract.get(field), f"source_contract.{field}")
+        if not COMMIT_RE.fullmatch(revision):
+            raise ContractError(f"source_contract.{field} must be a full lowercase Git commit")
+
+    files = _require_object(manifest.get("files"), "SRT adapter manifest.files")
+    expected_files = {"source.jsonl", "context.json", "expected-observations.jsonl"}
+    _require_exact_fields(files, expected_files, "SRT adapter manifest.files")
+    for name in sorted(expected_files):
+        digest = _require_string(files.get(name), f"SRT adapter manifest.files.{name}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"SRT adapter manifest.files.{name} is not a SHA-256 digest")
+        path = directory / name
+        try:
+            actual_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise ContractError(f"cannot read SRT adapter golden file {path}: {exc}") from exc
+        if actual_digest != digest:
+            raise ContractError(f"SRT adapter golden file hash mismatch: {name}")
+
+    expected = _require_object(manifest.get("expected"), "SRT adapter manifest.expected")
+    _require_exact_fields(
+        expected,
+        {
+            "sample_count",
+            "event_id",
+            "route_epoch",
+            "availability",
+            "reason",
+            "source_quality_flags",
+        },
+        "SRT adapter manifest.expected",
+    )
+    sample_count = _require_nonnegative_integer(expected.get("sample_count"), "expected.sample_count")
+    event_id = _require_string(expected.get("event_id"), "expected.event_id")
+    if not UUID_RE.fullmatch(event_id):
+        raise ContractError("expected.event_id must be a canonical lowercase UUID")
+    _require_nonnegative_integer(expected.get("route_epoch"), "expected.route_epoch")
+    _require_nonnegative_integer(
+        expected.get("source_quality_flags"), "expected.source_quality_flags"
+    )
+    if expected.get("availability") not in {"available", "partial", "unavailable"}:
+        raise ContractError("expected.availability is invalid")
+    if expected.get("reason") is not None:
+        _require_string(expected.get("reason"), "expected.reason")
+
+    observations_path = directory / "expected-observations.jsonl"
+    try:
+        lines = observations_path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ContractError(f"cannot read {observations_path}: {exc}") from exc
+    if len(lines) != sample_count:
+        raise ContractError("SRT adapter golden observation count is invalid")
+    observations: list[dict[str, Any]] = []
+    for index, line in enumerate(lines):
+        try:
+            observation = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ContractError(f"SRT adapter golden observation {index} is invalid JSON") from exc
+        validate_srt_telemetry_observation(observation)
+        observations.append(observation)
+    if sample_count:
+        first = observations[0]
+        if (
+            first["event_id"] != expected["event_id"]
+            or first["route_epoch"] != expected["route_epoch"]
+            or first["quality"]["availability"] != expected["availability"]
+            or first["quality"]["reason"] != expected["reason"]
+            or first["quality"]["source_quality_flags"] != expected["source_quality_flags"]
+        ):
+            raise ContractError("SRT adapter golden first observation differs from manifest")
+
+    for field in ("supported_claims", "non_claims"):
+        claims = manifest.get(field)
+        if not isinstance(claims, list) or not claims or any(
+            not isinstance(claim, str) or not claim for claim in claims
+        ):
+            raise ContractError(f"SRT adapter manifest.{field} must be a non-empty string array")
+
+
+def validate_g4_ordering_assessment(data: Any) -> None:
+    root = _require_object(data, "G4 ordering assessment")
+    _require_exact_fields(
+        root,
+        {
+            "schema_version",
+            "analysis_id",
+            "analysis_scope",
+            "inputs",
+            "clock_assessment",
+            "outcome",
+            "ordering",
+            "reason",
+            "metric_semantics_separate",
+            "supported_claims",
+            "non_claims",
+        },
+        "G4 ordering assessment",
+    )
+    if root.get("schema_version") != 1 or root.get("analysis_scope") != "ordering-only":
+        raise ContractError("G4 ordering assessment schema/scope is invalid")
+    analysis_id = _require_string(root.get("analysis_id"), "analysis_id")
+    if not UUID_RE.fullmatch(analysis_id):
+        raise ContractError("analysis_id must be a canonical lowercase UUID")
+
+    inputs = _require_object(root.get("inputs"), "inputs")
+    _require_exact_fields(inputs, {"srt", "peer"}, "inputs")
+    for name in ("srt", "peer"):
+        item = _require_object(inputs.get(name), f"inputs.{name}")
+        expected_fields = {"event_id", "sha256", "route_epoch", "clock_domain"}
+        if name == "peer":
+            expected_fields.add("source")
+        _require_exact_fields(item, expected_fields, f"inputs.{name}")
+        event_id = _require_string(item.get("event_id"), f"inputs.{name}.event_id")
+        if not UUID_RE.fullmatch(event_id):
+            raise ContractError(f"inputs.{name}.event_id is invalid")
+        digest = _require_string(item.get("sha256"), f"inputs.{name}.sha256")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"inputs.{name}.sha256 is invalid")
+        _require_nonnegative_integer(item.get("route_epoch"), f"inputs.{name}.route_epoch")
+        _require_string(item.get("clock_domain"), f"inputs.{name}.clock_domain")
+    if inputs["peer"].get("source") not in {"fips", "os", "media-validator", "fabric"}:
+        raise ContractError("inputs.peer.source is invalid")
+
+    clock = _require_object(root.get("clock_assessment"), "clock_assessment")
+    _require_exact_fields(
+        clock,
+        {"same_domain", "ordering_authorized", "basis", "combined_max_error_ns"},
+        "clock_assessment",
+    )
+    for field in ("same_domain", "ordering_authorized"):
+        if not isinstance(clock.get(field), bool):
+            raise ContractError(f"clock_assessment.{field} must be a boolean")
+    if clock.get("basis") not in {"shared-monotonic-domain", "bounded-wall-clock", "none"}:
+        raise ContractError("clock_assessment.basis is invalid")
+    combined_error = clock.get("combined_max_error_ns")
+    if clock["basis"] == "bounded-wall-clock":
+        _require_nonnegative_integer(combined_error, "clock_assessment.combined_max_error_ns")
+    elif combined_error is not None:
+        raise ContractError("combined_max_error_ns is only valid for bounded wall-clock ordering")
+
+    outcome = root.get("outcome")
+    ordering = root.get("ordering")
+    reason = root.get("reason")
+    if outcome not in {"ordered", "insufficient-evidence"}:
+        raise ContractError("G4 ordering assessment outcome is invalid")
+    if ordering not in {"srt-before-peer", "peer-before-srt", "unknown"}:
+        raise ContractError("G4 ordering assessment ordering is invalid")
+    valid_reasons = {
+        "shared-monotonic-order",
+        "bounded-wall-clock-order",
+        "route-epoch-mismatch",
+        "source-quality-unavailable",
+        "clock-domains-not-comparable",
+        "clock-uncertainty-overlap",
+        "clock-resolution-tie",
+    }
+    if reason not in valid_reasons:
+        raise ContractError("G4 ordering assessment reason is invalid")
+    if outcome == "ordered":
+        if ordering == "unknown" or not clock["ordering_authorized"]:
+            raise ContractError("ordered outcome requires an authorized concrete order")
+        if reason not in {"shared-monotonic-order", "bounded-wall-clock-order"}:
+            raise ContractError("ordered outcome has an invalid reason")
+    elif ordering != "unknown":
+        raise ContractError("insufficient-evidence outcome must keep ordering unknown")
+    if root.get("metric_semantics_separate") is not True:
+        raise ContractError("metric_semantics_separate must be true")
+    for field in ("supported_claims", "non_claims"):
+        claims = root.get(field)
+        if not isinstance(claims, list) or not claims or any(
+            not isinstance(claim, str) or not claim for claim in claims
+        ):
+            raise ContractError(f"G4 ordering assessment.{field} must be a string array")
+
+
+def validate_g4_clock_domain_golden_case(directory: Path) -> None:
+    directory = directory.resolve()
+    manifest = _require_object(load_json(directory / "manifest.json"), "G4 golden manifest")
+    _require_exact_fields(
+        manifest,
+        {
+            "schema_version",
+            "case_id",
+            "classification",
+            "gate_ids",
+            "input_origin",
+            "live_capture",
+            "files",
+            "expected",
+            "supported_claims",
+            "non_claims",
+        },
+        "G4 golden manifest",
+    )
+    if manifest.get("schema_version") != 1:
+        raise ContractError("G4 golden manifest schema_version must be 1")
+    case_id = _require_string(manifest.get("case_id"), "G4 golden manifest.case_id")
+    if not SCENARIO_ID_RE.fullmatch(case_id):
+        raise ContractError("G4 golden manifest.case_id is invalid")
+    if manifest.get("classification") != "harness-only" or manifest.get("gate_ids") != ["G4"]:
+        raise ContractError("G4 golden manifest must be harness-only G4 material")
+    if (
+        manifest.get("input_origin") != "synthetic-contract-fixture"
+        or manifest.get("live_capture") is not False
+    ):
+        raise ContractError("G4 golden manifest must explicitly declare its synthetic origin")
+
+    files = _require_object(manifest.get("files"), "G4 golden manifest.files")
+    expected_files = {"srt-observation.json", "fips-observation.json", "expected-assessment.json"}
+    _require_exact_fields(files, expected_files, "G4 golden manifest.files")
+    actual_digests: dict[str, str] = {}
+    for name in sorted(expected_files):
+        digest = _require_string(files.get(name), f"G4 golden manifest.files.{name}")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ContractError(f"G4 golden manifest.files.{name} is not a SHA-256 digest")
+        try:
+            actual = hashlib.sha256((directory / name).read_bytes()).hexdigest()
+        except OSError as exc:
+            raise ContractError(f"cannot read G4 golden file {directory / name}: {exc}") from exc
+        if actual != digest:
+            raise ContractError(f"G4 golden file hash mismatch: {name}")
+        actual_digests[name] = actual
+
+    srt = load_json(directory / "srt-observation.json")
+    peer = load_json(directory / "fips-observation.json")
+    assessment = load_json(directory / "expected-assessment.json")
+    validate_srt_telemetry_observation(srt)
+    validate_correlation_envelope(peer)
+    validate_g4_ordering_assessment(assessment)
+    if assessment["inputs"]["srt"]["sha256"] != actual_digests["srt-observation.json"]:
+        raise ContractError("G4 assessment SRT digest does not match its input")
+    if assessment["inputs"]["peer"]["sha256"] != actual_digests["fips-observation.json"]:
+        raise ContractError("G4 assessment peer digest does not match its input")
+
+    expected = _require_object(manifest.get("expected"), "G4 golden manifest.expected")
+    _require_exact_fields(
+        expected,
+        {
+            "outcome",
+            "ordering",
+            "reason",
+            "same_domain",
+            "ordering_authorized",
+            "metric_semantics_separate",
+        },
+        "G4 golden manifest.expected",
+    )
+    actual_expected = {
+        "outcome": assessment["outcome"],
+        "ordering": assessment["ordering"],
+        "reason": assessment["reason"],
+        "same_domain": assessment["clock_assessment"]["same_domain"],
+        "ordering_authorized": assessment["clock_assessment"]["ordering_authorized"],
+        "metric_semantics_separate": assessment["metric_semantics_separate"],
+    }
+    if actual_expected != expected:
+        raise ContractError("G4 golden assessment differs from manifest expectations")
+    for field in ("supported_claims", "non_claims"):
+        claims = manifest.get(field)
+        if not isinstance(claims, list) or not claims or any(
+            not isinstance(claim, str) or not claim for claim in claims
+        ):
+            raise ContractError(f"G4 golden manifest.{field} must be a string array")
 
 
 def validate_fips_source_assessment(data: Any) -> None:
@@ -2449,6 +2910,18 @@ def validate_repository(root: Path) -> None:
         validate_srt_telemetry_observation(load_json(srt_observation_fixture))
     except ContractError as exc:
         errors.append(f"{srt_observation_fixture.relative_to(root)}: {exc}")
+    try:
+        validate_srt_adapter_golden_case(
+            root / "qualification/golden-cases/srt-adapter-v1"
+        )
+    except ContractError as exc:
+        errors.append(f"qualification/golden-cases/srt-adapter-v1: {exc}")
+    try:
+        validate_g4_clock_domain_golden_case(
+            root / "qualification/golden-cases/g4-clock-domain-boundary-v1"
+        )
+    except ContractError as exc:
+        errors.append(f"qualification/golden-cases/g4-clock-domain-boundary-v1: {exc}")
 
     for path in _iter_repository_files(root):
         if path.suffix not in TEXT_SUFFIXES and path.name not in {"Makefile"}:

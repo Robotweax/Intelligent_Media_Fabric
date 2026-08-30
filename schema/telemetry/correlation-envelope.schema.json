@@ -11,6 +11,7 @@
     "observed_at",
     "monotonic_ns",
     "route_epoch",
+    "clock",
     "quality",
     "payload"
   ],
@@ -18,9 +19,16 @@
     "schema_version": {"const": 1},
     "event_id": {"type": "string", "format": "uuid"},
     "source": {"enum": ["fips", "os", "media-validator", "fabric"]},
-    "observed_at": {"type": "string", "format": "date-time"},
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?([Zz]|[+-][0-9]{2}:[0-9]{2})$"
+    },
     "monotonic_ns": {"type": "integer", "minimum": 0},
     "route_epoch": {"type": "integer", "minimum": 0},
+    "clock": {
+      "$ref": "https://robotweax.example/schema/rimf/telemetry/srt-telemetry-observation-v1.json#/$defs/clock"
+    },
     "tenant_id": {"type": ["string", "null"]},
     "device_id": {"type": ["string", "null"]},
     "stream_id": {"type": ["string", "null"]},
@@ -34,7 +42,14 @@
       },
       "additionalProperties": false
     },
-    "payload": {"type": "object"}
+    "payload": {
+      "type": "object",
+      "required": ["metric_namespace", "metric_semantics"],
+      "properties": {
+        "metric_namespace": {"type": "string", "minLength": 1},
+        "metric_semantics": {"type": "string", "minLength": 1}
+      }
+    }
   },
   "additionalProperties": false
 }

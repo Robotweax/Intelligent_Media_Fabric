@@ -81,6 +81,7 @@ and FIPS metrics.
 Within that boundary:
 
 - adapters collect SRT, FIPS, and OS measurements;
+- the SRT JSONL adapter validates complete pinned records before atomically publishing observations;
 - a correlation envelope aligns monotonic and wall-clock time;
 - route epochs make path changes explicit;
 - the recorder produces bounded, provenance-complete evidence; and
@@ -88,6 +89,11 @@ Within that boundary:
 
 It must not mutate routes, SRT settings, encoders, or relay selection until a later gate grants that
 authority. Unavailable inputs remain unavailable.
+
+The first ordering-only implementation compares route epoch and declared clock domains before any
+timestamp inference. Distinct `local-only` domains produce `insufficient-evidence`, even when Fabric
+identity and route epoch match. An authorized timestamp order is only a prerequisite for later
+cross-layer diagnosis, never a root-cause result by itself.
 
 ## Failure and security boundaries
 

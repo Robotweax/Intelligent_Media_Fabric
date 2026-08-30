@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "case_id": "g4-clock-domain-boundary-v1",
+  "classification": "harness-only",
+  "gate_ids": ["G4"],
+  "input_origin": "synthetic-contract-fixture",
+  "live_capture": false,
+  "files": {
+    "srt-observation.json": "e6cca26c3abd83c09c659948e7e46678ff2fe03368a000b0b8334d205f08c616",
+    "fips-observation.json": "b3e7f91a9d975dfeaaec4f41547e016edae728118b58bccdab764cdb8a6e1518",
+    "expected-assessment.json": "63e41862db2819eb9e68740e5234b63f1b977bc12e0d2dbb3aa9b6ed0abeb90d"
+  },
+  "expected": {
+    "outcome": "insufficient-evidence",
+    "ordering": "unknown",
+    "reason": "clock-domains-not-comparable",
+    "same_domain": false,
+    "ordering_authorized": false,
+    "metric_semantics_separate": true
+  },
+  "supported_claims": [
+    "The ordering-only analyzer rejects cross-host ordering between two distinct local-only clock domains.",
+    "The route epoch and explicit Fabric identities can match without making the clocks comparable.",
+    "FIPS MMP loss_rate remains a link-estimator value and is not equated with SRT loss, drop, or retransmission counters."
+  ],
+  "non_claims": [
+    "The synthetic fixture is not a live or simultaneous SRT-over-FIPS capture.",
+    "It does not identify a first divergent layer, failure domain, or root cause.",
+    "It does not pass G4 or authorize control actions."
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/g4-ordering-assessment-v1.json",
+  "title": "RIMF G4 cross-layer ordering assessment v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analysis_id",
+    "analysis_scope",
+    "inputs",
+    "clock_assessment",
+    "outcome",
+    "ordering",
+    "reason",
+    "metric_semantics_separate",
+    "supported_claims",
+    "non_claims"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "analysis_id": {"type": "string", "format": "uuid"},
+    "analysis_scope": {"const": "ordering-only"},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["srt", "peer"],
+      "properties": {
+        "srt": {"$ref": "#/$defs/srtInput"},
+        "peer": {"$ref": "#/$defs/peerInput"}
+      }
+    },
+    "clock_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["same_domain", "ordering_authorized", "basis", "combined_max_error_ns"],
+      "properties": {
+        "same_domain": {"type": "boolean"},
+        "ordering_authorized": {"type": "boolean"},
+        "basis": {"enum": ["shared-monotonic-domain", "bounded-wall-clock", "none"]},
+        "combined_max_error_ns": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "outcome": {"enum": ["ordered", "insufficient-evidence"]},
+    "ordering": {"enum": ["srt-before-peer", "peer-before-srt", "unknown"]},
+    "reason": {
+      "enum": [
+        "shared-monotonic-order",
+        "bounded-wall-clock-order",
+        "route-epoch-mismatch",
+        "source-quality-unavailable",
+        "clock-domains-not-comparable",
+        "clock-uncertainty-overlap",
+        "clock-resolution-tie"
+      ]
+    },
+    "metric_semantics_separate": {"const": true},
+    "supported_claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "non_claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "$defs": {
+    "srtInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "sha256", "route_epoch", "clock_domain"],
+      "properties": {
+        "event_id": {"type": "string", "format": "uuid"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "route_epoch": {"type": "integer", "minimum": 0},
+        "clock_domain": {"type": "string", "minLength": 1}
+      }
+    },
+    "peerInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "sha256", "route_epoch", "clock_domain", "source"],
+      "properties": {
+        "event_id": {"type": "string", "format": "uuid"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "route_epoch": {"type": "integer", "minimum": 0},
+        "clock_domain": {"type": "string", "minLength": 1},
+        "source": {"enum": ["fips", "os", "media-validator", "fabric"]}
+      }
+    }
+  }
+}

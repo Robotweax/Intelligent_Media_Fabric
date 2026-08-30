@@ -7,6 +7,7 @@ from pathlib import Path
 from .contracts import (
     ContractError,
     load_json,
+    validate_correlation_envelope,
     validate_fips_g2_linux_alternate_route_result,
     validate_fips_g2_linux_delay_mmp_result,
     validate_fips_g2_linux_direct_result,
@@ -16,11 +17,13 @@ from .contracts import (
     validate_fips_g2_linux_multihop_mtu_result,
     validate_fips_g2_linux_nat_result,
     validate_fips_source_assessment,
+    validate_g4_ordering_assessment,
     validate_repository,
     validate_result,
     validate_scenario,
     validate_srt_telemetry_observation,
 )
+from .cross_layer import assess_cross_layer_ordering
 from .fips_g2_linux import QualificationError, run_fips_g2_linux_direct
 from .fips_g2_linux_alternate_route import run_fips_g2_linux_alternate_route
 from .fips_g2_linux_delay_mmp import run_fips_g2_linux_delay_mmp
@@ -32,6 +35,7 @@ from .fips_g2_linux_managed_transit import (
 )
 from .fips_g2_linux_nat import run_fips_g2_linux_nat
 from .runner import run_scenario
+from .srt_adapter import adapt_srt_telemetry_jsonl
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -54,6 +58,34 @@ def _parser() -> argparse.ArgumentParser:
         help="validate an SRT Telemetry to Fabric adapter observation",
     )
     srt_observation_parser.add_argument("path", type=Path)
+
+    srt_adapter_parser = subparsers.add_parser(
+        "adapt-srt-telemetry-jsonl",
+        help="convert a pinned SRT Telemetry JSONL snapshot into Fabric observations",
+    )
+    srt_adapter_parser.add_argument("--source", type=Path, required=True)
+    srt_adapter_parser.add_argument("--context", type=Path, required=True)
+    srt_adapter_parser.add_argument("--output", type=Path, required=True)
+
+    correlation_parser = subparsers.add_parser(
+        "validate-correlation-envelope",
+        help="validate a non-SRT Fabric correlation envelope",
+    )
+    correlation_parser.add_argument("path", type=Path)
+
+    ordering_validation_parser = subparsers.add_parser(
+        "validate-g4-ordering-assessment",
+        help="validate a G4 ordering-only cross-layer assessment",
+    )
+    ordering_validation_parser.add_argument("path", type=Path)
+
+    ordering_parser = subparsers.add_parser(
+        "assess-cross-layer-ordering",
+        help="assess whether an SRT and peer observation have an authorized temporal order",
+    )
+    ordering_parser.add_argument("--srt", type=Path, required=True)
+    ordering_parser.add_argument("--peer", type=Path, required=True)
+    ordering_parser.add_argument("--output", type=Path, required=True)
 
     fips_parser = subparsers.add_parser(
         "validate-fips-assessment", help="validate a retained FIPS source/build assessment"
@@ -206,6 +238,24 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-srt-telemetry-observation":
             validate_srt_telemetry_observation(load_json(args.path))
             print(f"SRT telemetry observation validation: OK ({args.path})")
+        elif args.command == "adapt-srt-telemetry-jsonl":
+            result = adapt_srt_telemetry_jsonl(args.source, args.context, args.output)
+            print(
+                "SRT telemetry adaptation: "
+                f"{result['status']} ({result['sample_count']} samples, {args.output})"
+            )
+        elif args.command == "validate-correlation-envelope":
+            validate_correlation_envelope(load_json(args.path))
+            print(f"correlation envelope validation: OK ({args.path})")
+        elif args.command == "validate-g4-ordering-assessment":
+            validate_g4_ordering_assessment(load_json(args.path))
+            print(f"G4 ordering assessment validation: OK ({args.path})")
+        elif args.command == "assess-cross-layer-ordering":
+            result = assess_cross_layer_ordering(args.srt, args.peer, args.output)
+            print(
+                "cross-layer ordering assessment: "
+                f"{result['outcome']} ({result['reason']}, {args.output})"
+            )
         elif args.command == "validate-fips-assessment":
             validate_fips_source_assessment(load_json(args.path))
             print(f"FIPS assessment validation: OK ({args.path})")

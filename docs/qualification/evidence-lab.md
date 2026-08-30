@@ -266,3 +266,21 @@ not expose netem PRNG seeding. The observed overlay loss is therefore bounded ra
 follow an identical drop trace. It does not qualify bursts, jitter, reordering, duplication,
 corruption, bandwidth limits, queue pressure, route changes, NAT, SRT, or production telemetry
 thresholds.
+
+## G4 SRT adapter and ordering-only harness
+
+The standard-library SRT adapter validates a complete pinned SRT Telemetry JSONL snapshot and an
+explicit Fabric context before writing any output. It rejects unknown fields, invalid source types,
+record-count mismatch, non-increasing sample indices, inconsistent counter-reset flags, implicit
+identity mappings, unqualified cross-host clocks, output overwrite, and source/context/output path
+aliasing. Successful output is deterministic JSONL published through an exclusive atomic link.
+
+`assess-cross-layer-ordering` then validates one SRT observation and one non-SRT correlation
+envelope. It compares route epochs first, then source quality and clock domains. A shared monotonic
+domain may establish local order. Different domains require both producers to authorize cross-host
+ordering and declare bounded clock errors; overlapping uncertainty remains unknown. The result is
+ordering-only and never a root-cause or first-divergent-layer conclusion.
+
+The retained harness case deliberately pairs distinct `local-only` SRT and FIPS clocks and requires
+`insufficient-evidence`. It is synthetic contract material, not a simultaneous capture. See the
+[G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).

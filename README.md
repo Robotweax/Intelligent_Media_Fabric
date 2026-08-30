@@ -49,7 +49,7 @@ The first technical question is deliberately narrower than the eventual product 
 ```text
 dependency-pins/       Immutable external baselines
 docs/                  Architecture, decisions, security, protocols, and qualification
-qualification/         Experiment scenarios and retained-result schemas
+qualification/         Experiment scenarios, golden contract cases, and retained results
 schema/                Telemetry, policy, and qualification contracts
 src/rimf_lab/           Standard-library evidence harness
 tests/                 Harness and contract tests
