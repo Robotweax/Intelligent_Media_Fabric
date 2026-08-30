@@ -732,7 +732,7 @@ def run_fips_g2_linux_managed_transit(
             _wait_for(
                 withdrawn_line,
                 label="pre-restart line link withdrawal",
-                timeout=10,
+                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
             )
 
             phase = "transit-mtu-restart"
