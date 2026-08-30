@@ -54,19 +54,26 @@ def render_config(
     *,
     dns_enabled: bool = False,
     udp_mtu: int = TUN_MTU,
+    persistent_identity: bool = False,
+    tick_interval_secs: int | None = None,
 ) -> str:
     dns_config = (
         '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
         if dns_enabled
         else "  enabled: false"
     )
+    tick_config = (
+        f"  tick_interval_secs: {tick_interval_secs}\n"
+        if tick_interval_secs is not None
+        else ""
+    )
     return f"""node:
   identity:
-    persistent: false
+    persistent: {str(persistent_identity).lower()}
   control:
     enabled: true
     socket_path: "{control_socket}"
-  log_level: warn
+{tick_config}  log_level: warn
 
 tun:
   enabled: true

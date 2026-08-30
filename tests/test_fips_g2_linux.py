@@ -12,6 +12,7 @@ from rimf_lab.contracts import (
     validate_fips_g2_linux_managed_transit_result,
     validate_fips_g2_linux_multihop_mtu_result,
     validate_fips_g2_linux_nat_result,
+    validate_fips_g2_linux_reactive_mtu_result,
 )
 from rimf_lab.fips_g2_linux_alternate_route import (
     alternate_route_timings_within_contract,
@@ -33,6 +34,8 @@ from rimf_lab.fips_g2_linux_managed_transit import (
     coordinate_cache_path_mtu,
     forwarding_counters,
     line_peer_relationships,
+    mtu_drop_counters,
+    mtu_error_counters,
     session_path_mtu,
 )
 from rimf_lab.icmpv6_ptb_probe import parse_packet_too_big
@@ -305,6 +308,59 @@ def valid_multihop_mtu_result():
     ):
         record["bytes"] = size
     result["limitations"] = ["One heterogeneous managed-transit MTU only."]
+    return result
+
+
+def valid_reactive_mtu_result():
+    result = deepcopy(valid_multihop_mtu_result())
+    result["evidence_type"] = "fips-g2-linux-reactive-mtu"
+    result["topology"] = {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu_per_node": [1280, 1280, 1280],
+        "initial_udp_mtu_per_node": [1280, 1280, 1280],
+        "final_udp_mtu_per_node": [1280, 1000, 1280],
+        "bottleneck_node": "r",
+    }
+    result["observations"]["nodes"][1]["effective_ipv6_mtu"] = 1203
+    result["observations"]["initial_path_mtu"] = {
+        "configured_transport_path_mtu": 1280,
+        "endpoint_session_path_mtus": [1280, 1280],
+        "coordinate_cache_path_mtu": 1280,
+    }
+    result["observations"]["transit_restart"] = {
+        "configuration_application": "identity-preserving-process-restart",
+        "transport_config_hot_reload_supported": False,
+        "endpoint_daemons_restarted": False,
+        "transit_identity_preserved": True,
+        "transit_process_restarted": True,
+        "manual_link_reconnect_commands": 2,
+        "transport_mtu_before": 1280,
+        "transport_mtu_after": 1000,
+        "endpoint_session_start_ms_before": [1000, 1001],
+        "endpoint_session_start_ms_after": [1000, 1001],
+    }
+    result["observations"]["reactive_mtu"] = {
+        "trigger_ipv6_packet_bytes": 1203,
+        "session_path_mtu_before": 1280,
+        "session_path_mtu_after": 1000,
+        "coordinate_cache_path_mtu_after": 1000,
+        "endpoint_mtu_exceeded_delta": 1,
+        "endpoint_below_floor_delta": 0,
+        "endpoint_uncorroborated_delta": 0,
+        "transit_drop_packets_delta": 1,
+        "transit_drop_bytes_delta": 1280,
+        "convergence_elapsed_ms": 250,
+        "convergence_budget_ms": 10000,
+    }
+    result["limitations"] = ["Identity-preserving transit restart only."]
     return result
 
 
@@ -783,6 +839,51 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         result["observations"]["path_mtu"]["reported_mtu"] = 1203
         with self.assertRaisesRegex(ContractError, "path_mtu"):
             validate_fips_g2_linux_multihop_mtu_result(result)
+
+    def test_reactive_config_freezes_identity_and_tick_window(self):
+        config = render_config(
+            Path("/tmp/rimf/control.sock"),
+            "0.0.0.0",
+            dns_enabled=True,
+            udp_mtu=1000,
+            persistent_identity=True,
+            tick_interval_secs=15,
+        )
+        self.assertIn("persistent: true", config)
+        self.assertIn("tick_interval_secs: 15", config)
+        self.assertIn("mtu: 1000", config)
+
+    def test_extracts_reactive_mtu_counters(self):
+        routing = {
+            "error_signals": {
+                "mtu_exceeded": 2,
+                "mtu_exceeded_below_floor": 0,
+                "mtu_exceeded_uncorroborated": 0,
+            },
+            "forwarding": {
+                "drop_mtu_exceeded_packets": 3,
+                "drop_mtu_exceeded_bytes": 3840,
+            },
+        }
+        self.assertEqual(mtu_error_counters(routing), (2, 0, 0))
+        self.assertEqual(mtu_drop_counters(routing), (3, 3840))
+
+    def test_accepts_complete_reactive_mtu_result(self):
+        validate_fips_g2_linux_reactive_mtu_result(valid_reactive_mtu_result())
+
+    def test_rejects_reactive_mtu_without_transit_drop(self):
+        result = valid_reactive_mtu_result()
+        result["observations"]["reactive_mtu"]["transit_drop_packets_delta"] = 0
+        with self.assertRaisesRegex(ContractError, "signal convergence"):
+            validate_fips_g2_linux_reactive_mtu_result(result)
+
+    def test_rejects_reactive_mtu_session_replacement(self):
+        result = valid_reactive_mtu_result()
+        result["observations"]["transit_restart"][
+            "endpoint_session_start_ms_after"
+        ][1] += 1
+        with self.assertRaisesRegex(ContractError, "continuity"):
+            validate_fips_g2_linux_reactive_mtu_result(result)
 
     def test_rejects_managed_transit_without_forwarding(self):
         result = valid_managed_transit_result()

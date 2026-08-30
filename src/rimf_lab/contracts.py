@@ -929,6 +929,190 @@ def validate_fips_g2_linux_multihop_mtu_result(data: Any) -> None:
     validate_fips_g2_linux_managed_transit_result(managed_shape)
 
 
+def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
+    root = _require_object(data, "FIPS G2 Linux reactive-MTU result")
+    expected_root_fields = {
+        "schema_version",
+        "evidence_type",
+        "run_id",
+        "status",
+        "classification",
+        "gate_ids",
+        "started_at",
+        "finished_at",
+        "provenance",
+        "platform",
+        "topology",
+        "observations",
+        "cleanup",
+        "limitations",
+    }
+    if set(root) != expected_root_fields:
+        raise ContractError("FIPS G2 reactive-MTU result contains unexpected fields")
+    if root.get("schema_version") != 1:
+        raise ContractError("FIPS G2 reactive-MTU result schema_version must be 1")
+    if root.get("evidence_type") != "fips-g2-linux-reactive-mtu":
+        raise ContractError("FIPS G2 reactive-MTU result evidence_type is invalid")
+
+    topology = _require_object(root.get("topology"), "reactive-MTU topology")
+    if topology != {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu_per_node": [1280, 1280, 1280],
+        "initial_udp_mtu_per_node": [1280, 1280, 1280],
+        "final_udp_mtu_per_node": [1280, 1000, 1280],
+        "bottleneck_node": "r",
+    }:
+        raise ContractError("FIPS G2 reactive-MTU topology is invalid")
+
+    observations = _require_object(root.get("observations"), "reactive-MTU observations")
+    if set(observations) != {
+        "underlay_exclusion",
+        "line_topology",
+        "identity_resolution",
+        "nodes",
+        "mmp",
+        "icmpv6",
+        "initial_path_mtu",
+        "transit_restart",
+        "reactive_mtu",
+        "path_mtu",
+        "payload_identity",
+        "transit_forwarding",
+        "disconnect",
+    }:
+        raise ContractError("reactive-MTU observations contain unexpected fields")
+
+    nodes = observations.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 3:
+        raise ContractError("reactive-MTU observations.nodes must contain exactly three nodes")
+    for index, (raw_node, node_name, role) in enumerate(
+        zip(nodes, ("a", "r", "b"), ("endpoint", "managed-transit", "endpoint"))
+    ):
+        node = _require_object(raw_node, f"reactive-MTU observations.nodes[{index}]")
+        if node != {
+            "node": node_name,
+            "role": role,
+            "tun_state": "active",
+            "tun_name": "fips0",
+            "kernel_tun_mtu": 1280,
+            "effective_ipv6_mtu": 1203,
+        }:
+            raise ContractError(f"reactive-MTU observations.nodes[{index}] is invalid")
+
+    if observations.get("initial_path_mtu") != {
+        "configured_transport_path_mtu": 1280,
+        "endpoint_session_path_mtus": [1280, 1280],
+        "coordinate_cache_path_mtu": 1280,
+    }:
+        raise ContractError("reactive-MTU initial_path_mtu is invalid")
+
+    restart = _require_object(observations.get("transit_restart"), "reactive transit restart")
+    if set(restart) != {
+        "configuration_application",
+        "transport_config_hot_reload_supported",
+        "endpoint_daemons_restarted",
+        "transit_identity_preserved",
+        "transit_process_restarted",
+        "manual_link_reconnect_commands",
+        "transport_mtu_before",
+        "transport_mtu_after",
+        "endpoint_session_start_ms_before",
+        "endpoint_session_start_ms_after",
+    }:
+        raise ContractError("reactive-MTU transit_restart contains unexpected fields")
+    starts_before = restart.get("endpoint_session_start_ms_before")
+    starts_after = restart.get("endpoint_session_start_ms_after")
+    if (
+        restart.get("configuration_application")
+        != "identity-preserving-process-restart"
+        or restart.get("transport_config_hot_reload_supported") is not False
+        or restart.get("endpoint_daemons_restarted") is not False
+        or restart.get("transit_identity_preserved") is not True
+        or restart.get("transit_process_restarted") is not True
+        or restart.get("manual_link_reconnect_commands") != 2
+        or restart.get("transport_mtu_before") != 1280
+        or restart.get("transport_mtu_after") != 1000
+        or not isinstance(starts_before, list)
+        or len(starts_before) != 2
+        or any(not isinstance(value, int) or isinstance(value, bool) for value in starts_before)
+        or starts_after != starts_before
+    ):
+        raise ContractError("reactive-MTU transit_restart continuity is invalid")
+
+    reactive = _require_object(observations.get("reactive_mtu"), "reactive MTU signal")
+    if set(reactive) != {
+        "trigger_ipv6_packet_bytes",
+        "session_path_mtu_before",
+        "session_path_mtu_after",
+        "coordinate_cache_path_mtu_after",
+        "endpoint_mtu_exceeded_delta",
+        "endpoint_below_floor_delta",
+        "endpoint_uncorroborated_delta",
+        "transit_drop_packets_delta",
+        "transit_drop_bytes_delta",
+        "convergence_elapsed_ms",
+        "convergence_budget_ms",
+    }:
+        raise ContractError("reactive-MTU signal observation contains unexpected fields")
+    elapsed = reactive.get("convergence_elapsed_ms")
+    if (
+        reactive.get("trigger_ipv6_packet_bytes") != 1203
+        or reactive.get("session_path_mtu_before") != 1280
+        or reactive.get("session_path_mtu_after") != 1000
+        or reactive.get("coordinate_cache_path_mtu_after") != 1000
+        or not isinstance(reactive.get("endpoint_mtu_exceeded_delta"), int)
+        or isinstance(reactive.get("endpoint_mtu_exceeded_delta"), bool)
+        or reactive["endpoint_mtu_exceeded_delta"] < 1
+        or reactive.get("endpoint_below_floor_delta") != 0
+        or reactive.get("endpoint_uncorroborated_delta") != 0
+        or not isinstance(reactive.get("transit_drop_packets_delta"), int)
+        or isinstance(reactive.get("transit_drop_packets_delta"), bool)
+        or reactive["transit_drop_packets_delta"] < 1
+        or not isinstance(reactive.get("transit_drop_bytes_delta"), int)
+        or isinstance(reactive.get("transit_drop_bytes_delta"), bool)
+        or reactive["transit_drop_bytes_delta"] < 1
+        or not isinstance(elapsed, int)
+        or isinstance(elapsed, bool)
+        or not 0 < elapsed <= 10_000
+        or reactive.get("convergence_budget_ms") != 10_000
+    ):
+        raise ContractError("reactive-MTU signal convergence is invalid")
+
+    multihop_shape = dict(root)
+    multihop_shape["evidence_type"] = "fips-g2-linux-multihop-mtu"
+    multihop_shape["topology"] = {
+        "node_count": 3,
+        "namespace_count": 3,
+        "authenticated_link_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "two-segment-line-ipv4-udp",
+        "path_role": "managed-fips-transit",
+        "public_discovery": False,
+        "nostr_relay": False,
+        "tun_name": "fips0",
+        "configured_tun_mtu_per_node": [1280, 1280, 1280],
+        "configured_udp_mtu_per_node": [1280, 1000, 1280],
+        "bottleneck_node": "r",
+    }
+    multihop_observations = dict(observations)
+    for field in ("initial_path_mtu", "transit_restart", "reactive_mtu"):
+        multihop_observations.pop(field)
+    multihop_observations["nodes"] = [
+        {**node, "effective_ipv6_mtu": 923 if index == 1 else 1203}
+        for index, node in enumerate(nodes)
+    ]
+    multihop_shape["observations"] = multihop_observations
+    validate_fips_g2_linux_multihop_mtu_result(multihop_shape)
+
+
 def validate_fips_g2_linux_lifecycle_result(data: Any) -> None:
     root = _require_object(data, "FIPS G2 Linux lifecycle result")
     if root.get("schema_version") != 1:
@@ -1593,6 +1777,8 @@ def validate_repository(root: Path) -> None:
                 validate_fips_g2_linux_managed_transit_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-multihop-mtu":
                 validate_fips_g2_linux_multihop_mtu_result(retained)
+            elif retained.get("evidence_type") == "fips-g2-linux-reactive-mtu":
+                validate_fips_g2_linux_reactive_mtu_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-lifecycle":
                 validate_fips_g2_linux_lifecycle_result(retained)
             elif retained.get("evidence_type") == "fips-g2-linux-alternate-route":

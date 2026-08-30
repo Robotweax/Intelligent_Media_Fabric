@@ -5,9 +5,11 @@ import json
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -45,6 +47,8 @@ PATH_BOUNDARY_ICMP_PAYLOAD = 875
 PATH_ABOVE_BOUNDARY_ICMP_PAYLOAD = 876
 PATH_ABOVE_BOUNDARY_IPV6_BYTES = 924
 PATH_UDP_PAYLOAD_SIZES = (1, 512, 875)
+REACTIVE_TICK_INTERVAL_SECS = 15
+REACTIVE_CONVERGENCE_BUDGET_SECS = 10
 
 
 def line_peer_relationships(peer_views: list[dict], identities: list[str]) -> bool:
@@ -77,6 +81,73 @@ def forwarding_counters(value: dict) -> tuple[int, int]:
     ):
         raise QualificationError("routing view contained invalid forwarding counters")
     return packets, byte_count
+
+
+def mtu_drop_counters(value: dict) -> tuple[int, int]:
+    forwarding = value.get("forwarding")
+    if not isinstance(forwarding, dict):
+        raise QualificationError("routing view did not contain forwarding counters")
+    packets = forwarding.get("drop_mtu_exceeded_packets")
+    byte_count = forwarding.get("drop_mtu_exceeded_bytes")
+    if (
+        not isinstance(packets, int)
+        or isinstance(packets, bool)
+        or packets < 0
+        or not isinstance(byte_count, int)
+        or isinstance(byte_count, bool)
+        or byte_count < 0
+    ):
+        raise QualificationError("routing view contained invalid MTU-drop counters")
+    return packets, byte_count
+
+
+def mtu_error_counters(value: dict) -> tuple[int, int, int]:
+    errors = value.get("error_signals")
+    if not isinstance(errors, dict):
+        raise QualificationError("routing view did not contain error-signal counters")
+    values = tuple(
+        errors.get(field)
+        for field in (
+            "mtu_exceeded",
+            "mtu_exceeded_below_floor",
+            "mtu_exceeded_uncorroborated",
+        )
+    )
+    if any(
+        not isinstance(item, int) or isinstance(item, bool) or item < 0
+        for item in values
+    ):
+        raise QualificationError("routing view contained invalid MTU-error counters")
+    return values
+
+
+def endpoint_session_record(value: dict, remote_identity: str) -> dict | None:
+    sessions = value.get("sessions")
+    if not isinstance(sessions, list):
+        return None
+    matches = [
+        session
+        for session in sessions
+        if isinstance(session, dict)
+        and session.get("npub") == remote_identity
+        and session.get("state") == "established"
+        and isinstance(session.get("session_start_ms"), int)
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _kill_process_abruptly(process: subprocess.Popen | None) -> bool:
+    if process is None or process.poll() is not None:
+        return True
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        return False
+    return process.poll() is not None
 
 
 def session_path_mtu(value: dict, remote_identity: str) -> int | None:
@@ -144,12 +215,20 @@ def run_fips_g2_linux_managed_transit(
     output: Path,
     project_revision: str,
     _heterogeneous_mtu: bool = False,
+    _reactive_mtu: bool = False,
 ) -> dict:
+    if _heterogeneous_mtu and _reactive_mtu:
+        raise ValueError("heterogeneous and reactive MTU modes are mutually exclusive")
     evidence_type = (
-        "fips-g2-linux-multihop-mtu"
-        if _heterogeneous_mtu
-        else "fips-g2-linux-managed-transit"
+        "fips-g2-linux-reactive-mtu"
+        if _reactive_mtu
+        else (
+            "fips-g2-linux-multihop-mtu"
+            if _heterogeneous_mtu
+            else "fips-g2-linux-managed-transit"
+        )
     )
+    path_mtu_mode = _heterogeneous_mtu or _reactive_mtu
     udp_mtus = (
         (TUN_MTU, TRANSIT_UDP_MTU, TUN_MTU)
         if _heterogeneous_mtu
@@ -160,10 +239,8 @@ def run_fips_g2_linux_managed_transit(
         if _heterogeneous_mtu
         else (EFFECTIVE_IPV6_MTU,) * 3
     )
-    boundary_icmp_payload = (
-        PATH_BOUNDARY_ICMP_PAYLOAD if _heterogeneous_mtu else 1155
-    )
-    payload_sizes = PATH_UDP_PAYLOAD_SIZES if _heterogeneous_mtu else UDP_PAYLOAD_SIZES
+    boundary_icmp_payload = PATH_BOUNDARY_ICMP_PAYLOAD if path_mtu_mode else 1155
+    payload_sizes = PATH_UDP_PAYLOAD_SIZES if path_mtu_mode else UDP_PAYLOAD_SIZES
     run_id = str(uuid.uuid4())
     started_at = utc_now()
     phase = "preflight"
@@ -214,6 +291,9 @@ def run_fips_g2_linux_managed_transit(
     payload_server: subprocess.Popen | None = None
     ptb_probe: subprocess.Popen | None = None
     path_mtu_observation: dict | None = None
+    initial_path_mtu_observation: dict | None = None
+    transit_restart_observation: dict | None = None
+    reactive_mtu_observation: dict | None = None
     observations: dict = {}
     cleanup = {
         "daemons_stopped": False,
@@ -236,6 +316,10 @@ def run_fips_g2_linux_managed_transit(
                     address,
                     dns_enabled=True,
                     udp_mtu=udp_mtu,
+                    persistent_identity=_reactive_mtu,
+                    tick_interval_secs=(
+                        REACTIVE_TICK_INTERVAL_SECS if _reactive_mtu else None
+                    ),
                 ),
                 encoding="utf-8",
             )
@@ -588,6 +672,310 @@ def run_fips_g2_linux_managed_transit(
         )
         learned_session_path_mtus: list[int] | None = None
         learned_coordinate_path_mtu: int | None = None
+        if _reactive_mtu:
+            phase = "initial-path-mtu-learning"
+
+            def initial_path_mtu_learned():
+                endpoint_views = [control(index, "show", "sessions") for index in (0, 2)]
+                records = [
+                    endpoint_session_record(endpoint_views[0], identities[2]),
+                    endpoint_session_record(endpoint_views[1], identities[0]),
+                ]
+                if any(record is None for record in records):
+                    return None
+                session_mtus = [
+                    session_path_mtu(endpoint_views[0], identities[2]),
+                    session_path_mtu(endpoint_views[1], identities[0]),
+                ]
+                cache_mtu = coordinate_cache_path_mtu(
+                    control(0, "show", "cache"), statuses[2]["ipv6_addr"]
+                )
+                if session_mtus != [TUN_MTU, TUN_MTU] or cache_mtu != TUN_MTU:
+                    return None
+                return records, session_mtus, cache_mtu
+
+            initial_records, initial_session_path_mtus, initial_cache_path_mtu = _wait_for(
+                initial_path_mtu_learned,
+                label="initial 1280-byte end-to-end path MTU",
+                timeout=45,
+            )
+            initial_session_starts = [
+                initial_records[0]["session_start_ms"],
+                initial_records[1]["session_start_ms"],
+            ]
+            initial_path_mtu_observation = {
+                "configured_transport_path_mtu": TUN_MTU,
+                "endpoint_session_path_mtus": initial_session_path_mtus,
+                "coordinate_cache_path_mtu": initial_cache_path_mtu,
+            }
+
+            phase = "transit-link-withdrawal"
+            disconnect_a = control(0, "disconnect", identities[1])
+            disconnect_b = control(2, "disconnect", identities[1])
+            if (
+                disconnect_a.get("disconnected") is not True
+                or disconnect_b.get("disconnected") is not True
+            ):
+                raise QualificationError(
+                    "FIPS control did not acknowledge the pre-restart link withdrawals"
+                )
+
+            def withdrawn_line():
+                current = [status(index) for index in range(3)]
+                if all(
+                    item.get("peer_count") == 0 and item.get("link_count") == 0
+                    for item in current
+                ):
+                    return current
+                return None
+
+            _wait_for(
+                withdrawn_line,
+                label="pre-restart line link withdrawal",
+                timeout=10,
+            )
+
+            phase = "transit-mtu-restart"
+            old_transit_pid = daemon_processes[1].pid
+            if not _kill_process_abruptly(daemon_processes[1]):
+                raise QualificationError("transit daemon did not stop for the MTU change")
+            daemon_streams[1].flush()
+            daemon_streams[1].close()
+            configs[1].write_text(
+                render_config(
+                    sockets[1],
+                    "0.0.0.0",
+                    dns_enabled=True,
+                    udp_mtu=TRANSIT_UDP_MTU,
+                    persistent_identity=True,
+                    tick_interval_secs=REACTIVE_TICK_INTERVAL_SECS,
+                ),
+                encoding="utf-8",
+            )
+            configs[1].chmod(0o600)
+            sockets[1].unlink(missing_ok=True)
+            daemon_streams[1] = daemon_logs[1].open("a", encoding="utf-8")
+            daemon_processes[1] = subprocess.Popen(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    transit_namespace,
+                    str(fips_binary),
+                    "-c",
+                    str(configs[1]),
+                ],
+                stdout=daemon_streams[1],
+                stderr=subprocess.STDOUT,
+                text=True,
+                start_new_session=True,
+            )
+
+            def restarted_transit_ready():
+                process = daemon_processes[1]
+                if process is None or process.poll() is not None:
+                    raise QualificationError(
+                        "transit daemon exited before its replacement control socket was ready"
+                    )
+                if not sockets[1].is_socket():
+                    return None
+                current = status(1)
+                if current.get("npub") != identities[1]:
+                    raise QualificationError("transit identity changed across the MTU restart")
+                if current.get("effective_ipv6_mtu") != PATH_EFFECTIVE_IPV6_MTU:
+                    return None
+                return current
+
+            restarted_transit_status = _wait_for(
+                restarted_transit_ready,
+                label="identity-preserving transit restart at MTU 1000",
+                timeout=15,
+            )
+
+            phase = "post-restart-line-reconnect"
+            reconnect_a = control(
+                0,
+                "connect",
+                identities[1],
+                f"{TRANSIT_LEFT_ADDRESS}:2121",
+                "udp",
+            )
+            reconnect_b = control(
+                2,
+                "connect",
+                identities[1],
+                f"{TRANSIT_RIGHT_ADDRESS}:2121",
+                "udp",
+            )
+            if not valid_connect_acknowledgement(
+                reconnect_a, identities[1], f"{TRANSIT_LEFT_ADDRESS}:2121"
+            ) or not valid_connect_acknowledgement(
+                reconnect_b, identities[1], f"{TRANSIT_RIGHT_ADDRESS}:2121"
+            ):
+                raise QualificationError("post-restart connect acknowledgement was invalid")
+
+            def reconnected_links():
+                current_statuses = [status(index) for index in range(3)]
+                expected_counts = (1, 2, 1)
+                if not all(
+                    item.get("peer_count") == count and item.get("link_count") == count
+                    for item, count in zip(current_statuses, expected_counts)
+                ):
+                    return None
+                current_peers = [control(index, "show", "peers") for index in range(3)]
+                if not line_peer_relationships(current_peers, identities):
+                    return None
+                return current_statuses
+
+            statuses = _wait_for(
+                reconnected_links,
+                label="post-restart authenticated line links",
+                timeout=8,
+            )
+            before_reactive_records = [
+                endpoint_session_record(control(0, "show", "sessions"), identities[2]),
+                endpoint_session_record(control(2, "show", "sessions"), identities[0]),
+            ]
+            if any(record is None for record in before_reactive_records):
+                raise QualificationError("endpoint FSP session disappeared during transit restart")
+            before_reactive_starts = [
+                before_reactive_records[0]["session_start_ms"],
+                before_reactive_records[1]["session_start_ms"],
+            ]
+            before_reactive_mtu = session_path_mtu(
+                control(0, "show", "sessions"), identities[2]
+            )
+            if (
+                before_reactive_starts != initial_session_starts
+                or before_reactive_mtu != TUN_MTU
+            ):
+                raise QualificationError(
+                    "proactive PMTU feedback or session replacement pre-empted the reactive window"
+                )
+
+            endpoint_error_before = mtu_error_counters(control(0, "show", "routing"))
+            transit_drop_before = mtu_drop_counters(control(1, "show", "routing"))
+            reactive_started = time.monotonic()
+            phase = "reactive-mtu-exceeded"
+
+            def reactive_signal_observed():
+                if session_path_mtu(
+                    control(0, "show", "sessions"), identities[2]
+                ) != TUN_MTU:
+                    raise QualificationError(
+                        "path MTU changed before an observed reactive MtuExceeded signal"
+                    )
+                _run(
+                    [
+                        "ip",
+                        "netns",
+                        "exec",
+                        node_a_namespace,
+                        "ping",
+                        "-6",
+                        "-c",
+                        "1",
+                        "-W",
+                        "1",
+                        "-s",
+                        "1155",
+                        destination,
+                    ],
+                    label="reactive oversized ICMPv6 trigger",
+                    timeout=3,
+                    check=False,
+                )
+                endpoint_errors = mtu_error_counters(control(0, "show", "routing"))
+                transit_drops = mtu_drop_counters(control(1, "show", "routing"))
+                current_mtu = session_path_mtu(
+                    control(0, "show", "sessions"), identities[2]
+                )
+                if (
+                    endpoint_errors[0] <= endpoint_error_before[0]
+                    or transit_drops[0] <= transit_drop_before[0]
+                    or current_mtu != TRANSIT_UDP_MTU
+                ):
+                    return None
+                return endpoint_errors, transit_drops
+
+            endpoint_error_after, transit_drop_after = _wait_for(
+                reactive_signal_observed,
+                label="reactive MtuExceeded convergence",
+                timeout=REACTIVE_CONVERGENCE_BUDGET_SECS,
+                interval=0.1,
+            )
+            reactive_elapsed_ms = round((time.monotonic() - reactive_started) * 1000)
+
+            def final_path_mtu_learned():
+                endpoint_views = [control(index, "show", "sessions") for index in (0, 2)]
+                records = [
+                    endpoint_session_record(endpoint_views[0], identities[2]),
+                    endpoint_session_record(endpoint_views[1], identities[0]),
+                ]
+                if any(record is None for record in records):
+                    return None
+                session_mtus = [
+                    session_path_mtu(endpoint_views[0], identities[2]),
+                    session_path_mtu(endpoint_views[1], identities[0]),
+                ]
+                cache_mtu = coordinate_cache_path_mtu(
+                    control(0, "show", "cache"), statuses[2]["ipv6_addr"]
+                )
+                if session_mtus != [TRANSIT_UDP_MTU, TRANSIT_UDP_MTU]:
+                    return None
+                if cache_mtu != TRANSIT_UDP_MTU:
+                    return None
+                return records, session_mtus, cache_mtu
+
+            final_records, learned_session_path_mtus, learned_coordinate_path_mtu = _wait_for(
+                final_path_mtu_learned,
+                label="post-reactive bidirectional path MTU convergence",
+                timeout=35,
+            )
+            final_session_starts = [
+                final_records[0]["session_start_ms"],
+                final_records[1]["session_start_ms"],
+            ]
+            if final_session_starts != initial_session_starts:
+                raise QualificationError(
+                    "endpoint FSP session start changed across the transit MTU restart"
+                )
+            transit_restart_observation = {
+                "configuration_application": "identity-preserving-process-restart",
+                "transport_config_hot_reload_supported": False,
+                "endpoint_daemons_restarted": False,
+                "transit_identity_preserved": True,
+                "transit_process_restarted": daemon_processes[1].pid != old_transit_pid,
+                "manual_link_reconnect_commands": 2,
+                "transport_mtu_before": TUN_MTU,
+                "transport_mtu_after": TRANSIT_UDP_MTU,
+                "endpoint_session_start_ms_before": initial_session_starts,
+                "endpoint_session_start_ms_after": final_session_starts,
+            }
+            reactive_mtu_observation = {
+                "trigger_ipv6_packet_bytes": 1203,
+                "session_path_mtu_before": TUN_MTU,
+                "session_path_mtu_after": TRANSIT_UDP_MTU,
+                "coordinate_cache_path_mtu_after": learned_coordinate_path_mtu,
+                "endpoint_mtu_exceeded_delta": (
+                    endpoint_error_after[0] - endpoint_error_before[0]
+                ),
+                "endpoint_below_floor_delta": (
+                    endpoint_error_after[1] - endpoint_error_before[1]
+                ),
+                "endpoint_uncorroborated_delta": (
+                    endpoint_error_after[2] - endpoint_error_before[2]
+                ),
+                "transit_drop_packets_delta": (
+                    transit_drop_after[0] - transit_drop_before[0]
+                ),
+                "transit_drop_bytes_delta": (
+                    transit_drop_after[1] - transit_drop_before[1]
+                ),
+                "convergence_elapsed_ms": reactive_elapsed_ms,
+                "convergence_budget_ms": REACTIVE_CONVERGENCE_BUDGET_SECS * 1000,
+            }
+
         if _heterogeneous_mtu:
             phase = "multihop-path-mtu-learning"
 
@@ -613,7 +1001,7 @@ def run_fips_g2_linux_managed_transit(
                 timeout=30,
             )
 
-        if _heterogeneous_mtu:
+        if path_mtu_mode:
             phase = "multihop-path-mtu-boundary"
         _run(
             [
@@ -635,7 +1023,7 @@ def run_fips_g2_linux_managed_transit(
             timeout=30,
         )
 
-        if _heterogeneous_mtu:
+        if path_mtu_mode:
             ptb_ready_path = work / "ptb-probe.ready"
             ptb_result_path = work / "ptb-probe.json"
             ptb_probe = subprocess.Popen(
@@ -910,10 +1298,20 @@ def run_fips_g2_linux_managed_transit(
                 "links_per_node_after": [0, 0, 0],
             },
         }
-        if _heterogeneous_mtu:
+        if path_mtu_mode:
             if path_mtu_observation is None:
                 raise QualificationError("multihop path MTU observation is unavailable")
             observations["path_mtu"] = path_mtu_observation
+        if _reactive_mtu:
+            if (
+                initial_path_mtu_observation is None
+                or transit_restart_observation is None
+                or reactive_mtu_observation is None
+            ):
+                raise QualificationError("reactive MTU observations are unavailable")
+            observations["initial_path_mtu"] = initial_path_mtu_observation
+            observations["transit_restart"] = transit_restart_observation
+            observations["reactive_mtu"] = reactive_mtu_observation
     except Exception as exc:
         error = exc
         for stream in daemon_streams:
@@ -1023,6 +1421,29 @@ def run_fips_g2_linux_managed_transit(
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
             "This run qualifies one proactive discovery/session PMTUD case on Linux for the pinned host architecture only.",
         ]
+    if _reactive_mtu:
+        result["topology"] = {
+            "node_count": 3,
+            "namespace_count": 3,
+            "authenticated_link_count": 2,
+            "isolation": "linux-network-namespaces",
+            "underlay": "two-segment-line-ipv4-udp",
+            "path_role": "managed-fips-transit",
+            "public_discovery": False,
+            "nostr_relay": False,
+            "tun_name": "fips0",
+            "configured_tun_mtu_per_node": [TUN_MTU, TUN_MTU, TUN_MTU],
+            "initial_udp_mtu_per_node": [TUN_MTU, TUN_MTU, TUN_MTU],
+            "final_udp_mtu_per_node": [TUN_MTU, TRANSIT_UDP_MTU, TUN_MTU],
+            "bottleneck_node": "r",
+        }
+        result["limitations"] = [
+            "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
+            "The two FMP links were explicitly withdrawn and reconnected around the transit restart; automatic link reconnection was not qualified by this run.",
+            "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
+            "A 15-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
+            "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+        ]
     _write_result(output, result)
     return result
 
@@ -1042,4 +1463,22 @@ def run_fips_g2_linux_multihop_mtu(
         output=output,
         project_revision=project_revision,
         _heterogeneous_mtu=True,
+    )
+
+
+def run_fips_g2_linux_reactive_mtu(
+    *,
+    fips_source: Path,
+    fips_binary: Path,
+    fipsctl_binary: Path,
+    output: Path,
+    project_revision: str,
+) -> dict:
+    return run_fips_g2_linux_managed_transit(
+        fips_source=fips_source,
+        fips_binary=fips_binary,
+        fipsctl_binary=fipsctl_binary,
+        output=output,
+        project_revision=project_revision,
+        _reactive_mtu=True,
     )
