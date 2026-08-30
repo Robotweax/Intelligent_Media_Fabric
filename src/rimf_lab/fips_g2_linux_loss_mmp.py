@@ -39,7 +39,6 @@ from .fips_g2_linux_delay_mmp import render_delay_mmp_config
 
 
 NETEM_LOSS_PERCENT = 20.0
-NETEM_SEEDS = (4242, 4243)
 BASELINE_LOSS_MAX = 0.01
 DEGRADED_LOSS_MIN = 0.05
 DEGRADED_LOSS_MAX = 0.60
@@ -465,14 +464,11 @@ def run_fips_g2_linux_loss_mmp(
         baseline_loss = baseline_observation[0]
 
         phase = "loss-injection"
-        for index, (namespace, interface, seed) in enumerate(
-            zip(namespaces, interfaces, NETEM_SEEDS)
-        ):
+        for index, (namespace, interface) in enumerate(zip(namespaces, interfaces)):
             _run(
                 [
                     "ip", "netns", "exec", namespace, "tc", "qdisc", "replace", "dev",
-                    interface, "root", "netem", "loss", f"{NETEM_LOSS_PERCENT:.0f}%", "seed",
-                    str(seed),
+                    interface, "root", "netem", "loss", f"{NETEM_LOSS_PERCENT:.0f}%",
                 ],
                 label=f"inject node {('a', 'b')[index]} deterministic loss",
             )
@@ -637,8 +633,8 @@ def run_fips_g2_linux_loss_mmp(
             },
             "loss_injection": {
                 "mechanism": "linux-tc-netem",
+                "loss_model": "independent-random",
                 "configured_loss_percent_per_direction": NETEM_LOSS_PERCENT,
-                "netem_seeds": list(NETEM_SEEDS),
                 "impaired_underlay_directions": 2,
                 "verified_netem_qdiscs": verified_netem,
             },
@@ -777,8 +773,8 @@ def run_fips_g2_linux_loss_mmp(
         "observations": observations,
         "cleanup": cleanup,
         "limitations": [
-            "One direct veth underlay and one seeded random-loss step were exercised.",
-            "The netem seed improves repeatability but does not define an exact packet-drop trace across kernels.",
+            "One direct veth underlay and one independent random-loss step were exercised.",
+            "The Ubuntu 24.04 runner's stock iproute2 does not expose netem PRNG seeding, so no exact packet-drop trace is reproducible.",
             "No burst model, jitter, reordering, duplication, corruption, bandwidth limit, or queue pressure was injected.",
             "MMP loss bounds are qualification controls for this CI runner class, not production SLOs.",
             "Exact UDP identity was required after recovery, not during stochastic loss.",

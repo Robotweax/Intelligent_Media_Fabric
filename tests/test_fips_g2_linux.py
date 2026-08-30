@@ -697,8 +697,8 @@ def valid_loss_mmp_result():
         },
         "loss_injection": {
             "mechanism": "linux-tc-netem",
+            "loss_model": "independent-random",
             "configured_loss_percent_per_direction": 20.0,
-            "netem_seeds": [4242, 4243],
             "impaired_underlay_directions": 2,
             "verified_netem_qdiscs": 2,
         },
@@ -761,7 +761,7 @@ def valid_loss_mmp_result():
         "namespaces_removed": True,
         "ephemeral_identity_directory_removed": True,
     }
-    result["limitations"] = ["One seeded fixed-loss direct-link experiment only."]
+    result["limitations"] = ["One unseeded fixed-loss direct-link experiment only."]
     return result
 
 

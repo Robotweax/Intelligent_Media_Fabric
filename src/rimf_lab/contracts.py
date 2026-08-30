@@ -1593,8 +1593,8 @@ def validate_fips_g2_linux_loss_mmp_result(data: Any) -> None:
 
     if observations.get("loss_injection") != {
         "mechanism": "linux-tc-netem",
+        "loss_model": "independent-random",
         "configured_loss_percent_per_direction": 20.0,
-        "netem_seeds": [4242, 4243],
         "impaired_underlay_directions": 2,
         "verified_netem_qdiscs": 2,
     }:

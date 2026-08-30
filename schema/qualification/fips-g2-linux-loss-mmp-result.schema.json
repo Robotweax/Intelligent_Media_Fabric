@@ -81,13 +81,13 @@
         "loss_injection": {
           "type": "object",
           "required": [
-            "mechanism", "configured_loss_percent_per_direction", "netem_seeds",
+            "mechanism", "loss_model", "configured_loss_percent_per_direction",
             "impaired_underlay_directions", "verified_netem_qdiscs"
           ],
           "properties": {
             "mechanism": {"const": "linux-tc-netem"},
+            "loss_model": {"const": "independent-random"},
             "configured_loss_percent_per_direction": {"const": 20.0},
-            "netem_seeds": {"const": [4242, 4243]},
             "impaired_underlay_directions": {"const": 2},
             "verified_netem_qdiscs": {"const": 2}
           },
