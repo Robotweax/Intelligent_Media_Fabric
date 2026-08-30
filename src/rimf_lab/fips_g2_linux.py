@@ -57,6 +57,7 @@ def render_config(
     persistent_identity: bool = False,
     tick_interval_secs: int | None = None,
     log_level: str = "warn",
+    static_udp_peers: tuple[tuple[str, str], ...] = (),
 ) -> str:
     dns_config = (
         '  enabled: true\n  bind_addr: "::1"\n  port: 5354'
@@ -68,6 +69,17 @@ def render_config(
         if tick_interval_secs is not None
         else ""
     )
+    peers_config = "peers: []"
+    if static_udp_peers:
+        peers_config = "peers:\n" + "\n".join(
+            f'''  - npub: "{npub}"
+    addresses:
+      - transport: udp
+        addr: "{address}"
+    connect_policy: auto_connect
+    auto_reconnect: false'''
+            for npub, address in static_udp_peers
+        )
     return f"""node:
   identity:
     persistent: {str(persistent_identity).lower()}
@@ -89,7 +101,7 @@ transports:
     bind_addr: "{bind_address}:2121"
     mtu: {udp_mtu}
 
-peers: []
+{peers_config}
 """
 
 

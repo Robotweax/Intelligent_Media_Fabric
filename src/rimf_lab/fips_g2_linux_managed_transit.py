@@ -47,7 +47,7 @@ PATH_BOUNDARY_ICMP_PAYLOAD = 875
 PATH_ABOVE_BOUNDARY_ICMP_PAYLOAD = 876
 PATH_ABOVE_BOUNDARY_IPV6_BYTES = 924
 PATH_UDP_PAYLOAD_SIZES = (1, 512, 875)
-REACTIVE_TICK_INTERVAL_SECS = 15
+REACTIVE_TICK_INTERVAL_SECS = 5
 REACTIVE_CONVERGENCE_BUDGET_SECS = 20
 
 
@@ -709,32 +709,14 @@ def run_fips_g2_linux_managed_transit(
                 "endpoint_session_path_mtus": initial_session_path_mtus,
                 "coordinate_cache_path_mtu": initial_cache_path_mtu,
             }
-
-            phase = "transit-link-withdrawal"
-            disconnect_a = control(0, "disconnect", identities[1])
-            disconnect_b = control(2, "disconnect", identities[1])
-            if (
-                disconnect_a.get("disconnected") is not True
-                or disconnect_b.get("disconnected") is not True
+            initial_endpoint_link_ids = [
+                peer_views[index]["peers"][0].get("link_id") for index in (0, 2)
+            ]
+            if any(
+                not isinstance(link_id, int) or isinstance(link_id, bool)
+                for link_id in initial_endpoint_link_ids
             ):
-                raise QualificationError(
-                    "FIPS control did not acknowledge the pre-restart link withdrawals"
-                )
-
-            def withdrawn_line():
-                current = [status(index) for index in range(3)]
-                if all(
-                    item.get("peer_count") == 0 and item.get("link_count") == 0
-                    for item in current
-                ):
-                    return current
-                return None
-
-            _wait_for(
-                withdrawn_line,
-                label="pre-restart line link withdrawal",
-                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
-            )
+                raise QualificationError("endpoint FMP link IDs were unavailable")
 
             phase = "transit-mtu-restart"
             old_transit_pid = daemon_processes[1].pid
@@ -751,6 +733,10 @@ def run_fips_g2_linux_managed_transit(
                     persistent_identity=True,
                     tick_interval_secs=REACTIVE_TICK_INTERVAL_SECS,
                     log_level="info",
+                    static_udp_peers=(
+                        (identities[0], f"{NODE_A_ADDRESS}:2121"),
+                        (identities[2], f"{NODE_B_ADDRESS}:2121"),
+                    ),
                 ),
                 encoding="utf-8",
             )
@@ -795,26 +781,43 @@ def run_fips_g2_linux_managed_transit(
             )
 
             phase = "post-restart-line-reconnect"
-            reconnect_a = control(
-                0,
-                "connect",
-                identities[1],
-                f"{TRANSIT_LEFT_ADDRESS}:2121",
-                "udp",
+
+            def transit_reconnected_line():
+                current_statuses = [status(index) for index in range(3)]
+                expected_counts = (1, 2, 1)
+                if not all(
+                    item.get("peer_count") == count and item.get("link_count") == count
+                    for item, count in zip(current_statuses, expected_counts)
+                ):
+                    return None
+                current_peer_views = [
+                    control(index, "show", "peers") for index in range(3)
+                ]
+                if not line_peer_relationships(current_peer_views, identities):
+                    return None
+                endpoint_link_ids = [
+                    current_peer_views[index]["peers"][0].get("link_id")
+                    for index in (0, 2)
+                ]
+                if any(
+                    not isinstance(link_id, int) or isinstance(link_id, bool)
+                    for link_id in endpoint_link_ids
+                ):
+                    return None
+                if any(
+                    after == before
+                    for before, after in zip(
+                        initial_endpoint_link_ids, endpoint_link_ids
+                    )
+                ):
+                    return None
+                return endpoint_link_ids
+
+            final_endpoint_link_ids = _wait_for(
+                transit_reconnected_line,
+                label="restart-epoch replacement of both endpoint FMP links",
+                timeout=REACTIVE_TICK_INTERVAL_SECS + 5,
             )
-            reconnect_b = control(
-                2,
-                "connect",
-                identities[1],
-                f"{TRANSIT_RIGHT_ADDRESS}:2121",
-                "udp",
-            )
-            if not valid_connect_acknowledgement(
-                reconnect_a, identities[1], f"{TRANSIT_LEFT_ADDRESS}:2121"
-            ) or not valid_connect_acknowledgement(
-                reconnect_b, identities[1], f"{TRANSIT_RIGHT_ADDRESS}:2121"
-            ):
-                raise QualificationError("post-restart connect acknowledgement was invalid")
 
             phase = "post-restart-route-warmup"
 
@@ -990,7 +993,11 @@ def run_fips_g2_linux_managed_transit(
                 "endpoint_daemons_restarted": False,
                 "transit_identity_preserved": True,
                 "transit_process_restarted": daemon_processes[1].pid != old_transit_pid,
-                "manual_link_reconnect_commands": 2,
+                "endpoint_links_explicitly_withdrawn": False,
+                "transit_reconnect_mode": "configured-auto-connect",
+                "manual_link_reconnect_commands": 0,
+                "endpoint_link_ids_before": initial_endpoint_link_ids,
+                "endpoint_link_ids_after": final_endpoint_link_ids,
                 "route_warmup_ipv6_packet_bytes": 80,
                 "route_warmup_echo_reply_received": True,
                 "transport_mtu_before": TUN_MTU,
@@ -1485,10 +1492,10 @@ def run_fips_g2_linux_managed_transit(
         }
         result["limitations"] = [
             "FIPS v0.4.2 does not hot-reload transport MTU configuration, so the transit process was identity-preservingly restarted while both endpoint daemons and their end-to-end FSP session remained active.",
-            "The two FMP links were explicitly withdrawn and reconnected around the transit restart; automatic link reconnection was not qualified by this run.",
-            "One small ICMPv6 exchange re-warmed route coordinates after the parent change; the oversized reactive trigger followed before the next 15-second PMTU notification tick.",
+            "The transit restarted with static auto-connect peers; the endpoint FMP peer slots were replaced through FIPS restart-epoch handling without explicit endpoint link withdrawal.",
+            "One small ICMPv6 exchange verified the retained route coordinates; the oversized reactive trigger followed before the next five-second PMTU notification tick.",
             "The changing constraint was the transit node's configured FIPS UDP transport MTU, not a physical underlay MTU change or an ICMP black hole.",
-            "A 15-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
+            "A five-second qualification-only node tick isolated the reactive MtuExceeded window; the FIPS production default remains one second.",
             "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
         ]
     _write_result(output, result)

@@ -1021,7 +1021,11 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         "endpoint_daemons_restarted",
         "transit_identity_preserved",
         "transit_process_restarted",
+        "endpoint_links_explicitly_withdrawn",
+        "transit_reconnect_mode",
         "manual_link_reconnect_commands",
+        "endpoint_link_ids_before",
+        "endpoint_link_ids_after",
         "route_warmup_ipv6_packet_bytes",
         "route_warmup_echo_reply_received",
         "transport_mtu_before",
@@ -1032,6 +1036,8 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         raise ContractError("reactive-MTU transit_restart contains unexpected fields")
     starts_before = restart.get("endpoint_session_start_ms_before")
     starts_after = restart.get("endpoint_session_start_ms_after")
+    link_ids_before = restart.get("endpoint_link_ids_before")
+    link_ids_after = restart.get("endpoint_link_ids_after")
     if (
         restart.get("configuration_application")
         != "identity-preserving-process-restart"
@@ -1039,7 +1045,16 @@ def validate_fips_g2_linux_reactive_mtu_result(data: Any) -> None:
         or restart.get("endpoint_daemons_restarted") is not False
         or restart.get("transit_identity_preserved") is not True
         or restart.get("transit_process_restarted") is not True
-        or restart.get("manual_link_reconnect_commands") != 2
+        or restart.get("endpoint_links_explicitly_withdrawn") is not False
+        or restart.get("transit_reconnect_mode") != "configured-auto-connect"
+        or restart.get("manual_link_reconnect_commands") != 0
+        or not isinstance(link_ids_before, list)
+        or len(link_ids_before) != 2
+        or any(not isinstance(value, int) or isinstance(value, bool) for value in link_ids_before)
+        or not isinstance(link_ids_after, list)
+        or len(link_ids_after) != 2
+        or any(not isinstance(value, int) or isinstance(value, bool) for value in link_ids_after)
+        or any(before == after for before, after in zip(link_ids_before, link_ids_after))
         or restart.get("route_warmup_ipv6_packet_bytes") != 80
         or restart.get("route_warmup_echo_reply_received") is not True
         or restart.get("transport_mtu_before") != 1280

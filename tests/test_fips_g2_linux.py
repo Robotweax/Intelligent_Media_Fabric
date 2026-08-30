@@ -341,7 +341,11 @@ def valid_reactive_mtu_result():
         "endpoint_daemons_restarted": False,
         "transit_identity_preserved": True,
         "transit_process_restarted": True,
-        "manual_link_reconnect_commands": 2,
+        "endpoint_links_explicitly_withdrawn": False,
+        "transit_reconnect_mode": "configured-auto-connect",
+        "manual_link_reconnect_commands": 0,
+        "endpoint_link_ids_before": [10, 20],
+        "endpoint_link_ids_after": [11, 21],
         "route_warmup_ipv6_packet_bytes": 80,
         "route_warmup_echo_reply_received": True,
         "transport_mtu_before": 1280,
@@ -849,11 +853,15 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
             dns_enabled=True,
             udp_mtu=1000,
             persistent_identity=True,
-            tick_interval_secs=15,
+            tick_interval_secs=5,
+            static_udp_peers=(("npub1test", "10.206.0.1:2121"),),
         )
         self.assertIn("persistent: true", config)
-        self.assertIn("tick_interval_secs: 15", config)
+        self.assertIn("tick_interval_secs: 5", config)
         self.assertIn("mtu: 1000", config)
+        self.assertIn('npub: "npub1test"', config)
+        self.assertIn('addr: "10.206.0.1:2121"', config)
+        self.assertIn("connect_policy: auto_connect", config)
 
     def test_extracts_reactive_mtu_counters(self):
         routing = {
@@ -884,6 +892,15 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         result["observations"]["transit_restart"][
             "endpoint_session_start_ms_after"
         ][1] += 1
+        with self.assertRaisesRegex(ContractError, "continuity"):
+            validate_fips_g2_linux_reactive_mtu_result(result)
+
+    def test_rejects_reactive_mtu_without_link_epoch_replacement(self):
+        result = valid_reactive_mtu_result()
+        result["observations"]["transit_restart"]["endpoint_link_ids_after"] = [
+            10,
+            21,
+        ]
         with self.assertRaisesRegex(ContractError, "continuity"):
             validate_fips_g2_linux_reactive_mtu_result(result)
 
