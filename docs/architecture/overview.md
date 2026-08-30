@@ -40,7 +40,11 @@ Three distinct roles must not be collapsed into one generic "relay":
 
 Each role requires separate topology, security, and qualification evidence. The retained
 [managed-transit qualification](../qualification/fips-g2-linux-managed-transit-2026-08-30.md)
-exercises only the second role.
+exercises only the second role. The subsequent
+[alternate-route qualification](../qualification/fips-g2-linux-alternate-route-2026-08-30.md)
+also exercises that role with two authenticated transits and an active-transit failure. It proves
+automatic tree reparenting, but its 93.439-second exact-payload recovery is explicitly non-hitless
+and is not media-continuity evidence.
 
 ## Initial integration
 
@@ -73,6 +77,11 @@ an authorized Robotweax device or tenant; policy is a separate Media Fabric resp
 Fault domains must represent physical or administrative independence rather than interface labels.
 SRT connection groups are the first resilience baseline. FIPS reconvergence and future FIPS-level
 multipath are evaluated against that baseline, not assumed to be superior.
+
+The first retained FIPS alternate-route result reinforces this boundary: tree reparenting completed
+after 31.746 seconds, while the stale endpoint FSP session required automatic expiry and
+re-establishment before data recovered after 93.439 seconds. G6 must therefore compare observable
+application recovery, not route state alone.
 
 ## Stable contracts in Phase 0
 

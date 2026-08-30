@@ -66,7 +66,7 @@ It does not pass G2 as a whole and is not G3 media evidence. After the later MTU
 lifecycle follow-ups, the following remain:
 
 1. broader NAT traversal and public/private discovery classes;
-2. alternate-route and managed-transit failure/reconvergence behavior;
+2. broader managed-transit failure, usable-session recovery, and route-continuity behavior;
 3. loss, delay, reordering, queue, and resource bounds; and
 4. Robotweax SRT payload and downstream media timing over the qualified `fips0` path.
 
@@ -87,3 +87,8 @@ proved that a 1204-byte IPv6 packet receives explicit ICMPv6 Packet Too Big feed
 The [lifecycle qualification](fips-g2-linux-lifecycle-2026-08-30.md) subsequently proved direct
 link-dead cleanup, identity-preserving daemon restart, automatic reauthentication without a manual
 connect, and restored exact payload/FSP behavior.
+
+The [alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) subsequently
+proved automatic tree reparenting and exact-payload recovery through a second authenticated
+transit. Its 93.439-second recovery depended on FSP idle expiry and session replacement, so it is
+bounded G2 connectivity evidence rather than G6 or G3 continuity evidence.

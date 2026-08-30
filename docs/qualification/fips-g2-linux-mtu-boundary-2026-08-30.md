@@ -63,6 +63,8 @@ blackhole in this topology.
 The result does not qualify a lower heterogeneous multihop bottleneck, IPv6 fragmentation, SRT
 packetization, NAT-specific PMTUD, or impaired-network PTB loss. The subsequent
 [lifecycle qualification](fips-g2-linux-lifecycle-2026-08-30.md) closed the direct link-dead and
-daemon-restart slice. G2 remains open for broader NAT and discovery classes, alternate-route and
-managed-transit reconvergence, impaired-network cases, heterogeneous multihop PMTUD, and resource
-bounds. SRT-over-FIPS correctness and continuity remain G3 work.
+daemon-restart slice. The later
+[alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) closed a bounded
+managed-transit failure and recovery slice, but exposed non-hitless FSP recovery. G2 remains open
+for broader NAT and discovery classes, impaired-network cases, heterogeneous multihop PMTUD, and
+resource bounds. SRT-over-FIPS correctness and continuity remain G3 work.

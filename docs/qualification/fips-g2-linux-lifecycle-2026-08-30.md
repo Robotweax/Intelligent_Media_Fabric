@@ -80,3 +80,9 @@ transit-node failure, NAT rebinding, public discovery, signaling relay recovery,
 resource bounds, or SRT media continuity. G2 therefore remains open for the remaining
 connectivity/discovery, heterogeneous multihop PMTUD, impairment, and resource slices. Route
 reconvergence and running-stream continuity remain G6 and G3 work respectively.
+
+The subsequent
+[alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) closed the bounded
+transit-failure connectivity slice: FIPS reparented automatically to an already authenticated
+alternate in 31.746 seconds and restored exact payload after automatic FSP session replacement in
+93.439 seconds. That result is non-hitless and does not change the G6 or G3 continuity status.

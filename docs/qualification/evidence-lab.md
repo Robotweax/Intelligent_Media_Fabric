@@ -153,3 +153,34 @@ mesh and underlay addresses, process identifiers, raw payloads, and daemon logs.
 qualification stop conditions, not production SLOs. This single direct-path experiment does not
 qualify alternate-route reconvergence, NAT rebinding, managed-transit failure, discovery, a
 signaling relay, impaired networks, or SRT media continuity.
+
+## Privileged FIPS G2 Linux alternate-route runner
+
+The manually dispatched `FIPS G2 Linux Alternate Route Qualification` workflow creates an
+authenticated four-node A–R1/R2–B FIPS diamond across four isolated IPv4 underlay segments. Both
+transits have IPv4 forwarding disabled and no direct A–B underlay exists. Temporary persistent
+identities are ordered by derived node address so A is the deterministic tree root. A 20 ms
+one-way netem delay on each direction of the R2–B edge freezes R1 as B's active parent and R2 as an
+already authenticated, higher-cost alternate; this is a route-selection control, not an
+impaired-network claim.
+
+Before failure, the runner requires two authenticated peers and links per node, full MMP on all
+eight adjacent-link views, loopback-only endpoint identity registration, boundary-sized ICMPv6,
+exact UDP echo, positive R1 forwarding deltas, zero R2 forwarding deltas, and endpoint-only FSP
+termination. It then sends `SIGKILL` to R1 while leaving the underlay up. B must reparent to R2
+within 60 seconds with a stable root and depth, increased tree declaration and parent-loss
+telemetry, and no route or connect command.
+
+The runner records that the original endpoint FSP session remains established during tree
+reparenting but does not claim continuity. The pinned baseline retains stale coordinates until the
+explicitly configured 90-second idle-session timeout removes the unused session. Subsequent TUN
+traffic must automatically trigger discovery and a new FSP session over R2 with zero manual
+session-reset commands. Boundary ICMPv6 and exact UDP payloads must then pass while R1 remains
+unavailable, and R2 must expose positive forwarding deltas without terminating FSP.
+
+Successful output must pass
+`schema/qualification/fips-g2-linux-alternate-route-result.schema.json` and the repository
+contract. The 60- and 180-second bounds are qualification stop conditions, not production SLOs.
+This runner qualifies bounded FIPS connectivity recovery only. It explicitly does not qualify
+hitless failover, SRT socket survival, downstream media timing, G6, G3, public discovery, NAT
+rebinding, or impaired-network behavior.

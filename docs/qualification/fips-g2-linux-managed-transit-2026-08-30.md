@@ -75,3 +75,10 @@ closed the direct link-dead and daemon-restart slice, but not transit-node failu
 reconvergence. G2 therefore remains open for broader NAT/discovery classes, reconvergence,
 impairment, heterogeneous multihop PMTUD, and resource bounds. Robotweax SRT payload, timing, and
 continuity over the qualified `fips0` paths remain G3 work.
+
+The subsequent
+[alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) extended this topology
+to two authenticated transit nodes and proved automatic recovery after the active transit was
+killed. Tree reparenting completed in 31.746 seconds, but exact payload recovered only after FSP
+session replacement at 93.439 seconds. The result closes a bounded G2 connectivity slice, not G6
+or G3 continuity.

@@ -63,8 +63,8 @@ the translated underlay path while the same MTU-boundary, payload-identity, FSP,
 cleanup assertions remain true.
 
 It is not a general NAT-traversal result. STUN, hole punching, endpoint-dependent/symmetric NAT,
-port remapping, discovery, and relays were not exercised. G2 also remains open for alternate-route
-and NAT-specific failure/reconvergence cases, impaired networks, and resource bounds.
+port remapping, discovery, and relays were not exercised. G2 also remains open for NAT-specific
+failure/reconvergence cases, impaired networks, and resource bounds.
 SRT-over-FIPS media correctness and continuity remain G3 work. The later
 [direct MTU-boundary qualification](fips-g2-linux-mtu-boundary-2026-08-30.md) closed the
 one-byte-above-boundary behavior for the direct topology; NAT-specific PMTUD remains unqualified.
@@ -77,3 +77,9 @@ The subsequent
 three-node A–R–B FIPS data path without public discovery and compared its authenticated peer/link,
 payload, session, forwarding-counter, and cleanup contract with the retained direct and NAT records.
 That result is distinct from Nostr signaling-relay and NAT-traversal qualification.
+
+The subsequent
+[alternate-route qualification](fips-g2-linux-alternate-route-2026-08-30.md) closed the basic
+non-NAT alternate-route connectivity slice, but its exact-payload recovery required automatic FSP
+session replacement after 93.439 seconds. NAT rebinding and NAT-specific recovery therefore remain
+unqualified, as do G6 and G3 continuity.

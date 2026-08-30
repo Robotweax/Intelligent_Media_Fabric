@@ -19,9 +19,11 @@ replaced with an implicit implementation default.
 | OD-12 | Repository licensing, OEM, contribution signing, and CODEOWNERS | First external contribution | Owner decision and ADR |
 | OD-13 | Software-only, appliance-near, or OEM-embedded pilot | Product pilot | Product/deployment ADR |
 | OD-14 | Design partners and frozen goodput, CPU, failover, and operations gates | G3/product pilot | Product decision and gate update |
+| OD-15 | Response to non-hitless FIPS alternate-route recovery | G6 | FIPS/SRT resilience comparison and ADR selecting improvement, bounded workaround, or pivot |
 
 ## Immediate order
 
 OD-02 is closed by [ADR-0003](0003-fips-phase1-baseline.md) after the WP1 comparison. OD-01, OD-03,
 OD-04, and OD-14 must close before G3 can pass. OD-12 must close before an external contributor or
-distributable artifact is accepted.
+distributable artifact is accepted. OD-15 must close before G6 can pass; the retained FIPS result
+proves route reparenting but not usable-session or media continuity.

@@ -32,9 +32,16 @@ ungraceful direct-peer failure and daemon restart. It records bounded link-dead 
 outage probe, stable identity, automatic reauthentication with zero manual reconnect commands,
 post-restart payload/FSP recovery, and credential-directory teardown.
 
-G2 remains in progress because broader NAT traversal, public/private discovery, alternate-route
-reconvergence, heterogeneous multihop PMTUD, impaired-network, and resource-bound classes are not
-covered.
+The
+[FIPS G2 Linux alternate-route result](2026-08-30-fips-g2-linux-alternate-route-x86_64.json) adds
+one authenticated four-node A–R1/R2–B diamond. It proves a bounded automatic tree reparent from a
+failed active R1 to the already authenticated R2 path, followed by automatic FSP discovery and
+session re-establishment after the configured 90-second idle timeout. Exact payload recovery took
+93,439 ms, so this is explicitly non-hitless G2 connectivity evidence rather than G6 or media
+continuity evidence.
+
+G2 remains in progress because broader NAT traversal, public/private discovery, heterogeneous
+multihop PMTUD, impaired-network, and resource-bound classes are not covered.
 
 Do not commit generated output automatically. A retained result must pass review for provenance,
 reproducibility, secrets, privacy, customer payload, size, licensing, and evidence classification.
@@ -60,4 +67,7 @@ PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-managed-transit \
 
 PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-lifecycle \
   qualification/retained-results/2026-08-30-fips-g2-linux-lifecycle-x86_64.json
+
+PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-alternate-route \
+  qualification/retained-results/2026-08-30-fips-g2-linux-alternate-route-x86_64.json
 ```
