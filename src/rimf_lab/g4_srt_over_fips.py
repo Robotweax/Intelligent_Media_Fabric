@@ -48,7 +48,7 @@ from .fips_g2_linux import (
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
 
-EXPECTED_SRT_COMMIT = "e3d61f77e852001224b6586c63bcff46a3200223"
+EXPECTED_SRT_COMMIT = "def14a7b6d8a2ba1860677414e415fd86bbc953a"
 EXPECTED_TELEMETRY_COMMIT = "bf10da0431fdf23772210262755f745b62b6ff58"
 SRT_REPOSITORY = "https://github.com/Robotweax/srt.git"
 TELEMETRY_REPOSITORY = "https://github.com/Robotweax/srt_telemetry.git"
@@ -660,7 +660,7 @@ def run_g4_srt_over_fips_live(
                 namespaces[1],
                 incident_peer,
                 library_dir,
-                _recording_arguments("listener", receiver_source, flow_id, "0.2.0-11-ge3d61f7")
+                _recording_arguments("listener", receiver_source, flow_id, "0.2.4")
                 + ["--bind-address", destination],
             )
         )
@@ -673,7 +673,7 @@ def run_g4_srt_over_fips_live(
                 namespaces[0],
                 incident_peer,
                 library_dir,
-                _recording_arguments("caller", sender_source, flow_id, "0.2.0-11-ge3d61f7")
+                _recording_arguments("caller", sender_source, flow_id, "0.2.4")
                 + ["--remote-address", destination, "--port", str(port)],
             )
         )

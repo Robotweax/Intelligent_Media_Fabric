@@ -63,6 +63,13 @@ def render_delay_mmp_config(control_socket: Path, bind_address: str) -> str:
   session_mmp:
     mode: "full"
   log_level: warn
+  native_api:
+    enabled: false
+  rendezvous:
+    nostr:
+      enabled: false
+    lan:
+      enabled: false
 
 tun:
   enabled: true

@@ -66,7 +66,7 @@ def success_result() -> dict:
             "status": "passed",
             "provenance": {
                 "fips_repository": "https://github.com/jmcorgan/fips.git",
-                "fips_commit": "487fa86f65794071e3b91313c298d4f09b98b7fe",
+                "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
                 "fips_source_tree_state": "clean",
                 "cargo_lock_sha256": "0" * 64,
                 "rust_toolchain_sha256": "0" * 64,

@@ -11,10 +11,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FIPS_COMMIT: 487fa86f65794071e3b91313c298d4f09b98b7fe
-  FIPS_CARGO_LOCK_SHA256: 6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83
+  FIPS_COMMIT: c5aeef39ef9442d9e5047331156df368ace40cbd
+  FIPS_CARGO_LOCK_SHA256: 77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f
   FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
-  SRT_COMMIT: e3d61f77e852001224b6586c63bcff46a3200223
+  SRT_COMMIT: def14a7b6d8a2ba1860677414e415fd86bbc953a
   TELEMETRY_COMMIT: bf10da0431fdf23772210262755f745b62b6ff58
   FIPS_SOURCE: /tmp/rimf-g4-fips
   SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
@@ -66,6 +66,7 @@ jobs:
             cmake \
             g++ \
             iproute2 \
+            libclang-dev \
             libdbus-1-dev \
             libssl-dev \
             ninja-build \
@@ -102,7 +103,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             /tmp/rimf-g4-fips/target
-          key: ${{ runner.os }}-fips-v0.4.2-rust-1.94.1-6a3016555299
+          key: ${{ runner.os }}-fips-v0.5.1-rust-1.94.1-77208a84234e
 
       - name: Build pinned FIPS binaries
         working-directory: ${{ env.FIPS_SOURCE }}
@@ -127,7 +128,7 @@ jobs:
             -DROBOTWEAX_SRT_BUILD_BENCHMARKS=OFF \
             -DROBOTWEAX_SRT_BUILD_TOOLS=OFF
           cmake --build "$SRT_BUILD" --parallel --target robotweax_srt
-          test -f "$SRT_BUILD/libsrt.so"
+          test -f "$SRT_BUILD/librobotweax-srt.so"
 
       - name: Build pinned addressable Telemetry incident peer
         run: |
@@ -136,10 +137,10 @@ jobs:
             -DROBOTWEAX_SRT_TELEMETRY_BUILD_TESTS=ON \
             -DROBOTWEAX_SRT_TELEMETRY_BUILD_PUBLIC_SRT_ADAPTER=ON \
             -DROBOTWEAX_SRT_TELEMETRY_SRT_INCLUDE_DIR="$SRT_SOURCE/include" \
-            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/libsrt.so" \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/librobotweax-srt.so" \
             -DROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt
-          cmake --build "$TELEMETRY_BUILD" --parallel \
-            --target robotweax_srt_telemetry_public_srt_incident_peer
+          cmake --build "$TELEMETRY_BUILD" --parallel
+          ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure
           PEER_HELP="$(env LD_LIBRARY_PATH="$SRT_BUILD" \
             "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" --help 2>&1 || true)"
           grep --fixed-strings -- '--bind-address IP' <<< "$PEER_HELP"
@@ -155,7 +156,7 @@ jobs:
               --fips "$FIPS_SOURCE/target/release/fips" \
               --fipsctl "$FIPS_SOURCE/target/release/fipsctl" \
               --srt-source "$SRT_SOURCE" \
-              --srt-library "$SRT_BUILD/libsrt.so" \
+              --srt-library "$SRT_BUILD/librobotweax-srt.so" \
               --telemetry-source "$TELEMETRY_SOURCE" \
               --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
               --library-dir "$SRT_BUILD" \

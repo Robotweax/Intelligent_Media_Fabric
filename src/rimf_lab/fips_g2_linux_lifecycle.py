@@ -88,6 +88,13 @@ def render_lifecycle_config(
     base_interval_secs: {RETRY_BASE_INTERVAL_SECS}
     max_backoff_secs: {RETRY_MAX_BACKOFF_SECS}
   log_level: warn
+  native_api:
+    enabled: false
+  rendezvous:
+    nostr:
+      enabled: false
+    lan:
+      enabled: false
 
 tun:
   enabled: true

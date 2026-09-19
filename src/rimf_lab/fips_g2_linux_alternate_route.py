@@ -184,6 +184,13 @@ def render_alternate_route_config(
   session:
     idle_timeout_secs: {SESSION_IDLE_TIMEOUT_SECS}
   log_level: warn
+  native_api:
+    enabled: false
+  rendezvous:
+    nostr:
+      enabled: false
+    lan:
+      enabled: false
 
 tun:
   enabled: true
