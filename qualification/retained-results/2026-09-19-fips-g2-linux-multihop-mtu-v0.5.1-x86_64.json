@@ -1,0 +1,217 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "ephemeral_identity_directory_removed": true,
+    "namespaces_removed": true
+  },
+  "evidence_type": "fips-g2-linux-multihop-mtu",
+  "finished_at": "2026-09-19T16:54:55.097755Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "limitations": [
+    "A static, explicitly connected three-node FIPS line was exercised; public discovery, Nostr relays, and NAT traversal were not part of this run.",
+    "The heterogeneous constraint was the transit node's configured FIPS UDP transport MTU, not a changing physical underlay MTU or a black-holed ICMP path.",
+    "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+    "This run qualifies one proactive discovery/session PMTUD case on Linux for the pinned host architecture only."
+  ],
+  "observations": {
+    "disconnect": {
+      "control_acknowledgements": 2,
+      "links_per_node_after": [
+        0,
+        0,
+        0
+      ],
+      "peers_per_node_after": [
+        0,
+        0,
+        0
+      ]
+    },
+    "icmpv6": {
+      "effective_mtu_boundary_payload_bytes": 875,
+      "passed": true,
+      "path": "endpoint-a-via-managed-transit-r-to-endpoint-b",
+      "small_payload_bytes": 32
+    },
+    "identity_resolution": {
+      "endpoint_remote_identities_registered": true,
+      "mechanism": "local-fips-dns-npub",
+      "public_discovery_used": false
+    },
+    "line_topology": {
+      "authenticated_link_counts": [
+        1,
+        2,
+        1
+      ],
+      "authenticated_peer_counts": [
+        1,
+        2,
+        1
+      ],
+      "control_connects_acknowledged": 2,
+      "endpoint_direct_peer_absent": true,
+      "estimated_mesh_size": 3,
+      "transport": "udp"
+    },
+    "mmp": [
+      {
+        "etx": 1.0,
+        "link_ordinal": 1,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "a",
+        "srtt_ms_observed": true
+      },
+      {
+        "etx": 1.0,
+        "link_ordinal": 1,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "r",
+        "srtt_ms_observed": true
+      },
+      {
+        "etx": 1.0,
+        "link_ordinal": 2,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "r",
+        "srtt_ms_observed": true
+      },
+      {
+        "etx": 1.0,
+        "link_ordinal": 1,
+        "loss_rate": 0.0,
+        "mode": "full",
+        "node": "b",
+        "srtt_ms_observed": true
+      }
+    ],
+    "nodes": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "role": "endpoint",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 923,
+        "kernel_tun_mtu": 1280,
+        "node": "r",
+        "role": "managed-transit",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "role": "endpoint",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "path_mtu": {
+      "above_boundary_icmp_payload_bytes": 876,
+      "above_boundary_ipv6_packet_bytes": 924,
+      "boundary_icmp_payload_bytes": 875,
+      "echo_reply_received": false,
+      "effective_ipv6_path_mtu": 923,
+      "endpoint_effective_ipv6_mtu": 1203,
+      "endpoint_session_path_mtus": [
+        1000,
+        1000
+      ],
+      "icmpv6_code": 0,
+      "icmpv6_type": 2,
+      "learned_transport_path_mtu": 1000,
+      "post_ptb_boundary_probe_passed": true,
+      "reported_mtu": 923,
+      "transit_transport_mtu": 1000
+    },
+    "payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0-multihop",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 512,
+          "exact_echo": true,
+          "sha256": "c2ea222e837487d9475bd97616a6c6955043626f7d45c67d13db21aa4c234f5b"
+        },
+        {
+          "bytes": 875,
+          "exact_echo": true,
+          "sha256": "3b6c9396ee2de607821609ceb1b245bb1687c78ff9d0960f970dfaa4c04411a9"
+        }
+      ]
+    },
+    "transit_forwarding": {
+      "endpoint_fsp_session_counts": [
+        1,
+        1
+      ],
+      "forwarded_bytes": 14028,
+      "forwarded_packets": 33,
+      "payload_opaque_to_transit_by_protocol_contract": true,
+      "transit_fsp_session_count": 0
+    },
+    "underlay_exclusion": {
+      "endpoint_direct_ipv4_forwarding_disabled": true,
+      "endpoint_direct_ipv4_probe_blocked": true
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f",
+    "fips_binary_sha256": "a7ad0fca5b8059a02ef63c1c7ad53ad4e20bcdfcb947cc5486077c2c0bbba6c4",
+    "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "d9a8f10ec2c13b7a64f004302a9ed3a4b500a2b6f8679ed13828099e13e9e376",
+    "project_revision": "14a033a031fb37a415647490b98d43450e510bd1",
+    "reported_version": "fips 0.5.1 (rev c5aeef39ef)\ntarget: x86_64-unknown-linux-gnu",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
+  },
+  "run_id": "770c1004-a773-4244-be2e-5b4384341c22",
+  "schema_version": 1,
+  "started_at": "2026-09-19T16:54:44.654751Z",
+  "status": "passed",
+  "topology": {
+    "authenticated_link_count": 2,
+    "bottleneck_node": "r",
+    "configured_tun_mtu_per_node": [
+      1280,
+      1280,
+      1280
+    ],
+    "configured_udp_mtu_per_node": [
+      1280,
+      1000,
+      1280
+    ],
+    "isolation": "linux-network-namespaces",
+    "namespace_count": 3,
+    "node_count": 3,
+    "nostr_relay": false,
+    "path_role": "managed-fips-transit",
+    "public_discovery": false,
+    "tun_name": "fips0",
+    "underlay": "two-segment-line-ipv4-udp"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "faulted_daemon_reaped": false,
+    "namespaces_removed": true,
+    "persistent_identity_directory_removed": true
+  },
+  "evidence_type": "fips-g2-linux-alternate-route",
+  "failure_class": "QualificationError",
+  "failure_detail": "timed out waiting for four-node authenticated diamond and spanning tree",
+  "failure_phase": "diamond-convergence",
+  "finished_at": "2026-09-19T17:00:58.121251Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "project_revision": "14a033a031fb37a415647490b98d43450e510bd1",
+  "run_id": "1ece5d6e-c144-414c-b244-2b7b7d05cdac",
+  "schema_version": 1,
+  "started_at": "2026-09-19T16:59:51.428995Z",
+  "status": "failed"
+}

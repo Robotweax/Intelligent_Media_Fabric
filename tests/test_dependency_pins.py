@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -71,3 +72,31 @@ class DependencyPinTests(unittest.TestCase):
             self.assertIn("  rendezvous:\n    nostr:\n      enabled: false\n    lan:\n      enabled: false", config)
             self.assertNotIn("  discovery:", config)
             self.assertIn('  name: "fips0"', config)
+
+    def test_source_guard_rejects_dirty_tree_and_digest_mismatch(self):
+        for dirty, digests, expected in (
+            (" M Cargo.toml", [], "dirty"),
+            ("", ["0" * 64, EXPECTED_RUST_TOOLCHAIN_SHA256], "Cargo.lock"),
+            ("", [EXPECTED_CARGO_LOCK_SHA256, "0" * 64], "rust-toolchain"),
+        ):
+            with self.subTest(expected=expected):
+                with patch("rimf_lab.fips_g2_linux._run") as run, patch(
+                    "rimf_lab.fips_g2_linux.sha256_file", side_effect=digests
+                ):
+                    run.side_effect = [
+                        subprocess.CompletedProcess([], 0, EXPECTED_FIPS_COMMIT),
+                        subprocess.CompletedProcess([], 0, dirty),
+                    ]
+                    with self.assertRaisesRegex(QualificationError, expected):
+                        _source_provenance(ROOT)
+
+    def test_source_guard_accepts_exact_clean_candidate(self):
+        with patch("rimf_lab.fips_g2_linux._run") as run, patch(
+            "rimf_lab.fips_g2_linux.sha256_file",
+            side_effect=[EXPECTED_CARGO_LOCK_SHA256, EXPECTED_RUST_TOOLCHAIN_SHA256],
+        ):
+            run.side_effect = [
+                subprocess.CompletedProcess([], 0, EXPECTED_FIPS_COMMIT),
+                subprocess.CompletedProcess([], 0, ""),
+            ]
+            self.assertEqual(_source_provenance(ROOT)["fips_commit"], EXPECTED_FIPS_COMMIT)

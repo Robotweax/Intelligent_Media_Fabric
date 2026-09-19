@@ -24,7 +24,7 @@ The first matrix is intentionally small:
 
 - direct SRT versus SRT through `fips0`;
 - IPv6 overlay with documented IPv4 or IPv6 underlay;
-- FIPS `v0.4.2` release candidate and pinned development candidate as separate builds;
+- FIPS `v0.5.1` requalification candidate; the older development pin remains research-only;
 - Robotweax SRT clear or CTR-compatible baseline before optional GCM comparison;
 - 188-byte, 376-byte, 1316-byte, and maximum-safe payload profiles; and
 - no impairment, selected MTU reductions, NAT, one relay, and one controlled outage.
@@ -45,7 +45,7 @@ minus current FEC reservation             4 bytes
 GCM plus FEC payload                   1119 bytes
 ```
 
-The retained heterogeneous multihop result also proves that the remote path can be smaller than
+The historical v0.4.2 heterogeneous multihop result shows that the remote path can be smaller than
 the endpoint-local effective MTU. For a learned FIPS transport PMTU of 1000 bytes:
 
 ```text
@@ -58,7 +58,8 @@ minus current FEC reservation              4 bytes
 GCM plus FEC payload                     839 bytes
 ```
 
-These values are experiment inputs, not a general product guarantee. Each run must derive and record
+These historical values require fresh v0.5.1 qualification; they are experiment inputs, not a
+general product guarantee. Each run must derive and record
 the actual underlay, FIPS, inner-IP, SRT, crypto, FEC, and media packet budgets. Fragmentation or an
 unexplained payload-size change fails the MTU gate. Packetization must use the smaller of the local
 effective MTU and the qualified per-destination path MTU; a fixed 1203-byte assumption is invalid
