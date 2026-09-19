@@ -19,8 +19,8 @@ from typing import Callable
 
 
 FIPS_REPOSITORY = "https://github.com/jmcorgan/fips.git"
-EXPECTED_FIPS_COMMIT = "487fa86f65794071e3b91313c298d4f09b98b7fe"
-EXPECTED_CARGO_LOCK_SHA256 = "6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83"
+EXPECTED_FIPS_COMMIT = "c5aeef39ef9442d9e5047331156df368ace40cbd"
+EXPECTED_CARGO_LOCK_SHA256 = "77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f"
 EXPECTED_RUST_TOOLCHAIN_SHA256 = "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
 TUN_MTU = 1280
 EFFECTIVE_IPV6_MTU = 1203
@@ -67,6 +67,13 @@ def render_config(
     enabled: true
     socket_path: "{control_socket}"
   log_level: warn
+  native_api:
+    enabled: false
+  rendezvous:
+    nostr:
+      enabled: false
+    lan:
+      enabled: false
 
 tun:
   enabled: true

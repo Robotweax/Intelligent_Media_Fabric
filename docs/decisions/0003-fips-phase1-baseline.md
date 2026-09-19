@@ -1,6 +1,6 @@
 # ADR-0003: FIPS Phase 1 baseline
 
-- Status: accepted
+- Status: superseded for future runs by ADR-0005; historical evidence unchanged
 - Date: 2026-08-29
 - Closes: OD-02
 

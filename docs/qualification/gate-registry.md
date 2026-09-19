@@ -17,10 +17,14 @@ or an approved ADR can change a gate status.
 | G8 Route Control | not-started | Is FIPS control superior enough to justify upstream work or a patch stack? | SRT-group comparison, no flapping, fork/upstream ADR |
 | G9 Generic Multipath | not-started | Does cross-protocol value justify FIPS-near multipath? | ordering, crypto, congestion, recovery, and resource qualification |
 
-The stock FIPS `v0.4.2` daemon currently cannot place the reactive-MTU experiment into its required
+The 2026-09-19 refresh selects FIPS v0.5.1 and a new immutable SRT main snapshot for
+[requalification](dependency-refresh-2026-09-19.md). Gate statuses remain unchanged; historical
+v0.4.2 evidence is not automatically evidence for v0.5.1.
+
+The historical stock FIPS `v0.4.2` assessment could not place the reactive-MTU experiment into its required
 state without route/session disruption or prior proactive MTU discovery. This is recorded as a
 [capability gap](fips-g2-reactive-mtu-gap-2026-08-30.md), not a failed gate: G2 remains
-`in-progress`, and no G6 claim has started.
+`in-progress`, and no G6 claim has started. That capability gap has not yet been reassessed on v0.5.1.
 
 G4 has started with a deterministic SRT adapter fixture and a paired synthetic clock-domain
 boundary case. The analyzer correctly returns `insufficient-evidence` for distinct `local-only`

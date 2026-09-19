@@ -1,0 +1,170 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "ephemeral_identity_directory_removed": true,
+    "namespaces_removed": true,
+    "netem_removed": true
+  },
+  "evidence_type": "fips-g2-linux-delay-mmp",
+  "finished_at": "2026-09-19T16:55:11.889233Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "limitations": [
+    "One direct veth underlay and one fixed-delay step were exercised.",
+    "No loss, jitter, reordering, duplication, corruption, bandwidth limit, or queue pressure was injected.",
+    "The SRTT bounds are qualification controls for this CI runner class, not production SLOs.",
+    "The payload probe used deterministic UDP datagrams, not an SRT media stream.",
+    "No route change, NAT, discovery service, or FIPS process restart was exercised."
+  ],
+  "observations": {
+    "baseline_mmp": {
+      "maximum_srtt_ms": 25.0,
+      "mode": "full",
+      "srtt_ms_per_node": [
+        1.0,
+        1.0
+      ]
+    },
+    "connection": {
+      "authenticated_peers_per_node": 1,
+      "control_acknowledged": true,
+      "estimated_mesh_size": 2,
+      "links_per_node": 1,
+      "transport": "udp"
+    },
+    "degraded_mmp": {
+      "convergence_budget_secs": 60,
+      "convergence_elapsed_ms": 9867,
+      "maximum_srtt_ms": 200.0,
+      "minimum_increase_ms": 30.0,
+      "minimum_srtt_ms": 55.0,
+      "srtt_ms_per_node": [
+        56.569,
+        56.66
+      ]
+    },
+    "delay_injection": {
+      "configured_loss_percent": 0,
+      "configured_one_way_delay_ms": 40,
+      "impaired_underlay_directions": 2,
+      "mechanism": "linux-tc-netem",
+      "verified_netem_qdiscs": 2
+    },
+    "disconnect": {
+      "control_acknowledged": true,
+      "fsp_sessions_per_node_after": 0,
+      "links_per_node_after": 0,
+      "peers_per_node_after": 0
+    },
+    "impaired_icmpv6": {
+      "echo_requests": 2,
+      "effective_mtu_boundary_payload_bytes": 1155,
+      "passed": true
+    },
+    "impaired_payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    },
+    "nodes": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "recovery_mmp": {
+      "convergence_budget_secs": 60,
+      "convergence_elapsed_ms": 12016,
+      "maximum_srtt_ms": 25.0,
+      "netem_removed_per_direction": [
+        true,
+        true
+      ],
+      "srtt_ms_per_node": [
+        22.063,
+        24.005
+      ]
+    },
+    "session_continuity": {
+      "fsp_session_counts_during_delay": [
+        1,
+        1
+      ],
+      "link_counts_during_delay": [
+        1,
+        1
+      ],
+      "peer_counts_during_delay": [
+        1,
+        1
+      ],
+      "session_start_unchanged_after_recovery": [
+        true,
+        true
+      ],
+      "session_start_unchanged_during_delay": [
+        true,
+        true
+      ]
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f",
+    "fips_binary_sha256": "a7ad0fca5b8059a02ef63c1c7ad53ad4e20bcdfcb947cc5486077c2c0bbba6c4",
+    "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "d9a8f10ec2c13b7a64f004302a9ed3a4b500a2b6f8679ed13828099e13e9e376",
+    "project_revision": "14a033a031fb37a415647490b98d43450e510bd1",
+    "reported_version": "fips 0.5.1 (rev c5aeef39ef)\ntarget: x86_64-unknown-linux-gnu",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
+  },
+  "run_id": "37a029ed-58ba-41d1-b1cf-88f42e8c28b7",
+  "schema_version": 1,
+  "started_at": "2026-09-19T16:54:44.712653Z",
+  "status": "passed",
+  "topology": {
+    "configured_tun_mtu": 1280,
+    "configured_udp_mtu": 1280,
+    "heartbeat_interval_secs": 1,
+    "isolation": "linux-network-namespaces",
+    "namespace_count": 2,
+    "node_count": 2,
+    "tun_name": "fips0",
+    "underlay": "direct-veth-ipv4-udp"
+  }
+}

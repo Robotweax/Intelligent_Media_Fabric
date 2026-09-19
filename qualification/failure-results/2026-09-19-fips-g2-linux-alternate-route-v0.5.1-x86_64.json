@@ -1,0 +1,22 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "faulted_daemon_reaped": false,
+    "namespaces_removed": true,
+    "persistent_identity_directory_removed": true
+  },
+  "evidence_type": "fips-g2-linux-alternate-route",
+  "failure_class": "QualificationError",
+  "failure_detail": "timed out waiting for initial overlay route",
+  "failure_phase": "initial-data-plane",
+  "finished_at": "2026-09-19T16:55:12.684150Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "project_revision": "14a033a031fb37a415647490b98d43450e510bd1",
+  "run_id": "f4b573d0-3a95-4607-ab60-4459c21775d6",
+  "schema_version": 1,
+  "started_at": "2026-09-19T16:54:17.199623Z",
+  "status": "failed"
+}

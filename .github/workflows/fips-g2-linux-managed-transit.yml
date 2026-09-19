@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FIPS_COMMIT: 487fa86f65794071e3b91313c298d4f09b98b7fe
-  FIPS_CARGO_LOCK_SHA256: 6a3016555299ec8895cd52d10e34b051f6d7ed2e32813f4585786bb61d4dbc83
+  FIPS_COMMIT: c5aeef39ef9442d9e5047331156df368ace40cbd
+  FIPS_CARGO_LOCK_SHA256: 77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f
   FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
   RESULT_PATH: artifacts/fips-g2-linux-managed-transit-result.json
 
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      FIPS_SOURCE: /tmp/rimf-fips-v0.4.2
+      FIPS_SOURCE: /tmp/rimf-fips-v0.5.1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -32,6 +32,7 @@ jobs:
             iproute2 \
             iputils-ping \
             dnsutils \
+            libclang-dev \
             libdbus-1-dev \
             pkg-config
 
@@ -59,8 +60,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            /tmp/rimf-fips-v0.4.2/target
-          key: ${{ runner.os }}-fips-v0.4.2-rust-1.94.1-6a3016555299
+            /tmp/rimf-fips-v0.5.1/target
+          key: ${{ runner.os }}-fips-v0.5.1-rust-1.94.1-77208a84234e
 
       - name: Build pinned FIPS binaries
         working-directory: ${{ env.FIPS_SOURCE }}
@@ -73,7 +74,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            /tmp/rimf-fips-v0.4.2/target
+            /tmp/rimf-fips-v0.5.1/target
           key: ${{ steps.fips-cache.outputs.cache-primary-key }}
 
       - name: Run privileged three-node managed-transit qualification
