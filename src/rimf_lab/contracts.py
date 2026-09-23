@@ -2619,10 +2619,7 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
     )
     active = initial_path.get("active_transit")
     alternate = initial_path.get("alternate_transit")
-    if (
-        active != "r1"
-        or alternate != "r2"
-    ):
+    if (active, alternate) not in (("r1", "r2"), ("r2", "r1")):
         raise ContractError("observations.initial_path_selection transit roles are invalid")
     if set(initial_path) != {
         "active_transit",

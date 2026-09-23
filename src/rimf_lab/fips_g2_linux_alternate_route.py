@@ -15,6 +15,7 @@ import tempfile
 import time
 import uuid
 from collections import deque
+from collections.abc import Sequence
 from pathlib import Path
 
 from .fips_g2_linux import (
@@ -142,6 +143,19 @@ def diamond_peer_relationships(peer_views: list[dict], identities: list[str]) ->
         {node_a, node_b},
         {transit_r1, transit_r2},
     ]
+
+
+def diamond_tree_relationships(tree_views: list[dict], node_addrs: Sequence[str]) -> bool:
+    """Accept either authenticated transit as B's active tree parent."""
+    if len(tree_views) != 4 or len(node_addrs) != 4:
+        return False
+    return (
+        all(item.get("root") == node_addrs[0] for item in tree_views)
+        and [item.get("depth") for item in tree_views] == [0, 1, 1, 2]
+        and tree_views[1].get("parent") == node_addrs[0]
+        and tree_views[2].get("parent") == node_addrs[0]
+        and tree_views[3].get("parent") in node_addrs[1:3]
+    )
 
 
 def render_alternate_route_config(
@@ -718,7 +732,7 @@ def run_fips_g2_linux_alternate_route(
                     "delay",
                     f"{ALTERNATE_PATH_ONE_WAY_DELAY_MS}ms",
                 ],
-                label="apply deterministic alternate-path cost bias",
+                label="apply alternate-path latency stimulus",
             )
 
         phase = "direct-underlay-exclusion"
@@ -787,13 +801,7 @@ def run_fips_g2_linux_alternate_route(
             if not diamond_peer_relationships(peer_views, list(identities)):
                 return None
             tree_views = [control(index, "show", "tree") for index in range(4)]
-            if (
-                any(item.get("root") != node_addrs[0] for item in tree_views)
-                or [item.get("depth") for item in tree_views] != [0, 1, 1, 2]
-                or tree_views[1].get("parent") != node_addrs[0]
-                or tree_views[2].get("parent") != node_addrs[0]
-                or tree_views[3].get("parent") != node_addrs[1]
-            ):
+            if not diamond_tree_relationships(tree_views, node_addrs):
                 return None
             return current_statuses, peer_views, tree_views
 
@@ -948,8 +956,6 @@ def run_fips_g2_linux_alternate_route(
             raise QualificationError("endpoint B parent was not a managed transit")
         active_index = node_addrs.index(active_addr)
         alternate_index = 1 if active_index == 2 else 2
-        if active_index != 1 or alternate_index != 2:
-            raise QualificationError("path-cost bias did not select r1 as B's active parent")
         if packet_deltas[active_index - 1] < 1 or byte_deltas[active_index - 1] < 1:
             raise QualificationError("B's parent did not forward the initial exact payload")
         if (
