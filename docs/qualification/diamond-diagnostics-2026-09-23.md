@@ -32,9 +32,9 @@ this otherwise complete diamond until timeout. The 20 ms `tc netem` delay on the
 its tree parent. The sample does not establish why FIPS preferred `r2`.
 
 The corrected qualification accepts either transit as the initial authenticated
-parent, verifies which one actually forwarded the exact initial payload, kills that
+parent, verifies that parent forwarded the exact initial payload, kills that
 transit, and still requires automatic reparenting, exact recovered delivery and the
 original timing budgets. The topology, delay stimulus, timeouts and G2 acceptance
-criteria remain unchanged. This corrects a harness assumption; it is **not** a
-successful alternate-route qualification until a new live result passes. The
-earlier initial-route failure is also still unclassified.
+criteria remain unchanged. This corrects a harness assumption. A subsequent
+[live result](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md) passed; the
+earlier initial-route failure remains unclassified.
