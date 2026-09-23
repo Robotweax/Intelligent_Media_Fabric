@@ -1003,6 +1003,15 @@ def validate_g4_live_capture_result(result: Any) -> None:
     clock = result.get("clock")
     if (
         not isinstance(clock, dict)
+        or set(clock) != {
+            "domain_id",
+            "synchronization",
+            "max_error_ns",
+            "cross_host_ordering_allowed",
+            "same_host",
+        }
+        or not isinstance(clock.get("domain_id"), str)
+        or not clock["domain_id"]
         or clock.get("synchronization") != "local-only"
         or clock.get("same_host") is not True
         or clock.get("cross_host_ordering_allowed") is not False
@@ -1016,6 +1025,7 @@ def validate_g4_live_capture_result(result: Any) -> None:
         not isinstance(capture, dict)
         or capture.get("srt_samples_per_endpoint") != ACTIVE_SAMPLE_COUNT + 2
         or capture.get("fips_observation_count") != ACTIVE_SAMPLE_COUNT + 2
+        or capture.get("sample_interval_ns") != SAMPLE_INTERVAL_NS
         or capture.get("application_message_count") != MESSAGE_COUNT
         or capture.get("application_message_bytes") != MESSAGE_BYTES
         or capture.get("application_exact_delivery") is not True
@@ -1069,6 +1079,28 @@ def validate_g4_live_capture_bundle(directory: Path) -> None:
         validate_correlation_envelope(observation)
     media = load_json(directory / "media-observation.json")
     validate_correlation_envelope(media)
+    expected_media_payload = {
+        "metric_namespace": "media.application",
+        "metric_semantics": "receiver-byte-identity",
+        "message_count": MESSAGE_COUNT,
+        "message_bytes": MESSAGE_BYTES,
+        "stream_sha256": hashlib.sha256(
+            bytes([ord("A") + 1]) * MESSAGE_BYTES * MESSAGE_COUNT
+        ).hexdigest(),
+        "exact_delivery": True,
+    }
+    if (
+        media["source"] != "media-validator"
+        or media["route_epoch"] != ROUTE_EPOCH
+        or media["clock"] != {
+            key: value for key, value in result["clock"].items() if key != "same_host"
+        }
+        or media.get("stream_id") != result["run_id"]
+        or media.get("tenant_id") != "qualification"
+        or media.get("device_id") != "two-node-pilot"
+        or media["payload"] != expected_media_payload
+    ):
+        raise ContractError("G4 live media observation does not prove the declared transfer")
     selected_srt = load_json(directory / "selected-srt-observation.json")
     selected_fips = load_json(directory / "selected-fips-observation.json")
     validate_srt_telemetry_observation(selected_srt)
@@ -1115,3 +1147,15 @@ def validate_g4_live_capture_bundle(directory: Path) -> None:
             )
             if output.read_bytes() != (directory / f"{role}-observations.jsonl").read_bytes():
                 raise ContractError(f"G4 live {role} adapter output is not byte-reproducible")
+        for name, peer_name in (
+            ("srt-fips-ordering.json", "selected-fips-observation.json"),
+            ("srt-media-ordering.json", "media-observation.json"),
+        ):
+            output = replay / name
+            assess_cross_layer_ordering(
+                directory / "selected-srt-observation.json",
+                directory / peer_name,
+                output,
+            )
+            if output.read_bytes() != (directory / name).read_bytes():
+                raise ContractError(f"G4 live {name} is not byte-reproducible")

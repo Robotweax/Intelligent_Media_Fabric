@@ -149,6 +149,12 @@ class G4SrtOverFipsContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "capture summary"):
             validate_g4_live_capture_result(result)
 
+    def test_rejects_unexpected_sample_interval(self):
+        result = success_result()
+        result["capture"]["sample_interval_ns"] = 200_000_000
+        with self.assertRaisesRegex(ContractError, "capture summary"):
+            validate_g4_live_capture_result(result)
+
     def test_non_linux_preflight_creates_no_output(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "capture"
