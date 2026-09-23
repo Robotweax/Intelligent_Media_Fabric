@@ -1,0 +1,68 @@
+# Proposed G4 faulted-diamond live experiment
+
+Status: **predeclared design, not executable or qualified evidence**. The current
+two-node healthy pilot cannot establish a route transition; adding a fault to
+that topology would only disconnect its sole path. This design requires a
+separate runner, result contract and manual workflow. The existing healthy
+pilot and its retained bundle must remain unchanged.
+
+## Question and fixed setup
+
+Can synchronized SRT, FIPS control-plane and independent downstream media
+observations identify the first *observed* divergence during an automatic
+FIPS transit failover, without mistaking timestamp order for cause?
+
+- Pin the exact Fabric, Robotweax SRT, SRT Telemetry and FIPS revisions and
+  binary hashes; use one Linux host and one boot-scoped monotonic clock domain.
+- Use four isolated namespaces in the authenticated `a–r1–b` / `a–r2–b`
+  diamond, with no direct `a–b` underlay and IPv4 forwarding disabled on both
+  transits. SRT endpoints exist only on `a` and `b` over IPv6 `fips0`.
+- Prove both transit links and a baseline exact SRT transfer before injection.
+  Identify the active transit from `b`'s observed FIPS tree parent and confirm
+  its forwarding counter increased. Do not assume `r1` or exclusive forwarding:
+  the retained G2 runs saw counters increase on both transits.
+- Kill the observed active FIPS daemon with `SIGKILL`, leave underlay
+  interfaces up, and issue no manual route, connect or session-reset command.
+  Record injection and process-exit monotonic times separately.
+
+## Required observations
+
+1. Collect bounded SRT Telemetry source recordings from both endpoints and
+   adapt them without reinterpretation of source quality flags. Keep FIPS
+   link-estimator, tree-parent, peer and forwarding observations in their own
+   metric namespaces. Record process exit and interface state independently.
+2. Start with route epoch 1. Emit an explicit transition marker only after a
+   FIPS control-plane observation proves `b` changed parent to the other
+   authenticated transit; observations after that marker use epoch 2. A
+   timeout, missing parent or ambiguous transition produces unavailable
+   evidence, not an inferred epoch change.
+3. Use a downstream media decoder/collector in a process distinct from both
+   SRT incident peers. It must report bounded frame sequence, decode result,
+   presentation time and frame hash (not raw media) before and after injection.
+   The current provider-linked application receiver is insufficient. Pin the
+   decoder build and deterministic media fixture before execution.
+4. Preserve source availability and clock-domain metadata for every event.
+   Do not compare across epochs as if they were one route, or turn FIPS MMP
+   loss into an SRT loss/retransmission metric.
+
+## Evaluation and stop rules
+
+The lab run may be reported as an **experiment success** only if the topology,
+baseline delivery, fault injection, observed reparenting, two route epochs,
+independent decoded-frame observations, replayable adapters, artifact hashes
+and full cleanup are present. The G2 60-second reparent and 180-second payload
+recovery limits are useful bounded lab stop conditions; they are not a frozen
+product media-interruption budget. Missing observations or an exceeded bound
+must produce a failed or insufficient-evidence result, never a G4 pass.
+
+A first-divergent-layer hypothesis additionally needs an explicit mapping from
+the first changed source observation to the independently observed downstream
+effect, with any clock uncertainty and alternative explanations recorded.
+Temporal ordering by itself cannot establish causality. No G3, G4, G5 or G6
+gate passage, hitless-media claim, or automated control action is authorized by
+this plan. OD-01 and OD-14 still block a product continuity threshold.
+
+Implementation is blocked until the separate four-node SRT runner, independent
+decoder/collector and fault-result contract exist and pass negative tests. The
+next implementation should keep the healthy-pilot workflow and result schema
+unchanged, and publish its own fail-closed artifact.

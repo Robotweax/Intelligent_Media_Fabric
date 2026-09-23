@@ -35,6 +35,9 @@ and one [healthy live SRT-over-FIPS pilot](g4-live-capture-2026-09-23.md). The a
 returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
 incident, first-divergent-layer, or fault-domain claim exists yet; see the
 [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).
+The next [faulted-diamond experiment plan](g4-faulted-diamond-experiment-plan-2026-09-23.md)
+is predeclared but not yet executable or qualifying evidence; it requires a
+separate four-node runner and independent downstream decoder.
 
 ## Mandatory correctness rules
 

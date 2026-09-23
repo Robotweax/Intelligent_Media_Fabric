@@ -26,3 +26,10 @@ independent media decoder. The bundle explicitly concludes `G3: not-passed` and
 
 The private repository read secret was present for this workflow. Its value is not
 part of the artifact.
+
+Repository validation now also replays both ordering assessments byte-for-byte
+and checks the receiver observation against the declared deterministic message
+count, size and stream hash. These are bundle-integrity checks, not independent
+attestation or new live fault evidence. The separate proposed
+[faulted-diamond experiment](g4-faulted-diamond-experiment-plan-2026-09-23.md)
+defines the next observation boundary without changing this healthy capture.
