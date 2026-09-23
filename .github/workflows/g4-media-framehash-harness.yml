@@ -1,0 +1,51 @@
+name: G4 Media Framehash Harness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  framehash-harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install FFmpeg for harness-only parser check
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -version | head -1
+
+      - name: Decode deterministic frames in separate processes
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -f lavfi -i 'testsrc2=size=160x90:rate=25' \
+            -frames:v 30 -c:v mpeg2video -g 12 -f mpegts \
+            "$RUNNER_TEMP/framehash-fixture.ts"
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i "$RUNNER_TEMP/framehash-fixture.ts" -map 0:v:0 \
+            -f framehash -hash SHA256 artifacts/reference.framehash
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i "$RUNNER_TEMP/framehash-fixture.ts" -map 0:v:0 \
+            -f framehash -hash SHA256 artifacts/observed.framehash
+          PYTHONPATH=src python3 -m rimf_lab assess-media-framehash \
+            --reference artifacts/reference.framehash \
+            --observed artifacts/observed.framehash \
+            --output artifacts/frame-assessment.json
+          test "$(jq -r '.status' artifacts/frame-assessment.json)" = exact
+          test "$(jq -r '.expected_frames' artifacts/frame-assessment.json)" = 30
+          test "$(jq -r '.gate_conclusion.G4' artifacts/frame-assessment.json)" = not-passed
+
+      - name: Upload bounded harness-only assessment
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: g4-media-framehash-harness-${{ github.run_id }}
+          path: artifacts/frame-assessment.json
+          if-no-files-found: warn
+          retention-days: 14
