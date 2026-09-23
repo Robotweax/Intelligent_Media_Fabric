@@ -23,6 +23,19 @@ connect/route/session reset was issued, and cleanup passed.
 This is one successful, bounded **G2 connectivity/recovery** experiment, not a
 hitless continuity claim. It does not qualify SRT media continuity, G6 route
 change, NAT rebinding, public discovery, Nostr relays, heterogeneous PMTUD, or
-impaired links. G2 remains `in-progress`: the earlier v0.5.1 initial-route
-failure is unclassified, and this single successful run does not replace the
-remaining required G2 evidence.
+impaired links.
+
+## Unchanged repeat on merged main
+
+[Workflow run 35872729661](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/35872729661)
+passed on merged `main` revision `4f5409e3b5e1665002f850394f73a39e11c2f8a3`.
+Its independent [reviewed-shape result](../../qualification/retained-results/2026-09-23-fips-g2-linux-alternate-route-v0.5.1-x86_64-main-repeat.json)
+is retained separately. With the same FIPS v0.5.1 pin and unchanged workflow,
+`b` again chose `r2`, automatically reparented to `r1` after `r2` was killed
+(31.457 seconds), and recovered exact delivery in 92.929 seconds. Cleanup passed.
+
+These are two successful bounded attempts on different Fabric revisions, not a
+statistical reliability estimate. The earlier v0.5.1 initial-route failure is
+still unclassified; neither success establishes its cause or rules out
+intermittent startup behavior. G2 remains `in-progress` pending the other
+required evidence and any broader topology/operational decision.
