@@ -78,10 +78,13 @@ unsupported hash algorithms, multiple streams and incomparable time bases
 fail closed. Its output always says `G4: not-passed` because frame comparison
 alone cannot identify a cause.
 
-The manual `G4 Media Framehash Harness` workflow checks this parser against
-real FFmpeg output from separate decode processes. It uses the runner package
-only as a **harness syntax check**: no Robotweax SRT, FIPS, route failure or
-independent downstream network path is exercised. The pinned Robotweax SRT
+The manually dispatchable, path-scoped PR `G4 Media Framehash Harness` workflow
+checks this parser against real FFmpeg output from separate decode processes.
+[Run 35876847330](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/35876847330)
+passed with 30/30 exact synthetic frames, no missing or changed frames, and an
+explicit `G4: not-passed` conclusion. It uses the runner package only as a
+**harness syntax check**: no Robotweax SRT, FIPS, route failure or independent
+downstream network path is exercised. The pinned Robotweax SRT
 [FFmpeg integration](https://github.com/Robotweax/srt/blob/def14a7b6d8a2ba1860677414e415fd86bbc953a/docs/ffmpeg-integration.md)
 uses FFmpeg commit `3acec0a1af2dda0a0838689b8b8649e7deb080a0` in its CI,
 but its minimal smoke profile copies the MPEG-2 bitstream rather than decoding
