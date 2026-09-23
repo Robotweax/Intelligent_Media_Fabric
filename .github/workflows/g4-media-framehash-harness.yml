@@ -2,6 +2,11 @@ name: G4 Media Framehash Harness
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/g4-media-framehash-harness.yml
+      - src/rimf_lab/media_frames.py
+      - tests/test_media_frames.py
 
 permissions:
   contents: read
