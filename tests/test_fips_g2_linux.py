@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -18,7 +19,9 @@ from rimf_lab.contracts import (
 from rimf_lab.fips_g2_linux_alternate_route import (
     alternate_route_timings_within_contract,
     diamond_peer_relationships,
+    diamond_tree_relationships,
     node_addr_from_npub,
+    project_diamond_node,
     render_alternate_route_config,
 )
 from rimf_lab.fips_g2_linux_delay_mmp import (
@@ -1046,6 +1049,23 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         views[3]["peers"] = [{"npub": "npub1r1"}]
         self.assertFalse(diamond_peer_relationships(views, identities))
 
+    def test_diamond_tree_accepts_either_active_transit_only(self):
+        addresses = ("a", "r1", "r2", "b")
+        views = [
+            {"root": "a", "parent": None, "depth": 0},
+            {"root": "a", "parent": "a", "depth": 1},
+            {"root": "a", "parent": "a", "depth": 1},
+            {"root": "a", "parent": "r1", "depth": 2},
+        ]
+        self.assertTrue(diamond_tree_relationships(views, addresses))
+        views[3]["parent"] = "r2"
+        self.assertTrue(diamond_tree_relationships(views, addresses))
+        views[3]["parent"] = "a"
+        self.assertFalse(diamond_tree_relationships(views, addresses))
+        views[3]["parent"] = "r2"
+        views[2]["depth"] = 2
+        self.assertFalse(diamond_tree_relationships(views, addresses))
+
     def test_alternate_route_config_freezes_redundant_auto_peers(self):
         config = render_alternate_route_config(
             Path("/tmp/rimf/control.sock"),
@@ -1070,6 +1090,24 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
 
     def test_accepts_complete_alternate_route_result(self):
         validate_fips_g2_linux_alternate_route_result(valid_alternate_route_result())
+
+    def test_accepts_alternate_route_with_r2_initially_active(self):
+        result = valid_alternate_route_result()
+        observations = result["observations"]
+        observations["initial_topology"]["endpoint_b_parent_role"] = "r2"
+        observations["initial_path_selection"]["active_transit"] = "r2"
+        observations["initial_path_selection"]["alternate_transit"] = "r1"
+        observations["failure_injection"]["failed_role"] = "r2"
+        observations["automatic_reparenting"]["old_parent_role"] = "r2"
+        observations["automatic_reparenting"]["new_parent_role"] = "r1"
+        observations["post_failure_path"]["forwarding_transit"] = "r1"
+        validate_fips_g2_linux_alternate_route_result(result)
+
+    def test_rejects_same_active_and_alternate_transit(self):
+        result = valid_alternate_route_result()
+        result["observations"]["initial_path_selection"]["alternate_transit"] = "r1"
+        with self.assertRaisesRegex(ContractError, "transit roles"):
+            validate_fips_g2_linux_alternate_route_result(result)
 
     def test_delay_mmp_config_freezes_measurement_controls(self):
         config = render_delay_mmp_config(
@@ -1179,6 +1217,34 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         ] = [True, False]
         with self.assertRaisesRegex(ContractError, "session_recovery"):
             validate_fips_g2_linux_alternate_route_result(result)
+
+
+class DiamondDiagnosticTests(unittest.TestCase):
+    def test_projects_roles_and_counters_without_identity_or_address(self):
+        npub = "npub1sensitive-example"
+        address = "1234567890abcdef1234567890abcdef"
+        node = project_diamond_node(
+            "b",
+            {"peer_count": 2, "link_count": 2, "session_count": True,
+             "estimated_mesh_size": 4, "npub": npub},
+            {"peers": [{"npub": npub, "address": "10.208.1.1"},
+                       {"npub": ["malformed"]}]},
+            {"root": address, "parent": address, "depth": 2,
+             "stats": {"accepted": 3, "secret": "private"}},
+            {"lookup": {"req_initiated": 5, "secret": npub},
+             "forwarding": {"drop_no_route_packets": -1},
+             "pending_lookups": [{"npub": npub}]},
+            {npub: "r1"},
+            {address: "a"},
+        )
+        self.assertEqual(node["peer_roles"], ["r1", "unknown"])
+        self.assertEqual(node["tree"]["parent_role"], "a")
+        self.assertEqual(node["routing"]["lookup"]["req_initiated"], 5)
+        self.assertIsNone(node["routing"]["forwarding"]["drop_no_route_packets"])
+        self.assertIsNone(node["session_count"])
+        encoded = json.dumps(node)
+        for forbidden in (npub, address, "10.208.1.1", "private"):
+            self.assertNotIn(forbidden, encoded)
 
 
 if __name__ == "__main__":

@@ -133,7 +133,7 @@
             "authenticated_link_counts": {"const": [2, 2, 2, 2]},
             "root_role": {"const": "a"},
             "tree_depths": {"const": [0, 1, 1, 2]},
-            "endpoint_b_parent_role": {"const": "r1"},
+            "endpoint_b_parent_role": {"enum": ["r1", "r2"]},
             "alternate_transit_authenticated": {"const": true},
             "alternate_path_one_way_delay_ms": {"const": 20},
             "full_mmp_link_views": {"const": 8},
@@ -169,8 +169,8 @@
             "transit_fsp_session_counts"
           ],
           "properties": {
-            "active_transit": {"const": "r1"},
-            "alternate_transit": {"const": "r2"},
+            "active_transit": {"enum": ["r1", "r2"]},
+            "alternate_transit": {"enum": ["r1", "r2"]},
             "endpoint_b_parent_was_active_transit": {"const": true},
             "active_forwarded_packets_delta": {"type": "integer", "minimum": 1},
             "active_forwarded_bytes_delta": {"type": "integer", "minimum": 1},
@@ -178,7 +178,11 @@
             "alternate_forwarded_bytes_delta": {"type": "integer", "minimum": 0},
             "transit_fsp_session_counts": {"const": [0, 0]}
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "oneOf": [
+            {"properties": {"active_transit": {"const": "r1"}, "alternate_transit": {"const": "r2"}}},
+            {"properties": {"active_transit": {"const": "r2"}, "alternate_transit": {"const": "r1"}}}
+          ]
         },
         "failure_injection": {
           "type": "object",

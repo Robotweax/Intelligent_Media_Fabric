@@ -14,6 +14,8 @@ import sys
 import tempfile
 import time
 import uuid
+from collections import deque
+from collections.abc import Sequence
 from pathlib import Path
 
 from .fips_g2_linux import (
@@ -52,6 +54,8 @@ ALTERNATE_PATH_ONE_WAY_DELAY_MS = 20
 UDP_PROBE_PORT = 42045
 NPUB_RE = re.compile(r"^npub1[023456789acdefghjklmnpqrstuvwxyz]+$")
 NODE_ADDR_RE = re.compile(r"^[0-9a-f]{32}$")
+DIAGNOSTIC_INTERVAL_NS = 5_000_000_000
+MAX_DIAGNOSTIC_SAMPLES = 32
 BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
 ROLE_NAMES = ("a", "r1", "r2", "b")
@@ -141,6 +145,19 @@ def diamond_peer_relationships(peer_views: list[dict], identities: list[str]) ->
     ]
 
 
+def diamond_tree_relationships(tree_views: list[dict], node_addrs: Sequence[str]) -> bool:
+    """Accept either authenticated transit as B's active tree parent."""
+    if len(tree_views) != 4 or len(node_addrs) != 4:
+        return False
+    return (
+        all(item.get("root") == node_addrs[0] for item in tree_views)
+        and [item.get("depth") for item in tree_views] == [0, 1, 1, 2]
+        and tree_views[1].get("parent") == node_addrs[0]
+        and tree_views[2].get("parent") == node_addrs[0]
+        and tree_views[3].get("parent") in node_addrs[1:3]
+    )
+
+
 def render_alternate_route_config(
     control_socket: Path,
     *,
@@ -217,6 +234,79 @@ def alternate_route_timings_within_contract(
         and reparent_elapsed_ms <= payload_recovery_elapsed_ms
         and payload_recovery_elapsed_ms <= PAYLOAD_RECOVERY_BUDGET_SECS * 1000
     )
+
+
+def project_diamond_node(
+    role: str,
+    status_view: dict | None,
+    peers_view: dict | None,
+    tree_view: dict | None,
+    routing_view: dict | None,
+    role_by_npub: dict[str, str],
+    role_by_addr: dict[str, str],
+) -> dict:
+    """Keep bounded counters and local role names from FIPS control views."""
+    status_view = status_view if isinstance(status_view, dict) else {}
+    peers_view = peers_view if isinstance(peers_view, dict) else {}
+    tree_view = tree_view if isinstance(tree_view, dict) else {}
+    routing_view = routing_view if isinstance(routing_view, dict) else {}
+
+    def count(value: object) -> int | None:
+        return value if type(value) is int and 0 <= value <= 1_000_000_000 else None
+
+    def role_of(value: object, mapping: dict[str, str]) -> str:
+        return mapping.get(value, "unknown") if isinstance(value, str) else "unknown"
+
+    def counters(view: object, names: tuple[str, ...]) -> dict:
+        view = view if isinstance(view, dict) else {}
+        return {name: count(view.get(name)) for name in names}
+
+    peers = peers_view.get("peers")
+    peer_roles = sorted(
+        {
+            role_of(peer.get("npub"), role_by_npub)
+            for peer in peers if isinstance(peer, dict)
+        }
+    ) if isinstance(peers, list) else []
+    lookup = routing_view.get("lookup")
+    if not isinstance(lookup, dict):
+        lookup = routing_view.get("discovery")
+    pending = routing_view.get("pending_lookups")
+    return {
+        "role": role,
+        "control_available": bool(status_view),
+        "peer_count": count(status_view.get("peer_count")),
+        "link_count": count(status_view.get("link_count")),
+        "session_count": count(status_view.get("session_count")),
+        "estimated_mesh_size": count(status_view.get("estimated_mesh_size")),
+        "peer_roles": peer_roles,
+        "tree": {
+            "root_role": role_of(tree_view.get("root"), role_by_addr),
+            "parent_role": role_of(tree_view.get("parent"), role_by_addr),
+            "depth": count(tree_view.get("depth")),
+            "peer_tree_count": count(tree_view.get("peer_tree_count")),
+            "stats": counters(
+                tree_view.get("stats"),
+                ("received", "accepted", "parent_switches", "parent_losses",
+                 "flap_dampened", "loop_detected", "stale"),
+            ),
+        },
+        "routing": {
+            "coord_cache_entries": count(routing_view.get("coord_cache_entries")),
+            "pending_tun_packets": count(routing_view.get("pending_tun_packets")),
+            "pending_lookups": len(pending) if isinstance(pending, list) else None,
+            "lookup": counters(
+                lookup,
+                ("req_initiated", "req_received", "req_forwarded", "req_no_tree_peer",
+                 "resp_received", "resp_accepted", "resp_timed_out", "resp_no_route"),
+            ),
+            "forwarding": counters(
+                routing_view.get("forwarding"),
+                ("originated_packets", "forwarded_packets", "delivered_packets",
+                 "drop_no_route_packets"),
+            ),
+        },
+    }
 
 
 def _hard_kill_process(process: subprocess.Popen | None) -> bool:
@@ -326,12 +416,49 @@ def run_fips_g2_linux_alternate_route(
     }
     observations: dict = {}
     error: Exception | None = None
+    diagnostic_started_ns = time.monotonic_ns()
+    diagnostic_last_ns = 0
+    diagnostic_samples: deque[dict] = deque(maxlen=MAX_DIAGNOSTIC_SAMPLES)
+    role_by_npub: dict[str, str] = {}
+    role_by_addr: dict[str, str] = {}
 
     def control(index: int, *arguments: str) -> dict:
         return _json_command(
             [str(fipsctl_binary), "-s", str(sockets[index]), *arguments],
             label=f"node {ROLE_NAMES[index]} {' '.join(arguments)}",
         )
+
+    def capture_diamond_snapshot(
+        capture_phase: str, *, force: bool = False, probe_exit_code: int | None = None
+    ) -> None:
+        nonlocal diagnostic_last_ns
+        now_ns = time.monotonic_ns()
+        if not force and now_ns - diagnostic_last_ns < DIAGNOSTIC_INTERVAL_NS:
+            return
+        diagnostic_last_ns = now_ns
+        nodes = []
+        for index, role in enumerate(ROLE_NAMES):
+            views: list[dict | None] = []
+            for command in ("status", "peers", "tree", "routing"):
+                try:
+                    views.append(
+                        _json_command(
+                            [str(fipsctl_binary), "-s", str(sockets[index]), "show", command],
+                            label=f"diamond diagnostic {role} {command}",
+                            timeout=1,
+                        )
+                    )
+                except (QualificationError, IndexError):
+                    views.append(None)
+            nodes.append(
+                project_diamond_node(role, *views, role_by_npub, role_by_addr)
+            )
+        diagnostic_samples.append({
+            "phase": capture_phase,
+            "elapsed_ms": (now_ns - diagnostic_started_ns) // 1_000_000,
+            "probe_exit_code": probe_exit_code if type(probe_exit_code) is int else None,
+            "nodes": nodes,
+        })
 
     def status(index: int) -> dict:
         return control(index, "show", "status")
@@ -497,6 +624,8 @@ def run_fips_g2_linux_alternate_route(
         identity_records.sort(key=lambda item: item[0])
         node_addrs = tuple(item[0] for item in identity_records)
         identities = tuple(item[1] for item in identity_records)
+        role_by_npub = dict(zip(identities, ROLE_NAMES))
+        role_by_addr = dict(zip(node_addrs, ROLE_NAMES))
         role_dirs = tuple(item[2] for item in identity_records)
         if len(set(node_addrs)) != 4 or not all(NODE_ADDR_RE.fullmatch(item) for item in node_addrs):
             raise QualificationError("temporary identities did not produce unique node addresses")
@@ -603,7 +732,7 @@ def run_fips_g2_linux_alternate_route(
                     "delay",
                     f"{ALTERNATE_PATH_ONE_WAY_DELAY_MS}ms",
                 ],
-                label="apply deterministic alternate-path cost bias",
+                label="apply alternate-path latency stimulus",
             )
 
         phase = "direct-underlay-exclusion"
@@ -662,6 +791,7 @@ def run_fips_g2_linux_alternate_route(
 
         def converged_diamond():
             current_statuses = [status(index) for index in range(4)]
+            capture_diamond_snapshot(phase)
             if not all(
                 item.get("peer_count") == 2 and item.get("link_count") == 2
                 for item in current_statuses
@@ -671,13 +801,7 @@ def run_fips_g2_linux_alternate_route(
             if not diamond_peer_relationships(peer_views, list(identities)):
                 return None
             tree_views = [control(index, "show", "tree") for index in range(4)]
-            if (
-                any(item.get("root") != node_addrs[0] for item in tree_views)
-                or [item.get("depth") for item in tree_views] != [0, 1, 1, 2]
-                or tree_views[1].get("parent") != node_addrs[0]
-                or tree_views[2].get("parent") != node_addrs[0]
-                or tree_views[3].get("parent") != node_addrs[1]
-            ):
+            if not diamond_tree_relationships(tree_views, node_addrs):
                 return None
             return current_statuses, peer_views, tree_views
 
@@ -791,6 +915,7 @@ def run_fips_g2_linux_alternate_route(
                 timeout=5,
                 check=False,
             )
+            capture_diamond_snapshot(phase, probe_exit_code=result.returncode)
             return result.returncode == 0
 
         _wait_for(initial_route_ready, label="initial overlay route", timeout=45, interval=1)
@@ -831,8 +956,6 @@ def run_fips_g2_linux_alternate_route(
             raise QualificationError("endpoint B parent was not a managed transit")
         active_index = node_addrs.index(active_addr)
         alternate_index = 1 if active_index == 2 else 2
-        if active_index != 1 or alternate_index != 2:
-            raise QualificationError("path-cost bias did not select r1 as B's active parent")
         if packet_deltas[active_index - 1] < 1 or byte_deltas[active_index - 1] < 1:
             raise QualificationError("B's parent did not forward the initial exact payload")
         if (
@@ -1116,6 +1239,8 @@ def run_fips_g2_linux_alternate_route(
         }
     except Exception as exc:
         error = exc
+        if phase in {"diamond-convergence", "initial-data-plane"}:
+            capture_diamond_snapshot(phase, force=True)
         for stream in daemon_streams:
             if stream is not None:
                 stream.flush()
@@ -1151,6 +1276,25 @@ def run_fips_g2_linux_alternate_route(
         phase_at_failure = "teardown"
 
     finished_at = utc_now()
+    diagnostic_path = output.with_name(output.stem + "-diagnostics.json")
+    diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+    with diagnostic_path.open("x", encoding="utf-8") as stream:
+        json.dump(
+            {
+                "schema_version": 1,
+                "evidence_type": "fips-g2-diamond-diagnostics",
+                "run_id": run_id,
+                "project_revision": project_revision,
+                "fips_commit": provenance["fips_commit"],
+                "status": "failed" if error is not None else "passed",
+                "last_phase": phase_at_failure if error is not None else phase,
+                "sample_interval_ms": DIAGNOSTIC_INTERVAL_NS // 1_000_000,
+                "sample_limit": MAX_DIAGNOSTIC_SAMPLES,
+                "samples": list(diagnostic_samples),
+            },
+            stream, indent=2, sort_keys=True,
+        )
+        stream.write("\n")
     if error is not None:
         result = _safe_failure_result(
             run_id=run_id,

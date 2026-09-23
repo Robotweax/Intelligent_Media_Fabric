@@ -1,0 +1,260 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "faulted_daemon_reaped": true,
+    "namespaces_removed": true,
+    "persistent_identity_directory_removed": true
+  },
+  "evidence_type": "fips-g2-linux-alternate-route",
+  "finished_at": "2026-09-23T13:41:37.159893Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "limitations": [
+    "This run qualifies one four-node Linux UDP diamond on the pinned host architecture only.",
+    "Tree reparenting is automatic but not hitless: the stale FSP session recovers through the configured 90-second idle timeout and automatic re-discovery.",
+    "It does not qualify NAT rebinding, public discovery, Nostr relays, heterogeneous PMTUD, or impaired links.",
+    "It is FIPS G2 evidence, not SRT media-continuity or G6 evidence."
+  ],
+  "observations": {
+    "automatic_reparenting": {
+      "declaration_sequence_increased": true,
+      "heartbeat_interval_secs": 10,
+      "link_dead_timeout_secs": 30,
+      "manual_route_or_connect_commands": 0,
+      "new_parent_role": "r1",
+      "old_parent_role": "r2",
+      "parent_loss_counter_increased": true,
+      "remaining_link_counts": {
+        "a": 1,
+        "alternate": 2,
+        "b": 1
+      },
+      "remaining_peer_counts": {
+        "a": 1,
+        "alternate": 2,
+        "b": 1
+      },
+      "reparent_budget_secs": 60,
+      "reparent_elapsed_ms": 31436,
+      "root_unchanged": true,
+      "tick_interval_secs": 1,
+      "tree_depth_unchanged": true
+    },
+    "failure_injection": {
+      "failed_role": "r2",
+      "graceful_disconnect_sent": false,
+      "outage_probe_blocked": true,
+      "process_exit_observed": true,
+      "signal": "SIGKILL",
+      "underlay_interfaces_left_up": true
+    },
+    "fsp_session_recovery": {
+      "alternate_transit_fsp_session_count": 0,
+      "automatic_session_reestablishment_observed": true,
+      "control_poll_count": 114,
+      "endpoint_session_counts_after_recovery": [
+        1,
+        1
+      ],
+      "established_through_reparent_control_polls": true,
+      "identity_values_retained": false,
+      "idle_timeout_secs": 90,
+      "manual_session_reset_commands": 0,
+      "original_session_start_unchanged_through_reparent": [
+        true,
+        true
+      ],
+      "session_start_changed_per_endpoint": [
+        true,
+        true
+      ],
+      "target_control_poll_interval_ms": 250
+    },
+    "identity_resolution": {
+      "endpoint_remote_identities_registered": true,
+      "mechanism": "local-fips-dns-npub",
+      "public_discovery_used": false
+    },
+    "initial_path_selection": {
+      "active_forwarded_bytes_delta": 2583,
+      "active_forwarded_packets_delta": 3,
+      "active_transit": "r2",
+      "alternate_forwarded_bytes_delta": 2583,
+      "alternate_forwarded_packets_delta": 3,
+      "alternate_transit": "r1",
+      "endpoint_b_parent_was_active_transit": true,
+      "transit_fsp_session_counts": [
+        0,
+        0
+      ]
+    },
+    "initial_payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0-multihop",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    },
+    "initial_topology": {
+      "alternate_path_one_way_delay_ms": 20,
+      "alternate_transit_authenticated": true,
+      "authenticated_link_counts": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "authenticated_peer_counts": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "configured_auto_connect_peers": 4,
+      "endpoint_b_parent_role": "r2",
+      "full_mmp_link_views": 8,
+      "manual_connect_commands": 0,
+      "root_role": "a",
+      "transport": "udp",
+      "tree_depths": [
+        0,
+        1,
+        1,
+        2
+      ]
+    },
+    "nodes": [
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "a",
+        "persistent_identity": true,
+        "role": "endpoint-root",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "r1",
+        "persistent_identity": true,
+        "role": "managed-transit",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "r2",
+        "persistent_identity": true,
+        "role": "managed-transit",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      },
+      {
+        "effective_ipv6_mtu": 1203,
+        "kernel_tun_mtu": 1280,
+        "node": "b",
+        "persistent_identity": true,
+        "role": "endpoint-leaf",
+        "tun_name": "fips0",
+        "tun_state": "active"
+      }
+    ],
+    "post_failure_icmpv6": {
+      "echo_requests": 2,
+      "effective_mtu_boundary_payload_bytes": 1155,
+      "passed": true
+    },
+    "post_failure_path": {
+      "failed_transit_unavailable": true,
+      "forwarded_bytes_delta": 5166,
+      "forwarded_packets_delta": 6,
+      "forwarding_transit": "r1",
+      "payload_recovery_budget_secs": 180,
+      "payload_recovery_elapsed_ms": 92896
+    },
+    "post_failure_payload_identity": {
+      "all_exact_echo": true,
+      "protocol": "udp-over-ipv6-over-fips0-multihop",
+      "records": [
+        {
+          "bytes": 1,
+          "exact_echo": true,
+          "sha256": "5d5c7d20a3aab9c158f23304df4bec3bd9d56c517db3caeaa519d4d05624d7a0"
+        },
+        {
+          "bytes": 1024,
+          "exact_echo": true,
+          "sha256": "f716d4f320aaafd8420435e7d3516b32cc1a075157748636addb5974396d8910"
+        },
+        {
+          "bytes": 1155,
+          "exact_echo": true,
+          "sha256": "2d58684ed7f2cafd7d70a12bdbd428db6eda0213ba77b166cfdef9b3c945cacd"
+        }
+      ]
+    },
+    "underlay_exclusion": {
+      "direct_endpoint_underlay_link_absent": true,
+      "endpoint_direct_ipv4_probe_blocked": true,
+      "transit_ipv4_forwarding_disabled": [
+        true,
+        true
+      ]
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f",
+    "fips_binary_sha256": "a7ad0fca5b8059a02ef63c1c7ad53ad4e20bcdfcb947cc5486077c2c0bbba6c4",
+    "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "d9a8f10ec2c13b7a64f004302a9ed3a4b500a2b6f8679ed13828099e13e9e376",
+    "project_revision": "650999634acf34bed5a7ea778f84de0f035df4fb",
+    "reported_version": "fips 0.5.1 (rev c5aeef39ef)\ntarget: x86_64-unknown-linux-gnu",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3"
+  },
+  "run_id": "0584103d-fd6d-43fc-b87e-9fca43b22113",
+  "schema_version": 1,
+  "started_at": "2026-09-23T13:39:54.038378Z",
+  "status": "passed",
+  "topology": {
+    "authenticated_link_count": 4,
+    "configured_tun_mtu": 1280,
+    "configured_udp_mtu": 1280,
+    "identity_storage": "temporary-config-adjacent-key-files",
+    "isolation": "linux-network-namespaces",
+    "namespace_count": 4,
+    "node_count": 4,
+    "nostr_relay": false,
+    "path_cost_bias": "r2-b-20ms-one-way-netem-delay",
+    "path_role": "redundant-managed-fips-transit",
+    "public_discovery": false,
+    "root_assignment": "lowest-derived-node-address-to-endpoint-a",
+    "tun_name": "fips0",
+    "underlay": "four-segment-diamond-ipv4-udp"
+  }
+}

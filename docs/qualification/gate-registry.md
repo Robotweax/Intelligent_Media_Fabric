@@ -21,15 +21,20 @@ The 2026-09-19 refresh selects FIPS v0.5.1 and a new immutable SRT main snapshot
 [requalification](dependency-refresh-2026-09-19.md). Gate statuses remain unchanged; historical
 v0.4.2 evidence is not automatically evidence for v0.5.1.
 
+One [FIPS v0.5.1 four-node alternate-route experiment](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
+passed on 2026-09-23 after correcting a fixed-parent harness assumption. This is
+retained G2 evidence but does not alone pass G2 or establish hitless recovery.
+
 The historical stock FIPS `v0.4.2` assessment could not place the reactive-MTU experiment into its required
 state without route/session disruption or prior proactive MTU discovery. This is recorded as a
 [capability gap](fips-g2-reactive-mtu-gap-2026-08-30.md), not a failed gate: G2 remains
 `in-progress`, and no G6 claim has started. That capability gap has not yet been reassessed on v0.5.1.
 
-G4 has started with a deterministic SRT adapter fixture and a paired synthetic clock-domain
-boundary case. The analyzer correctly returns `insufficient-evidence` for distinct `local-only`
-clocks. No live cross-layer incident, first-divergent-layer, or fault-domain claim exists yet; see
-the [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).
+G4 has a deterministic SRT adapter fixture, a paired synthetic clock-domain boundary case,
+and one [healthy live SRT-over-FIPS pilot](g4-live-capture-2026-09-23.md). The analyzer correctly
+returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
+incident, first-divergent-layer, or fault-domain claim exists yet; see the
+[G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).
 
 ## Mandatory correctness rules
 
