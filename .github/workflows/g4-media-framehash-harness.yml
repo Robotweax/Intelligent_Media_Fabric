@@ -38,7 +38,6 @@ jobs:
           ffmpeg -nostdin -hide_banner -loglevel error -y \
             -i "$RUNNER_TEMP/framehash-fixture.ts" -map 0:v:0 \
             -f framehash -hash SHA256 artifacts/observed.framehash
-          sed -n '1,12p' artifacts/reference.framehash
           PYTHONPATH=src python3 -m rimf_lab assess-media-framehash \
             --reference artifacts/reference.framehash \
             --observed artifacts/observed.framehash \
@@ -52,9 +51,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: g4-media-framehash-harness-${{ github.run_id }}
-          path: |
-            artifacts/frame-assessment.json
-            artifacts/reference.framehash
-            artifacts/observed.framehash
+          path: artifacts/frame-assessment.json
           if-no-files-found: warn
           retention-days: 14

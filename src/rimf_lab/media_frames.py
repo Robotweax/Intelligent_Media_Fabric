@@ -17,6 +17,7 @@ MAX_FRAMEHASH_BYTES = 2_000_000
 MAX_FRAMES = 6_000
 _TIME_BASE = re.compile(r"#tb 0: ([1-9][0-9]*)/([1-9][0-9]*)")
 _SHA256 = re.compile(r"[0-9a-fA-F]{64}")
+_COLUMNS = re.compile(r"#stream#,\s*dts,\s*pts,\s*duration,\s*size,\s*hash")
 
 
 def _digest(path: Path) -> str:
@@ -49,7 +50,7 @@ def parse_framehash(path: Path) -> tuple[str, dict[int, tuple[int, int, str]]]:
                 hash_declared = True
             elif line.strip() == "#media_type 0: video":
                 video_declared = True
-            elif line.strip() == "#stream#, dts, pts, duration, size, hash":
+            elif _COLUMNS.fullmatch(line.strip()):
                 column_header = True
             elif line.startswith("#tb ") or line.startswith("#hash:") or line.startswith("#media_type "):
                 raise ContractError("framehash has unsupported stream or hash metadata")

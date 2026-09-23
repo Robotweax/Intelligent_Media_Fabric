@@ -21,7 +21,7 @@ def recording(frames: list[tuple[int, str]], time_base: str = "1/25") -> str:
         "#hash: SHA256\n"
         f"#tb 0: {time_base}\n"
         "#media_type 0: video\n"
-        "#stream#, dts, pts, duration, size, hash\n"
+        "#stream#, dts,        pts, duration,     size, hash\n"
     )
     return header + "".join(
         f"0, {pts}, {pts}, 1, 21600, {digest}\n" for pts, digest in frames
