@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -19,6 +20,7 @@ from rimf_lab.fips_g2_linux_alternate_route import (
     alternate_route_timings_within_contract,
     diamond_peer_relationships,
     node_addr_from_npub,
+    project_diamond_node,
     render_alternate_route_config,
 )
 from rimf_lab.fips_g2_linux_delay_mmp import (
@@ -1179,6 +1181,34 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         ] = [True, False]
         with self.assertRaisesRegex(ContractError, "session_recovery"):
             validate_fips_g2_linux_alternate_route_result(result)
+
+
+class DiamondDiagnosticTests(unittest.TestCase):
+    def test_projects_roles_and_counters_without_identity_or_address(self):
+        npub = "npub1sensitive-example"
+        address = "1234567890abcdef1234567890abcdef"
+        node = project_diamond_node(
+            "b",
+            {"peer_count": 2, "link_count": 2, "session_count": True,
+             "estimated_mesh_size": 4, "npub": npub},
+            {"peers": [{"npub": npub, "address": "10.208.1.1"},
+                       {"npub": ["malformed"]}]},
+            {"root": address, "parent": address, "depth": 2,
+             "stats": {"accepted": 3, "secret": "private"}},
+            {"lookup": {"req_initiated": 5, "secret": npub},
+             "forwarding": {"drop_no_route_packets": -1},
+             "pending_lookups": [{"npub": npub}]},
+            {npub: "r1"},
+            {address: "a"},
+        )
+        self.assertEqual(node["peer_roles"], ["r1", "unknown"])
+        self.assertEqual(node["tree"]["parent_role"], "a")
+        self.assertEqual(node["routing"]["lookup"]["req_initiated"], 5)
+        self.assertIsNone(node["routing"]["forwarding"]["drop_no_route_packets"])
+        self.assertIsNone(node["session_count"])
+        encoded = json.dumps(node)
+        for forbidden in (npub, address, "10.208.1.1", "private"):
+            self.assertNotIn(forbidden, encoded)
 
 
 if __name__ == "__main__":

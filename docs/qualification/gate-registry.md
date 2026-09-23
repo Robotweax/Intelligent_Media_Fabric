@@ -26,10 +26,11 @@ state without route/session disruption or prior proactive MTU discovery. This is
 [capability gap](fips-g2-reactive-mtu-gap-2026-08-30.md), not a failed gate: G2 remains
 `in-progress`, and no G6 claim has started. That capability gap has not yet been reassessed on v0.5.1.
 
-G4 has started with a deterministic SRT adapter fixture and a paired synthetic clock-domain
-boundary case. The analyzer correctly returns `insufficient-evidence` for distinct `local-only`
-clocks. No live cross-layer incident, first-divergent-layer, or fault-domain claim exists yet; see
-the [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).
+G4 has a deterministic SRT adapter fixture, a paired synthetic clock-domain boundary case,
+and one [healthy live SRT-over-FIPS pilot](g4-live-capture-2026-09-23.md). The analyzer correctly
+returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
+incident, first-divergent-layer, or fault-domain claim exists yet; see the
+[G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).
 
 ## Mandatory correctness rules
 

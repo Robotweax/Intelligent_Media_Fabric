@@ -2903,6 +2903,18 @@ def validate_repository(root: Path) -> None:
         except ContractError as exc:
             errors.append(f"{path.relative_to(root)}: {exc}")
 
+    retained_bundles = root / "qualification/retained-bundles"
+    if retained_bundles.is_dir():
+        from .g4_srt_over_fips import validate_g4_live_capture_bundle
+
+        for bundle in sorted(retained_bundles.iterdir()):
+            if not bundle.is_dir():
+                continue
+            try:
+                validate_g4_live_capture_bundle(bundle)
+            except (ContractError, OSError, ValueError) as exc:
+                errors.append(f"{bundle.relative_to(root)}: {exc}")
+
     srt_observation_fixture = (
         root / "qualification/fixtures/srt-telemetry-observation-v1.json"
     )

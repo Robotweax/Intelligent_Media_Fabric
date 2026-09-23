@@ -1,5 +1,10 @@
 # Dependency refresh assessment — 2026-09-19
 
+Historical status at the time of the refresh. The private read secret was added on
+2026-09-23 and the [healthy SRT-over-FIPS pilot](g4-live-capture-2026-09-23.md)
+passed on the merged `main` revision. The alternate-route qualification remains
+unresolved.
+
 Status: promotion blocked after partial requalification; no product gate passed.
 
 ## Selected sources
