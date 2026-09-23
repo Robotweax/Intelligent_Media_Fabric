@@ -38,6 +38,7 @@ from .g4_srt_over_fips import (
     run_g4_srt_over_fips_live,
     validate_g4_live_capture_bundle,
 )
+from .media_frames import write_media_frame_assessment
 from .runner import run_scenario
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
@@ -96,6 +97,14 @@ def _parser() -> argparse.ArgumentParser:
         help="validate a G4 live SRT-over-FIPS capture bundle",
     )
     g4_live_validation_parser.add_argument("directory", type=Path)
+
+    media_frames_parser = subparsers.add_parser(
+        "assess-media-framehash",
+        help="compare independent FFmpeg SHA256 decoded-frame recordings",
+    )
+    media_frames_parser.add_argument("--reference", type=Path, required=True)
+    media_frames_parser.add_argument("--observed", type=Path, required=True)
+    media_frames_parser.add_argument("--output", type=Path, required=True)
 
     g4_live_run_parser = subparsers.add_parser(
         "run-g4-srt-over-fips-live",
@@ -284,6 +293,15 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-g4-srt-over-fips-live":
             validate_g4_live_capture_bundle(args.directory)
             print(f"G4 SRT-over-FIPS live bundle validation: OK ({args.directory})")
+        elif args.command == "assess-media-framehash":
+            result = write_media_frame_assessment(
+                args.reference, args.observed, args.output
+            )
+            print(
+                f"decoded media frame comparison: {result['status']} "
+                f"({result['observed_frames']}/{result['expected_frames']} frames, {args.output})"
+            )
+            return 0 if result["status"] == "exact" else 1
         elif args.command == "run-g4-srt-over-fips-live":
             result = run_g4_srt_over_fips_live(
                 fips_source=args.fips_source,

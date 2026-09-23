@@ -66,3 +66,29 @@ Implementation is blocked until the separate four-node SRT runner, independent
 decoder/collector and fault-result contract exist and pass negative tests. The
 next implementation should keep the healthy-pilot workflow and result schema
 unchanged, and publish its own fail-closed artifact.
+
+## Decoder-observation component
+
+The Fabric `assess-media-framehash` command now compares bounded FFmpeg
+[`framehash` SHA-256](https://ffmpeg.org/ffmpeg-formats.html#framehash) recordings
+from a reference and a downstream decode. It reports missing, unexpected and
+changed presentation timestamps, changed frame sizes and maximum consecutive
+missing frames; it stores recording digests, not raw media. Duplicate PTS,
+unsupported hash algorithms, multiple streams and incomparable time bases
+fail closed. Its output always says `G4: not-passed` because frame comparison
+alone cannot identify a cause.
+
+The manually dispatchable, path-scoped PR `G4 Media Framehash Harness` workflow
+checks this parser against real FFmpeg output from separate decode processes.
+[Run 35876847330](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/35876847330)
+passed with 30/30 exact synthetic frames, no missing or changed frames, and an
+explicit `G4: not-passed` conclusion. It uses the runner package only as a
+**harness syntax check**: no Robotweax SRT, FIPS, route failure or independent
+downstream network path is exercised. The pinned Robotweax SRT
+[FFmpeg integration](https://github.com/Robotweax/srt/blob/def14a7b6d8a2ba1860677414e415fd86bbc953a/docs/ffmpeg-integration.md)
+uses FFmpeg commit `3acec0a1af2dda0a0838689b8b8649e7deb080a0` in its CI,
+but its minimal smoke profile copies the MPEG-2 bitstream rather than decoding
+frames. A future Fabric live workflow must build and verify that pinned
+provider/FFmpeg pair with an actual video decoder and feed the same faulted
+SRT stream to the independent observer before this component can contribute
+G4 evidence.
