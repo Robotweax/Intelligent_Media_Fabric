@@ -2,8 +2,11 @@
 
 Historical status at the time of the refresh. The private read secret was added on
 2026-09-23 and the [healthy SRT-over-FIPS pilot](g4-live-capture-2026-09-23.md)
-passed on the merged `main` revision. The alternate-route qualification remains
-unresolved.
+passed on the merged `main` revision. Subsequently, two
+[v0.5.1 alternate-route attempts](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
+passed after a fixed-parent harness assumption was corrected. The original
+initial-route failure remains unclassified; the dated assessment below records
+the earlier state and is not rewritten as a success.
 
 Status: promotion blocked after partial requalification; no product gate passed.
 
