@@ -1,5 +1,7 @@
 # Documentation index
 
+- [Agent handoff for a new machine](../HANDOFF.md)
+
 ## Architecture and decisions
 
 - [Strategy source and synchronization](strategy/README.md)
