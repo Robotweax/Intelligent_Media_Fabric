@@ -58,6 +58,7 @@ tests/                 Harness and contract tests
 Start with [the documentation index](docs/README.md), the
 [architecture overview](docs/architecture/overview.md), and the
 [gate registry](docs/qualification/gate-registry.md).
+For continuation on another machine, start with the [agent handoff](HANDOFF.md).
 
 ## Local checks
 
