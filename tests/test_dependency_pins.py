@@ -18,7 +18,11 @@ from rimf_lab.fips_g2_linux import (
 from rimf_lab.fips_g2_linux_alternate_route import render_alternate_route_config
 from rimf_lab.fips_g2_linux_delay_mmp import render_delay_mmp_config
 from rimf_lab.fips_g2_linux_lifecycle import render_lifecycle_config
-from rimf_lab.g4_srt_over_fips import EXPECTED_SRT_COMMIT, EXPECTED_TELEMETRY_COMMIT
+from rimf_lab.g4_srt_over_fips import (
+    EXPECTED_SRT_COMMIT,
+    EXPECTED_SRT_VERSION,
+    EXPECTED_TELEMETRY_COMMIT,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +33,10 @@ class DependencyPinTests(unittest.TestCase):
         manifest = json.loads((ROOT / "dependency-pins/baselines.json").read_text())
         pins = {item["id"]: item["commit"] for item in manifest["dependencies"]}
         self.assertEqual(pins["robotweax-srt"], EXPECTED_SRT_COMMIT)
+        srt = next(
+            item for item in manifest["dependencies"] if item["id"] == "robotweax-srt"
+        )
+        self.assertEqual(srt["version"], f"v{EXPECTED_SRT_VERSION}")
         self.assertEqual(pins["robotweax-srt-telemetry"], EXPECTED_TELEMETRY_COMMIT)
         self.assertEqual(pins["fips-release-candidate"], EXPECTED_FIPS_COMMIT)
 

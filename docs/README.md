@@ -10,6 +10,8 @@
 - [ADR-0002: External pinned dependencies](decisions/0002-external-pinned-dependencies.md)
 - [ADR-0003: FIPS Phase 1 baseline](decisions/0003-fips-phase1-baseline.md)
 - [ADR-0004: SRT Telemetry adapter boundary](decisions/0004-srt-telemetry-adapter-boundary.md)
+- [ADR-0005: Historical SRT/FIPS refresh](decisions/0005-srt-fips-requalification.md)
+- [ADR-0006: SRT 0.2.6 baseline](decisions/0006-srt-026-baseline.md)
 
 ## Security and protocols
 
@@ -32,6 +34,7 @@
 - [FIPS G2 Linux fixed-delay MMP qualification](qualification/fips-g2-linux-delay-mmp-2026-08-30.md)
 - [G4 unified-observation data-quality foundation](qualification/g4-unified-observation-data-quality-2026-08-30.md)
 - [FIPS G2 reactive path-MTU capability gap](qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
+- [Healthy SRT v0.2.6 over FIPS live capture](qualification/g4-live-capture-srt-026-2026-09-27.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

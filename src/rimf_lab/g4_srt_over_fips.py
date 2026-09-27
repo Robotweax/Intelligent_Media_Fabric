@@ -48,7 +48,12 @@ from .fips_g2_linux import (
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
 
-EXPECTED_SRT_COMMIT = "def14a7b6d8a2ba1860677414e415fd86bbc953a"
+EXPECTED_SRT_COMMIT = "50cba37bc89f423ee7c0a292c3c3eae71b5fc7f9"
+EXPECTED_SRT_VERSION = "0.2.6"
+HISTORICAL_SRT_COMMIT = "def14a7b6d8a2ba1860677414e415fd86bbc953a"
+HISTORICAL_G4_RESULT_SHA256 = (
+    "ba417e4869910940939308203602a5643c24dc7ba834bea96e49ac5d9ba8092b"
+)
 EXPECTED_TELEMETRY_COMMIT = "bf10da0431fdf23772210262755f745b62b6ff58"
 SRT_REPOSITORY = "https://github.com/Robotweax/srt.git"
 TELEMETRY_REPOSITORY = "https://github.com/Robotweax/srt_telemetry.git"
@@ -660,7 +665,7 @@ def run_g4_srt_over_fips_live(
                 namespaces[1],
                 incident_peer,
                 library_dir,
-                _recording_arguments("listener", receiver_source, flow_id, "0.2.4")
+                _recording_arguments("listener", receiver_source, flow_id, EXPECTED_SRT_VERSION)
                 + ["--bind-address", destination],
             )
         )
@@ -673,7 +678,7 @@ def run_g4_srt_over_fips_live(
                 namespaces[0],
                 incident_peer,
                 library_dir,
-                _recording_arguments("caller", sender_source, flow_id, "0.2.4")
+                _recording_arguments("caller", sender_source, flow_id, EXPECTED_SRT_VERSION)
                 + ["--remote-address", destination, "--port", str(port)],
             )
         )
@@ -898,7 +903,9 @@ def run_g4_srt_over_fips_live(
     return result
 
 
-def validate_g4_live_capture_result(result: Any) -> None:
+def validate_g4_live_capture_result(
+    result: Any, *, expected_srt_commit: str = EXPECTED_SRT_COMMIT
+) -> None:
     if not isinstance(result, dict):
         raise ContractError("G4 live result must be an object")
     common = {
@@ -979,7 +986,7 @@ def validate_g4_live_capture_result(result: Any) -> None:
         ("fips_commit", EXPECTED_FIPS_COMMIT),
         ("fips_source_tree_state", "clean"),
         ("srt_repository", SRT_REPOSITORY),
-        ("srt_commit", EXPECTED_SRT_COMMIT),
+        ("srt_commit", expected_srt_commit),
         ("telemetry_repository", TELEMETRY_REPOSITORY),
         ("telemetry_commit", EXPECTED_TELEMETRY_COMMIT),
     ):
@@ -1053,8 +1060,20 @@ def validate_g4_live_capture_result(result: Any) -> None:
 
 def validate_g4_live_capture_bundle(directory: Path) -> None:
     directory = directory.resolve()
-    result = load_json(directory / "result.json")
-    validate_g4_live_capture_result(result)
+    result_path = directory / "result.json"
+    result = load_json(result_path)
+    provenance = result.get("provenance") if isinstance(result, dict) else None
+    expected_srt_commit = EXPECTED_SRT_COMMIT
+    expected_srt_version = EXPECTED_SRT_VERSION
+    if (
+        isinstance(provenance, dict)
+        and provenance.get("srt_commit") == HISTORICAL_SRT_COMMIT
+    ):
+        if sha256_file(result_path) != HISTORICAL_G4_RESULT_SHA256:
+            raise ContractError("historical G4 result digest mismatch")
+        expected_srt_commit = HISTORICAL_SRT_COMMIT
+        expected_srt_version = "0.2.4"
+    validate_g4_live_capture_result(result, expected_srt_commit=expected_srt_commit)
     if result["status"] == "failed":
         return
     for name, record in result["files"].items():
@@ -1065,6 +1084,17 @@ def validate_g4_live_capture_bundle(directory: Path) -> None:
             raise ContractError(f"cannot read G4 live bundle file {name}: {exc}") from exc
         if actual != record:
             raise ContractError(f"G4 live bundle file digest/size mismatch: {name}")
+
+    for role in ("sender", "receiver"):
+        records = _read_jsonl(directory / f"{role}-source.jsonl")
+        if (
+            not records
+            or records[0].get("providerVersion") != expected_srt_version
+            or records[0].get("providerRevision") != expected_srt_commit
+        ):
+            raise ContractError(
+                f"G4 live {role} provider identity does not match SRT provenance"
+            )
 
     sender = _read_jsonl(directory / "sender-observations.jsonl")
     receiver = _read_jsonl(directory / "receiver-observations.jsonl")

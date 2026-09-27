@@ -1,15 +1,16 @@
 {
   "schema_version": 1,
-  "as_of": "2026-09-19",
+  "as_of": "2026-09-27",
   "dependencies": [
     {
       "id": "robotweax-srt",
       "repository": "https://github.com/Robotweax/srt.git",
-      "commit": "def14a7b6d8a2ba1860677414e415fd86bbc953a",
+      "version": "v0.2.6",
+      "commit": "50cba37bc89f423ee7c0a292c3c3eae71b5fc7f9",
       "role": "media-transport",
       "integration": "external-public-api",
       "evidence_class": "requalification-candidate",
-      "selection_adr": "ADR-0005"
+      "selection_adr": "ADR-0006"
     },
     {
       "id": "robotweax-srt-telemetry",

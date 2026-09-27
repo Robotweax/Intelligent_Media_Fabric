@@ -91,4 +91,6 @@ but its minimal smoke profile copies the MPEG-2 bitstream rather than decoding
 frames. A future Fabric live workflow must build and verify that pinned
 provider/FFmpeg pair with an actual video decoder and feed the same faulted
 SRT stream to the independent observer before this component can contribute
-G4 evidence.
+G4 evidence. For new runs, use the SRT v0.2.6 candidate selected by
+[ADR-0006](../decisions/0006-srt-026-baseline.md); the linked 0.2.4 integration
+and framehash workflow remain historical harness evidence only.

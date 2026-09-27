@@ -13,6 +13,7 @@ from rimf_lab.g4_srt_over_fips import (
     ACTIVE_SAMPLE_COUNT,
     EXPECTED_BUNDLE_FILES,
     EXPECTED_SRT_COMMIT,
+    HISTORICAL_SRT_COMMIT,
     EXPECTED_TELEMETRY_COMMIT,
     MESSAGE_BYTES,
     MESSAGE_COUNT,
@@ -130,6 +131,12 @@ class G4SrtOverFipsContractTests(unittest.TestCase):
 
     def test_accepts_successful_experiment_without_gate_passage(self):
         validate_g4_live_capture_result(success_result())
+
+    def test_rejects_historical_srt_as_new_capture(self):
+        result = success_result()
+        result["provenance"]["srt_commit"] = HISTORICAL_SRT_COMMIT
+        with self.assertRaisesRegex(ContractError, "srt_commit"):
+            validate_g4_live_capture_result(result)
 
     def test_rejects_gate_passage_claim(self):
         result = success_result()
