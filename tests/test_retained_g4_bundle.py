@@ -18,6 +18,10 @@ BUNDLE = (
     Path(__file__).resolve().parents[1]
     / "qualification/retained-bundles/2026-09-23-g4-srt-over-fips-live-35857439840"
 )
+SRT_026_BUNDLE = (
+    Path(__file__).resolve().parents[1]
+    / "qualification/retained-bundles/2026-09-27-g4-srt-over-fips-live-36309262514"
+)
 
 
 class RetainedG4BundleTests(unittest.TestCase):
@@ -36,6 +40,30 @@ class RetainedG4BundleTests(unittest.TestCase):
 
     def test_committed_bundle_replays_and_validates(self):
         validate_g4_live_capture_bundle(BUNDLE)
+        validate_g4_live_capture_bundle(SRT_026_BUNDLE)
+
+    def test_new_bundle_rejects_mismatched_provider_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / "bundle"
+            shutil.copytree(SRT_026_BUNDLE, copy)
+            source_path = copy / "sender-source.jsonl"
+            lines = source_path.read_text(encoding="utf-8").splitlines()
+            recording = json.loads(lines[0])
+            recording["providerVersion"] = "0.2.4"
+            lines[0] = json.dumps(recording, separators=(",", ":"))
+            source_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            result_path = copy / "result.json"
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+            content = source_path.read_bytes()
+            result["files"]["sender-source.jsonl"] = {
+                "bytes": len(content),
+                "sha256": hashlib.sha256(content).hexdigest(),
+            }
+            result_path.write_text(
+                json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ContractError, "provider identity"):
+                validate_g4_live_capture_bundle(copy)
 
     def test_changed_source_sample_breaks_retained_digest(self):
         with tempfile.TemporaryDirectory() as directory:

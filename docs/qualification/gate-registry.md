@@ -23,8 +23,10 @@ v0.4.2 evidence is not automatically evidence for v0.5.1.
 
 [ADR-0006](../decisions/0006-srt-026-baseline.md) replaces that SRT snapshot with the
 v0.2.6 release commit for new runs only. Its performance changes require fresh
-direct/FIPS and Telemetry-integrated evidence; the prior healthy G4 bundle remains
-revision-bound and no gate status changes merely because the pin changed.
+direct/FIPS performance and faulted Telemetry-integrated evidence; the prior
+healthy G4 bundle remains revision-bound. The new
+[healthy v0.2.6 pilot](g4-live-capture-srt-026-2026-09-27.md) passed but does not
+change any gate status.
 
 One [FIPS v0.5.1 four-node alternate-route experiment](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
 passed on 2026-09-23 after correcting a fixed-parent harness assumption. This is
@@ -36,7 +38,9 @@ state without route/session disruption or prior proactive MTU discovery. This is
 `in-progress`, and no G6 claim has started. That capability gap has not yet been reassessed on v0.5.1.
 
 G4 has a deterministic SRT adapter fixture, a paired synthetic clock-domain boundary case,
-and one [healthy live SRT-over-FIPS pilot](g4-live-capture-2026-09-23.md). The analyzer correctly
+and healthy live SRT-over-FIPS pilots at
+[the previous pin](g4-live-capture-2026-09-23.md) and
+[v0.2.6](g4-live-capture-srt-026-2026-09-27.md). The analyzer correctly
 returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
 incident, first-divergent-layer, or fault-domain claim exists yet; see the
 [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).

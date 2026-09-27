@@ -62,9 +62,11 @@ budgets and fail-closed rules remain unchanged.
 On 2026-09-27, the v0.2.6 shared OpenSSL library and the pinned SRT Telemetry
 consumer built together on macOS arm64. The complete Telemetry CTest suite passed
 42/42 with local UDP socket access; the Fabric repository unit/contract suite and
-retained-evidence validation also passed. These checks establish build and local
-adapter compatibility only. They do not replace the Linux SRT-over-FIPS capture,
-direct/FIPS performance comparison or the faulted media experiment above.
+retained-evidence validation also passed. The
+[Linux healthy SRT-over-FIPS capture](../qualification/g4-live-capture-srt-026-2026-09-27.md)
+then passed with exact application delivery and a retained bundle. These checks
+establish build, adapter and one healthy-path integration only. They do not
+replace the direct/FIPS performance comparison or faulted media experiment above.
 
 ## Sources
 
