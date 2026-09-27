@@ -10,6 +10,8 @@
 - [ADR-0002: External pinned dependencies](decisions/0002-external-pinned-dependencies.md)
 - [ADR-0003: FIPS Phase 1 baseline](decisions/0003-fips-phase1-baseline.md)
 - [ADR-0004: SRT Telemetry adapter boundary](decisions/0004-srt-telemetry-adapter-boundary.md)
+- [ADR-0005: Historical SRT/FIPS refresh](decisions/0005-srt-fips-requalification.md)
+- [ADR-0006: SRT 0.2.6 baseline](decisions/0006-srt-026-baseline.md)
 
 ## Security and protocols
 

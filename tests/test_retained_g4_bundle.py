@@ -8,7 +8,10 @@ import unittest
 from pathlib import Path
 
 from rimf_lab.contracts import ContractError
-from rimf_lab.g4_srt_over_fips import validate_g4_live_capture_bundle
+from rimf_lab.g4_srt_over_fips import (
+    EXPECTED_SRT_COMMIT,
+    validate_g4_live_capture_bundle,
+)
 
 
 BUNDLE = (
@@ -43,6 +46,19 @@ class RetainedG4BundleTests(unittest.TestCase):
             with self.assertRaisesRegex(ContractError, "digest/size mismatch"):
                 validate_g4_live_capture_bundle(copy)
 
+    def test_new_pin_cannot_relabel_old_provider_recording(self):
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / "bundle"
+            shutil.copytree(BUNDLE, copy)
+            result_path = copy / "result.json"
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+            result["provenance"]["srt_commit"] = EXPECTED_SRT_COMMIT
+            result_path.write_text(
+                json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ContractError, "provider identity"):
+                validate_g4_live_capture_bundle(copy)
+
     def test_rejects_rewritten_ordering_even_with_updated_inventory(self):
         with tempfile.TemporaryDirectory() as directory:
             copy = Path(directory) / "bundle"
@@ -53,7 +69,7 @@ class RetainedG4BundleTests(unittest.TestCase):
             assessment["ordering"] = "peer-before-srt"
             result["capture"]["srt_fips_ordering"] = "peer-before-srt"
             self._rewrite_bundle_json(copy, name, assessment, result)
-            with self.assertRaisesRegex(ContractError, "not byte-reproducible"):
+            with self.assertRaisesRegex(ContractError, "historical G4 result digest mismatch"):
                 validate_g4_live_capture_bundle(copy)
 
     def test_rejects_rewritten_media_count_even_with_updated_inventory(self):
@@ -65,5 +81,5 @@ class RetainedG4BundleTests(unittest.TestCase):
             media = json.loads((copy / name).read_text(encoding="utf-8"))
             media["payload"]["message_count"] -= 1
             self._rewrite_bundle_json(copy, name, media, result)
-            with self.assertRaisesRegex(ContractError, "does not prove the declared transfer"):
+            with self.assertRaisesRegex(ContractError, "historical G4 result digest mismatch"):
                 validate_g4_live_capture_bundle(copy)

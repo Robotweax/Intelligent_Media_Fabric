@@ -21,6 +21,11 @@ The 2026-09-19 refresh selects FIPS v0.5.1 and a new immutable SRT main snapshot
 [requalification](dependency-refresh-2026-09-19.md). Gate statuses remain unchanged; historical
 v0.4.2 evidence is not automatically evidence for v0.5.1.
 
+[ADR-0006](../decisions/0006-srt-026-baseline.md) replaces that SRT snapshot with the
+v0.2.6 release commit for new runs only. Its performance changes require fresh
+direct/FIPS and Telemetry-integrated evidence; the prior healthy G4 bundle remains
+revision-bound and no gate status changes merely because the pin changed.
+
 One [FIPS v0.5.1 four-node alternate-route experiment](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
 passed on 2026-09-23 after correcting a fixed-parent harness assumption. This is
 retained G2 evidence but does not alone pass G2 or establish hitless recovery.

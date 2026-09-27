@@ -1,6 +1,6 @@
 # ADR-0005: Refresh SRT and FIPS qualification candidates
 
-- Status: accepted
+- Status: superseded by ADR-0006 for new dependency selections; historical decision retained
 - Date: 2026-09-19
 - Supersedes ADR-0003 for future qualification runs only
 
