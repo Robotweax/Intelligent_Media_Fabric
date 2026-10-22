@@ -1,6 +1,6 @@
 # ADR-0006: Select Robotweax SRT 0.2.6 for new Fabric runs
 
-- Status: accepted
+- Status: superseded by ADR-0007 for new dependency selections; historical decision retained
 - Date: 2026-09-27
 - Supersedes ADR-0005 for new dependency selections; its FIPS and Telemetry pins are retained
 

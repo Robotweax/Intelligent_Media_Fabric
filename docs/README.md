@@ -37,6 +37,7 @@
 - [G4 unified-observation data-quality foundation](qualification/g4-unified-observation-data-quality-2026-08-30.md)
 - [FIPS G2 reactive path-MTU capability gap](qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
 - [Healthy SRT v0.2.6 over FIPS live capture](qualification/g4-live-capture-srt-026-2026-09-27.md)
+- [Dependency refresh assessment 2026-10-22](qualification/dependency-refresh-2026-10-22.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

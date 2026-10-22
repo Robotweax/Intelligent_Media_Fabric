@@ -12,9 +12,10 @@ from rimf_lab.fips_g2_linux import QualificationError
 from rimf_lab.g4_srt_over_fips import (
     ACTIVE_SAMPLE_COUNT,
     EXPECTED_BUNDLE_FILES,
+    EXPECTED_FIPS_COMMIT,
     EXPECTED_SRT_COMMIT,
-    HISTORICAL_SRT_COMMIT,
     EXPECTED_TELEMETRY_COMMIT,
+    HISTORICAL_G4_BUNDLES,
     MESSAGE_BYTES,
     MESSAGE_COUNT,
     SRT_REPOSITORY,
@@ -67,7 +68,7 @@ def success_result() -> dict:
             "status": "passed",
             "provenance": {
                 "fips_repository": "https://github.com/jmcorgan/fips.git",
-                "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+                "fips_commit": EXPECTED_FIPS_COMMIT,
                 "fips_source_tree_state": "clean",
                 "cargo_lock_sha256": "0" * 64,
                 "rust_toolchain_sha256": "0" * 64,
@@ -133,10 +134,35 @@ class G4SrtOverFipsContractTests(unittest.TestCase):
         validate_g4_live_capture_result(success_result())
 
     def test_rejects_historical_srt_as_new_capture(self):
-        result = success_result()
-        result["provenance"]["srt_commit"] = HISTORICAL_SRT_COMMIT
-        with self.assertRaisesRegex(ContractError, "srt_commit"):
-            validate_g4_live_capture_result(result)
+        for historical in HISTORICAL_G4_BUNDLES.values():
+            result = success_result()
+            result["provenance"]["srt_commit"] = historical["srt_commit"]
+            with self.assertRaisesRegex(ContractError, "srt_commit"):
+                validate_g4_live_capture_result(result)
+
+    def test_rejects_historical_telemetry_or_fips_as_new_capture(self):
+        for field in ("telemetry_commit", "fips_commit"):
+            for historical in HISTORICAL_G4_BUNDLES.values():
+                if historical[field] in (EXPECTED_TELEMETRY_COMMIT, EXPECTED_FIPS_COMMIT):
+                    continue
+                result = success_result()
+                result["provenance"][field] = historical[field]
+                with self.assertRaisesRegex(ContractError, field):
+                    validate_g4_live_capture_result(result)
+
+    def test_rejects_rewritten_historical_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            historical = next(iter(HISTORICAL_G4_BUNDLES.values()))
+            result = success_result()
+            result["provenance"]["srt_commit"] = historical["srt_commit"]
+            result["provenance"]["telemetry_commit"] = historical["telemetry_commit"]
+            result["provenance"]["fips_commit"] = historical["fips_commit"]
+            path = Path(directory) / "result.json"
+            path.write_text(
+                json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ContractError, "digest mismatch"):
+                validate_g4_live_capture_bundle(Path(directory))
 
     def test_rejects_gate_passage_claim(self):
         result = success_result()

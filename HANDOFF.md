@@ -1,6 +1,6 @@
 # Agent handoff — Intelligent Media Fabric
 
-Snapshot: 2026-09-27. This is an orientation file, not a substitute for the
+Snapshot: 2026-10-22. This is an orientation file, not a substitute for the
 current `main`, PR checks, ADRs or gate registry. Refresh remote state before
 making a decision. The repository is private, proprietary and pre-alpha; no
 product, security, performance or continuity claim is released.
@@ -48,7 +48,7 @@ Read these before implementation:
 
 1. [README](README.md) and [architecture](docs/architecture/overview.md) for scope and layer boundaries.
 2. [Gate registry](docs/qualification/gate-registry.md) and [open decisions](docs/decisions/open-decisions.md) for current authorization.
-3. [ADR index](docs/decisions/README.md), especially [ADR-0004](docs/decisions/0004-srt-telemetry-adapter-boundary.md) and [ADR-0006](docs/decisions/0006-srt-026-baseline.md).
+3. [ADR index](docs/decisions/README.md), especially [ADR-0004](docs/decisions/0004-srt-telemetry-adapter-boundary.md), [ADR-0006](docs/decisions/0006-srt-026-baseline.md) and [ADR-0007](docs/decisions/0007-dependency-refresh-2026-10-22.md).
 4. [Strategy pointer](docs/strategy/README.md) to the authoritative private Knowledge Base document. Do not maintain a divergent strategy copy here.
 5. [Evidence lab](docs/qualification/evidence-lab.md) and [contribution rules](CONTRIBUTING.md) before changing schemas or experiments.
 
@@ -60,9 +60,9 @@ workflows must agree with it. Do not substitute a moving `main` or a local build
 
 | Component | Selected revision | Role |
 | --- | --- | --- |
-| Robotweax SRT v0.2.6 | `50cba37bc89f423ee7c0a292c3c3eae71b5fc7f9` | Public C API and `librobotweax-srt` media transport |
-| Robotweax SRT Telemetry | `bf10da0431fdf23772210262755f745b62b6ff58` | Public SRT adapter and source measurements |
-| FIPS v0.5.1 | `c5aeef39ef9442d9e5047331156df368ace40cbd` | External daemon and `fips0` overlay |
+| Robotweax SRT v0.2.9 | `a87779d9c3d831583d32b2f61cae5b81edb05537` | Public C API and `librobotweax-srt` media transport |
+| Robotweax SRT Telemetry | `2447548388a47aaac647bb2eafdc4f9e962f0baa` | Public SRT adapter and source measurements |
+| FIPS v0.5.3 | `f4a5b4a8e61e340e6be7551608109a5c399f8353` | External daemon and `fips0` overlay |
 
 The historical FIPS development candidate in the manifest is research-only.
 Toolchain and action pins are in
@@ -73,6 +73,11 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 ## Evidence and its limits
 
+- [2026-10-22 dependency refresh](docs/qualification/dependency-refresh-2026-10-22.md):
+  ADR-0007 moved the pins to SRT v0.2.9, Telemetry `24475483` and FIPS v0.5.3.
+  Local Fabric checks and the SRT/Telemetry build passed; the eight G2
+  workflows and a new healthy G4 capture on the new pins are the next required
+  evidence. Nothing below is evidence for the new pins.
 - [SRT v0.2.6 healthy pilot](docs/qualification/g4-live-capture-srt-026-2026-09-27.md):
   [Linux run 36309262514](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/36309262514)
   built the pinned SRT/Telemetry/FIPS combination, passed the Telemetry suite,
@@ -98,16 +103,18 @@ clock domains, route epochs and downstream identity checks.
 
 ## Bounded next work
 
-1. Establish a repeated direct-SRT control (G1), then compare direct SRT with
-   SRT-over-FIPS at the same 0.2.6 pin for G3. Freeze the workload and budgets
+1. Complete the ADR-0007 requalification: eight G2 workflows on FIPS v0.5.3,
+   then a healthy G4 capture on SRT v0.2.9; retain results and failures as-is.
+2. Establish a repeated direct-SRT control (G1), then compare direct SRT with
+   SRT-over-FIPS at the same 0.2.9 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
-2. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
+3. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
    four-node Linux runner, observed route-epoch transition, negative tests,
    fail-closed result schema and an independent downstream decoder/collector.
    Do not retrofit the healthy two-node workflow or claim causality from time
    ordering alone.
-3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
+4. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable
    production route mutation or a FIPS fork without a separate approved ADR.
 

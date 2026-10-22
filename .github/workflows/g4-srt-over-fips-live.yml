@@ -11,11 +11,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FIPS_COMMIT: c5aeef39ef9442d9e5047331156df368ace40cbd
-  FIPS_CARGO_LOCK_SHA256: 77208a84234e33ed7fcf5b91c29f135e05a20bf23952066b28521b6e5985d24f
+  FIPS_COMMIT: f4a5b4a8e61e340e6be7551608109a5c399f8353
+  FIPS_CARGO_LOCK_SHA256: 70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a
   FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
-  SRT_COMMIT: 50cba37bc89f423ee7c0a292c3c3eae71b5fc7f9
-  TELEMETRY_COMMIT: bf10da0431fdf23772210262755f745b62b6ff58
+  SRT_COMMIT: a87779d9c3d831583d32b2f61cae5b81edb05537
+  TELEMETRY_COMMIT: 2447548388a47aaac647bb2eafdc4f9e962f0baa
   FIPS_SOURCE: /tmp/rimf-g4-fips
   SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
   SRT_BUILD: /tmp/rimf-g4-srt-build
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
@@ -42,7 +42,7 @@ jobs:
           }
 
       - name: Checkout pinned private Robotweax SRT
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: Robotweax/srt
           ref: ${{ env.SRT_COMMIT }}
@@ -51,7 +51,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout pinned private SRT Telemetry
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: Robotweax/srt_telemetry
           ref: ${{ env.TELEMETRY_COMMIT }}
@@ -97,13 +97,13 @@ jobs:
 
       - name: Restore pinned FIPS build cache
         id: fips-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             /tmp/rimf-g4-fips/target
-          key: ${{ runner.os }}-fips-v0.5.1-rust-1.94.1-77208a84234e
+          key: ${{ runner.os }}-fips-v0.5.3-rust-1.94.1-70b1e2a25c3d
 
       - name: Build pinned FIPS binaries
         working-directory: ${{ env.FIPS_SOURCE }}
@@ -111,7 +111,7 @@ jobs:
 
       - name: Save pinned FIPS build cache
         if: steps.fips-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cargo/registry
@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload bounded live-capture bundle
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: g4-srt-over-fips-live-${{ github.run_id }}
           path: ${{ env.OUTPUT_DIR }}
