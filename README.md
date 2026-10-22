@@ -62,7 +62,7 @@ For continuation on another machine, start with the [agent handoff](HANDOFF.md).
 
 ## Local checks
 
-New experiments pin SRT v0.2.9, SRT Telemetry `24475483` and FIPS v0.5.3 as
+New experiments pin SRT v0.3.0, SRT Telemetry `24475483` and FIPS v0.5.3 as
 **requalification candidates**, not as already qualified releases. See
 [ADR-0007](docs/decisions/0007-dependency-refresh-2026-10-22.md) and the
 [refresh assessment](docs/qualification/dependency-refresh-2026-10-22.md).

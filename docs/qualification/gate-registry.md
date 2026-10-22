@@ -28,7 +28,7 @@ healthy G4 bundle remains revision-bound. The new
 [healthy v0.2.6 pilot](g4-live-capture-srt-026-2026-09-27.md) passed but does not
 change any gate status.
 
-[ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selects SRT v0.2.9,
+[ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selects SRT v0.3.0,
 SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
 Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.
 See the [refresh assessment](dependency-refresh-2026-10-22.md).

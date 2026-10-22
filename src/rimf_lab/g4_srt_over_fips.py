@@ -48,8 +48,8 @@ from .fips_g2_linux import (
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
 
-EXPECTED_SRT_COMMIT = "a87779d9c3d831583d32b2f61cae5b81edb05537"
-EXPECTED_SRT_VERSION = "0.2.9"
+EXPECTED_SRT_COMMIT = "4ae6330d62f2b5030d96964bf3500283f32dd39c"
+EXPECTED_SRT_VERSION = "0.3.0"
 EXPECTED_TELEMETRY_COMMIT = "2447548388a47aaac647bb2eafdc4f9e962f0baa"
 # Retained healthy pilots are evidence only for their own recorded revisions.
 # Each historical bundle is accepted solely when its original result manifest

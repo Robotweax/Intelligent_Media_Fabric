@@ -60,7 +60,7 @@ workflows must agree with it. Do not substitute a moving `main` or a local build
 
 | Component | Selected revision | Role |
 | --- | --- | --- |
-| Robotweax SRT v0.2.9 | `a87779d9c3d831583d32b2f61cae5b81edb05537` | Public C API and `librobotweax-srt` media transport |
+| Robotweax SRT v0.3.0 | `4ae6330d62f2b5030d96964bf3500283f32dd39c` | Public C API and `librobotweax-srt` media transport |
 | Robotweax SRT Telemetry | `2447548388a47aaac647bb2eafdc4f9e962f0baa` | Public SRT adapter and source measurements |
 | FIPS v0.5.3 | `f4a5b4a8e61e340e6be7551608109a5c399f8353` | External daemon and `fips0` overlay |
 
@@ -74,7 +74,7 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 ## Evidence and its limits
 
 - [2026-10-22 dependency refresh](docs/qualification/dependency-refresh-2026-10-22.md):
-  ADR-0007 moved the pins to SRT v0.2.9, Telemetry `24475483` and FIPS v0.5.3.
+  ADR-0007 moved the pins to SRT v0.3.0, Telemetry `24475483` and FIPS v0.5.3.
   Local Fabric checks and the SRT/Telemetry build passed; the eight G2
   workflows and a new healthy G4 capture on the new pins are the next required
   evidence. Nothing below is evidence for the new pins.
@@ -104,9 +104,9 @@ clock domains, route epochs and downstream identity checks.
 ## Bounded next work
 
 1. Complete the ADR-0007 requalification: eight G2 workflows on FIPS v0.5.3,
-   then a healthy G4 capture on SRT v0.2.9; retain results and failures as-is.
+   then a healthy G4 capture on SRT v0.3.0; retain results and failures as-is.
 2. Establish a repeated direct-SRT control (G1), then compare direct SRT with
-   SRT-over-FIPS at the same 0.2.9 pin for G3. Freeze the workload and budgets
+   SRT-over-FIPS at the same 0.3.0 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
 3. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
