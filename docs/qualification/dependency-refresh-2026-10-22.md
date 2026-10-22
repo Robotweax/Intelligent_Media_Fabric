@@ -59,7 +59,14 @@ majors; no Fabric workflow uses `pull_request_target`.
   (GCC 13.3, CMake 3.28, OpenSSL 3.0.13).
 - Telemetry `24475483` configured against the v0.2.9 headers and `librobotweax-srt.so` with
   `ROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt`, built, and its CTest suite ran
-  (72 tests at this revision, up from 42 at `bf10da04`). Result: see the table below.
+  (72 tests at this revision, up from 42 at `bf10da04`): 71 passed, 1 failed. The failure is
+  `robotweax_srt_telemetry_public_srt_fault_lab` (483 s on a 2-vCPU container): all 14 fault
+  scenarios reached their expected sender and receiver verdicts, but the gate's sender-advice
+  criterion scored 9/10 because `maxbw_too_low` produced 10 wrong advice reads starting 9.1 s
+  into the scenario. This is a timing-sensitive health-engine gate under local load, not a build
+  or ABI incompatibility; it is recorded here as a failure and is **not** carried forward as a
+  pass. The authoritative run of this suite is the one the G4 workflow executes on the
+  `ubuntu-24.04` runner before capture.
 - FIPS was not built locally; the workflows build it with the pinned toolchain.
 
 | Local check | Outcome |
@@ -67,7 +74,7 @@ majors; no Fabric workflow uses `pull_request_target`.
 | Fabric unit/contract/validation | passed (129) |
 | SRT v0.2.9 shared build | passed |
 | Telemetry build against v0.2.9 | passed |
-| Telemetry CTest suite | PENDING_CTEST |
+| Telemetry CTest suite | 71/72 passed; `public_srt_fault_lab` gate failed on sender advice 9/10 (see above) |
 
 ## Linux qualification
 
