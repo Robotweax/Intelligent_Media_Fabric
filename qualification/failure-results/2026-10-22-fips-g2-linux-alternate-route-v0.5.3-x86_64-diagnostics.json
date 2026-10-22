@@ -1,0 +1,206 @@
+{
+  "evidence_type": "fips-g2-diamond-diagnostics",
+  "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+  "last_phase": "post-failure-data-plane",
+  "project_revision": "d9ef20ea5201c7c98743602af598581d492fce62",
+  "run_id": "0864ea90-eba9-4a93-aa45-beabba541407",
+  "sample_interval_ms": 5000,
+  "sample_limit": 32,
+  "samples": [
+    {
+      "elapsed_ms": 681,
+      "nodes": [
+        {
+          "control_available": true,
+          "estimated_mesh_size": null,
+          "link_count": 1,
+          "peer_count": 1,
+          "peer_roles": [
+            "r1"
+          ],
+          "role": "a",
+          "routing": {
+            "coord_cache_entries": 0,
+            "forwarding": {
+              "delivered_packets": 0,
+              "drop_no_route_packets": 0,
+              "forwarded_packets": 0,
+              "originated_packets": 0
+            },
+            "lookup": {
+              "req_forwarded": 0,
+              "req_initiated": 0,
+              "req_no_tree_peer": 0,
+              "req_received": 0,
+              "resp_accepted": 0,
+              "resp_no_route": 0,
+              "resp_received": 0,
+              "resp_timed_out": 0
+            },
+            "pending_lookups": 0,
+            "pending_tun_packets": 0
+          },
+          "session_count": 0,
+          "tree": {
+            "depth": 0,
+            "parent_role": "a",
+            "peer_tree_count": 0,
+            "root_role": "a",
+            "stats": {
+              "accepted": 2,
+              "flap_dampened": 0,
+              "loop_detected": 0,
+              "parent_losses": 0,
+              "parent_switches": 0,
+              "received": 2,
+              "stale": 0
+            }
+          }
+        },
+        {
+          "control_available": true,
+          "estimated_mesh_size": null,
+          "link_count": 1,
+          "peer_count": 0,
+          "peer_roles": [],
+          "role": "r1",
+          "routing": {
+            "coord_cache_entries": 0,
+            "forwarding": {
+              "delivered_packets": 0,
+              "drop_no_route_packets": 0,
+              "forwarded_packets": 0,
+              "originated_packets": 0
+            },
+            "lookup": {
+              "req_forwarded": 0,
+              "req_initiated": 0,
+              "req_no_tree_peer": 0,
+              "req_received": 0,
+              "resp_accepted": 0,
+              "resp_no_route": 0,
+              "resp_received": 0,
+              "resp_timed_out": 0
+            },
+            "pending_lookups": 0,
+            "pending_tun_packets": 0
+          },
+          "session_count": 0,
+          "tree": {
+            "depth": 0,
+            "parent_role": "r1",
+            "peer_tree_count": 0,
+            "root_role": "r1",
+            "stats": {
+              "accepted": 2,
+              "flap_dampened": 0,
+              "loop_detected": 0,
+              "parent_losses": 0,
+              "parent_switches": 1,
+              "received": 2,
+              "stale": 0
+            }
+          }
+        },
+        {
+          "control_available": true,
+          "estimated_mesh_size": null,
+          "link_count": 1,
+          "peer_count": 1,
+          "peer_roles": [
+            "a"
+          ],
+          "role": "r2",
+          "routing": {
+            "coord_cache_entries": 0,
+            "forwarding": {
+              "delivered_packets": 0,
+              "drop_no_route_packets": 0,
+              "forwarded_packets": 0,
+              "originated_packets": 0
+            },
+            "lookup": {
+              "req_forwarded": 0,
+              "req_initiated": 0,
+              "req_no_tree_peer": 0,
+              "req_received": 0,
+              "resp_accepted": 0,
+              "resp_no_route": 0,
+              "resp_received": 0,
+              "resp_timed_out": 0
+            },
+            "pending_lookups": 0,
+            "pending_tun_packets": 0
+          },
+          "session_count": 0,
+          "tree": {
+            "depth": 1,
+            "parent_role": "a",
+            "peer_tree_count": 1,
+            "root_role": "a",
+            "stats": {
+              "accepted": 2,
+              "flap_dampened": 0,
+              "loop_detected": 0,
+              "parent_losses": 0,
+              "parent_switches": 1,
+              "received": 2,
+              "stale": 0
+            }
+          }
+        },
+        {
+          "control_available": true,
+          "estimated_mesh_size": null,
+          "link_count": 2,
+          "peer_count": 1,
+          "peer_roles": [
+            "r1"
+          ],
+          "role": "b",
+          "routing": {
+            "coord_cache_entries": 0,
+            "forwarding": {
+              "delivered_packets": 0,
+              "drop_no_route_packets": 0,
+              "forwarded_packets": 0,
+              "originated_packets": 0
+            },
+            "lookup": {
+              "req_forwarded": 0,
+              "req_initiated": 0,
+              "req_no_tree_peer": 0,
+              "req_received": 0,
+              "resp_accepted": 0,
+              "resp_no_route": 0,
+              "resp_received": 0,
+              "resp_timed_out": 0
+            },
+            "pending_lookups": 0,
+            "pending_tun_packets": 0
+          },
+          "session_count": 0,
+          "tree": {
+            "depth": 2,
+            "parent_role": "r1",
+            "peer_tree_count": 1,
+            "root_role": "a",
+            "stats": {
+              "accepted": 2,
+              "flap_dampened": 0,
+              "loop_detected": 0,
+              "parent_losses": 0,
+              "parent_switches": 1,
+              "received": 2,
+              "stale": 0
+            }
+          }
+        }
+      ],
+      "phase": "diamond-convergence",
+      "probe_exit_code": null
+    }
+  ],
+  "schema_version": 1,
+  "status": "failed"
+}

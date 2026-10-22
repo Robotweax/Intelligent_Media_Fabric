@@ -79,8 +79,14 @@ Fabric workflow uses that trigger.
 2. Build SRT v0.3.0 and Telemetry `24475483` together on Linux and pass the complete Telemetry
    suite, then repeat the healthy SRT-over-FIPS G4 capture and retain a new bundle. Do not edit
    the 0.2.4 or 0.2.6 bundles.
-3. Rerun the alternate-route scenario before reclassifying OD-15; the v0.5.3 session re-lookup
-   is a candidate explanation only after it is observed under the same topology.
+3. Rerun the alternate-route scenario before reclassifying OD-15. The first v0.5.3 attempt
+   ([failure retained](../../qualification/failure-results/README.md)) recovered the route but
+   kept the FSP session, which the contract then forbade because it had frozen the v0.5.1
+   teardown-and-rebuild as a requirement. The contract now records `session_continuity`
+   (`re-established` or `preserved`) with internally consistent companion fields; results
+   without the field keep the historical v0.5.1 meaning. Budgets are unchanged. A preserved
+   session is not a hitless-recovery claim: payload-recovery timing and downstream media
+   continuity remain separate, unmeasured questions for OD-15 and G6.
 4. G1, G3 and the faulted-diamond G4 plan keep their prerequisites from ADR-0006 and the gate
    registry. No gate status changes with this ADR.
 
