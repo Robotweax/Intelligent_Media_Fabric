@@ -55,12 +55,20 @@ class DependencyPinTests(unittest.TestCase):
                     self.assertRegex(text, rf"(?m)^  {key}: {re.escape(value)}$")
                 self.assertIn("libclang-dev", text)
                 self.assertNotIn("v0.4.2", text)
-        live = workflows[-1].read_text()
-        self.assertIn(f"SRT_COMMIT: {EXPECTED_SRT_COMMIT}", live)
-        self.assertIn(f"TELEMETRY_COMMIT: {EXPECTED_TELEMETRY_COMMIT}", live)
-        self.assertNotIn("/libsrt.so", live)
-        self.assertIn("/librobotweax-srt.so", live)
-        self.assertIn('ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure', live)
+        for srt_workflow in (
+            workflows[-1],
+            ROOT / ".github/workflows/g1-direct-srt-baseline.yml",
+        ):
+            with self.subTest(workflow=srt_workflow.name):
+                live = srt_workflow.read_text()
+                self.assertIn(f"SRT_COMMIT: {EXPECTED_SRT_COMMIT}", live)
+                self.assertIn(f"TELEMETRY_COMMIT: {EXPECTED_TELEMETRY_COMMIT}", live)
+                self.assertNotIn("/libsrt.so", live)
+                self.assertIn("/librobotweax-srt.so", live)
+                self.assertIn('ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure', live)
+        baseline = (ROOT / ".github/workflows/g1-direct-srt-baseline.yml").read_text()
+        self.assertNotIn("FIPS_COMMIT", baseline)
+        self.assertNotIn("fips0", baseline)
 
     def test_old_source_cannot_qualify_new_baseline(self):
         with patch("rimf_lab.fips_g2_linux._run") as run:

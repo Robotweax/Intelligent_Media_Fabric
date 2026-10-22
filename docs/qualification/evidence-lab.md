@@ -302,3 +302,25 @@ Because Robotweax SRT and SRT Telemetry are private repositories, the workflow r
 repository secret `ROBOTWEAX_REPO_TOKEN`. It must be a fine-grained token or GitHub App token with
 read-only Contents access to exactly `Robotweax/srt` and `Robotweax/srt_telemetry`; the workflow
 does not persist checkout credentials and its own repository permission remains `contents: read`.
+
+## Privileged G1 direct-SRT baseline
+
+The manually dispatched `G1 Direct SRT Baseline` workflow is the control for the SRT-over-FIPS
+pilots. It builds the same pinned SRT and Telemetry sources, runs the complete Telemetry test
+suite, then runs the addressable incident peers in two namespaces joined by a plain veth pair
+with IPv6 endpoint addresses and no FIPS daemon. The coordinator, workload (240 messages of
+1024 bytes at 5 ms pacing), sample schedule (one pre-transfer, twelve 100 ms, one post-transfer),
+Telemetry adapter context and same-host SRT/media ordering assessment are those of the G4 pilot.
+The transfer is repeated `repetitions` times (default 3) with fresh peers and recordings.
+
+Each repetition fails closed on exact application delivery, zero dropped packets, no missed
+100 ms sampling interval, fourteen adapted samples per endpoint, byte-exact adapter replay and
+authorized same-host ordering. Retransmission, loss, wire totals, RTT range, the sample at which
+the receiver held every message, per-sample schedule error, and each peer's CPU time and peak
+RSS (read from `/proc` before exit) are recorded without thresholds; the performance budgets
+they would be judged against are not frozen (OD-01, OD-04, OD-14). Successful output must pass
+`schema/qualification/g1-direct-srt-baseline-result.schema.json` and the bundle validator, and
+records `G1: not-passed`. See the
+[predeclared contract](g1-direct-srt-baseline-plan-2026-10-22.md). Because the sandbox used
+for local harness checks has no IPv6, the address family is a module constant that a local dry
+run may switch to IPv4; the committed contract and the workflow use IPv6 only.

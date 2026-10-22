@@ -38,6 +38,11 @@ from .g4_srt_over_fips import (
     run_g4_srt_over_fips_live,
     validate_g4_live_capture_bundle,
 )
+from .g1_direct_srt import (
+    DEFAULT_REPETITIONS,
+    run_g1_direct_srt_baseline,
+    validate_g1_direct_srt_bundle,
+)
 from .media_frames import write_media_frame_assessment
 from .runner import run_scenario
 from .srt_adapter import adapt_srt_telemetry_jsonl
@@ -120,6 +125,25 @@ def _parser() -> argparse.ArgumentParser:
     g4_live_run_parser.add_argument("--library-dir", type=Path, required=True)
     g4_live_run_parser.add_argument("--output-dir", type=Path, required=True)
     g4_live_run_parser.add_argument("--project-revision", required=True)
+
+    g1_run_parser = subparsers.add_parser(
+        "run-g1-direct-srt-baseline",
+        help="run the privileged Linux two-node direct-SRT control baseline",
+    )
+    g1_run_parser.add_argument("--srt-source", type=Path, required=True)
+    g1_run_parser.add_argument("--srt-library", type=Path, required=True)
+    g1_run_parser.add_argument("--telemetry-source", type=Path, required=True)
+    g1_run_parser.add_argument("--incident-peer", type=Path, required=True)
+    g1_run_parser.add_argument("--library-dir", type=Path, required=True)
+    g1_run_parser.add_argument("--output-dir", type=Path, required=True)
+    g1_run_parser.add_argument("--project-revision", required=True)
+    g1_run_parser.add_argument("--repetitions", type=int, default=DEFAULT_REPETITIONS)
+
+    g1_bundle_parser = subparsers.add_parser(
+        "validate-g1-direct-srt-baseline",
+        help="validate a retained G1 direct-SRT baseline bundle directory",
+    )
+    g1_bundle_parser.add_argument("directory", type=Path)
 
     fips_parser = subparsers.add_parser(
         "validate-fips-assessment", help="validate a retained FIPS source/build assessment"
@@ -316,6 +340,24 @@ def main(argv: list[str] | None = None) -> int:
                 project_revision=args.project_revision,
             )
             print(f"G4 SRT-over-FIPS live capture: {result['status']} ({args.output_dir})")
+        elif args.command == "run-g1-direct-srt-baseline":
+            result = run_g1_direct_srt_baseline(
+                srt_source=args.srt_source,
+                srt_library=args.srt_library,
+                telemetry_source=args.telemetry_source,
+                incident_peer=args.incident_peer,
+                library_dir=args.library_dir,
+                output_dir=args.output_dir,
+                project_revision=args.project_revision,
+                repetitions=args.repetitions,
+            )
+            print(
+                f"G1 direct-SRT baseline: {result['status']} "
+                f"({result['summary']['repetition_count']} repetitions, {args.output_dir})"
+            )
+        elif args.command == "validate-g1-direct-srt-baseline":
+            validate_g1_direct_srt_bundle(args.directory)
+            print(f"G1 direct-SRT baseline bundle validation: OK ({args.directory})")
         elif args.command == "validate-fips-assessment":
             validate_fips_source_assessment(load_json(args.path))
             print(f"FIPS assessment validation: OK ({args.path})")
