@@ -9,7 +9,9 @@ from pathlib import Path
 
 from rimf_lab.contracts import ContractError
 from rimf_lab.g4_srt_over_fips import (
+    EXPECTED_FIPS_COMMIT,
     EXPECTED_SRT_COMMIT,
+    EXPECTED_TELEMETRY_COMMIT,
     validate_g4_live_capture_bundle,
 )
 
@@ -42,7 +44,9 @@ class RetainedG4BundleTests(unittest.TestCase):
         validate_g4_live_capture_bundle(BUNDLE)
         validate_g4_live_capture_bundle(SRT_026_BUNDLE)
 
-    def test_new_bundle_rejects_mismatched_provider_version(self):
+    def test_historical_bundle_rejects_rewritten_provider_version(self):
+        # The v0.2.6 bundle is digest-locked since ADR-0007; rewriting its
+        # recording and inventory fails before provider identity is compared.
         with tempfile.TemporaryDirectory() as directory:
             copy = Path(directory) / "bundle"
             shutil.copytree(SRT_026_BUNDLE, copy)
@@ -62,7 +66,7 @@ class RetainedG4BundleTests(unittest.TestCase):
             result_path.write_text(
                 json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
-            with self.assertRaisesRegex(ContractError, "provider identity"):
+            with self.assertRaisesRegex(ContractError, "historical G4 result digest mismatch"):
                 validate_g4_live_capture_bundle(copy)
 
     def test_changed_source_sample_breaks_retained_digest(self):
@@ -75,12 +79,19 @@ class RetainedG4BundleTests(unittest.TestCase):
                 validate_g4_live_capture_bundle(copy)
 
     def test_new_pin_cannot_relabel_old_provider_recording(self):
+        for bundle in (BUNDLE, SRT_026_BUNDLE):
+            with self.subTest(bundle=bundle.name):
+                self._assert_relabel_rejected(bundle)
+
+    def _assert_relabel_rejected(self, bundle: Path) -> None:
         with tempfile.TemporaryDirectory() as directory:
             copy = Path(directory) / "bundle"
-            shutil.copytree(BUNDLE, copy)
+            shutil.copytree(bundle, copy)
             result_path = copy / "result.json"
             result = json.loads(result_path.read_text(encoding="utf-8"))
             result["provenance"]["srt_commit"] = EXPECTED_SRT_COMMIT
+            result["provenance"]["telemetry_commit"] = EXPECTED_TELEMETRY_COMMIT
+            result["provenance"]["fips_commit"] = EXPECTED_FIPS_COMMIT
             result_path.write_text(
                 json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )

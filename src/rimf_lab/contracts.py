@@ -2747,19 +2747,29 @@ def validate_fips_g2_linux_alternate_route_result(data: Any) -> None:
     poll_count = session_recovery.get("control_poll_count")
     if not isinstance(poll_count, int) or isinstance(poll_count, bool) or poll_count < 1:
         raise ContractError("FSP session recovery control_poll_count is invalid")
-    if session_recovery != {
+    # Results written before 2026-10-22 carry no session_continuity field and
+    # always recorded the FIPS v0.5.1 teardown-and-rebuild. Newer results name
+    # the observed outcome; the remaining fields must agree with it.
+    session_continuity = session_recovery.get("session_continuity", "re-established")
+    if session_continuity not in ("re-established", "preserved"):
+        raise ContractError("FSP session recovery session_continuity is invalid")
+    reestablished = session_continuity == "re-established"
+    expected_session_recovery = {
         "target_control_poll_interval_ms": 250,
         "control_poll_count": poll_count,
         "established_through_reparent_control_polls": True,
         "original_session_start_unchanged_through_reparent": [True, True],
         "idle_timeout_secs": 90,
         "manual_session_reset_commands": 0,
-        "automatic_session_reestablishment_observed": True,
-        "session_start_changed_per_endpoint": [True, True],
+        "automatic_session_reestablishment_observed": reestablished,
+        "session_start_changed_per_endpoint": [reestablished, reestablished],
         "endpoint_session_counts_after_recovery": [1, 1],
         "alternate_transit_fsp_session_count": 0,
         "identity_values_retained": False,
-    }:
+    }
+    if "session_continuity" in session_recovery:
+        expected_session_recovery["session_continuity"] = session_continuity
+    if session_recovery != expected_session_recovery:
         raise ContractError("observations.fsp_session_recovery is invalid")
 
     if observations.get("post_failure_icmpv6") != {

@@ -1218,6 +1218,44 @@ class FipsLinuxRunnerContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "session_recovery"):
             validate_fips_g2_linux_alternate_route_result(result)
 
+    def test_historical_alternate_route_result_implies_reestablished_session(self):
+        result = valid_alternate_route_result()
+        recovery = result["observations"]["fsp_session_recovery"]
+        self.assertNotIn("session_continuity", recovery)
+        recovery["automatic_session_reestablishment_observed"] = False
+        recovery["session_start_changed_per_endpoint"] = [False, False]
+        with self.assertRaisesRegex(ContractError, "session_recovery"):
+            validate_fips_g2_linux_alternate_route_result(result)
+
+    def test_accepts_alternate_route_with_preserved_fsp_session(self):
+        result = valid_alternate_route_result()
+        recovery = result["observations"]["fsp_session_recovery"]
+        recovery["session_continuity"] = "preserved"
+        recovery["automatic_session_reestablishment_observed"] = False
+        recovery["session_start_changed_per_endpoint"] = [False, False]
+        validate_fips_g2_linux_alternate_route_result(result)
+        recovery["session_continuity"] = "re-established"
+        recovery["automatic_session_reestablishment_observed"] = True
+        recovery["session_start_changed_per_endpoint"] = [True, True]
+        validate_fips_g2_linux_alternate_route_result(result)
+
+    def test_rejects_alternate_route_session_continuity_inconsistency(self):
+        for continuity, reestablished, changed in (
+            ("preserved", True, [False, False]),
+            ("preserved", False, [True, True]),
+            ("re-established", False, [True, True]),
+            ("re-established", True, [False, True]),
+            ("hitless", False, [False, False]),
+        ):
+            with self.subTest(continuity=continuity, changed=changed):
+                result = valid_alternate_route_result()
+                recovery = result["observations"]["fsp_session_recovery"]
+                recovery["session_continuity"] = continuity
+                recovery["automatic_session_reestablishment_observed"] = reestablished
+                recovery["session_start_changed_per_endpoint"] = changed
+                with self.assertRaisesRegex(ContractError, "session"):
+                    validate_fips_g2_linux_alternate_route_result(result)
+
 
 class DiamondDiagnosticTests(unittest.TestCase):
     def test_projects_roles_and_counters_without_identity_or_address(self):

@@ -1103,14 +1103,25 @@ def run_fips_g2_linux_alternate_route(
             recovered_sessions[0]["session_start_ms"],
             recovered_sessions[1]["session_start_ms"],
         )
-        if any(
-            recovered == initial
+        # FIPS v0.5.1 let the established FSP session go dark after route loss
+        # and rebuilt it; v0.5.3 re-looks-up the destination and keeps the
+        # session. Both are automatic (no manual reset is ever issued). Record
+        # which one was observed instead of demanding either; a mixed outcome
+        # (one endpoint kept its session, the other did not) is not a known
+        # daemon behaviour and fails closed.
+        session_start_changed = [
+            recovered != initial
             for recovered, initial in zip(
                 recovered_session_starts, initial_session_starts
             )
-        ):
+        ]
+        if all(session_start_changed):
+            session_continuity = "re-established"
+        elif not any(session_start_changed):
+            session_continuity = "preserved"
+        else:
             raise QualificationError(
-                "FSP session was not automatically re-established after route loss"
+                "FSP session continuity differed between endpoints after route loss"
             )
         alternate_before = forwarding_counters(
             control(alternate_index, "show", "routing")
@@ -1209,8 +1220,11 @@ def run_fips_g2_linux_alternate_route(
                 "original_session_start_unchanged_through_reparent": [True, True],
                 "idle_timeout_secs": SESSION_IDLE_TIMEOUT_SECS,
                 "manual_session_reset_commands": 0,
-                "automatic_session_reestablishment_observed": True,
-                "session_start_changed_per_endpoint": [True, True],
+                "session_continuity": session_continuity,
+                "automatic_session_reestablishment_observed": (
+                    session_continuity == "re-established"
+                ),
+                "session_start_changed_per_endpoint": session_start_changed,
                 "endpoint_session_counts_after_recovery": [
                     len(control(0, "show", "sessions")["sessions"]),
                     len(control(3, "show", "sessions")["sessions"]),

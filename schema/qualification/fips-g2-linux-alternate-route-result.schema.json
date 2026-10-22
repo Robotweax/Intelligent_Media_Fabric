@@ -262,8 +262,11 @@
             "original_session_start_unchanged_through_reparent": {"const": [true, true]},
             "idle_timeout_secs": {"const": 90},
             "manual_session_reset_commands": {"const": 0},
-            "automatic_session_reestablishment_observed": {"const": true},
-            "session_start_changed_per_endpoint": {"const": [true, true]},
+            "session_continuity": {"enum": ["re-established", "preserved"]},
+            "automatic_session_reestablishment_observed": {"type": "boolean"},
+            "session_start_changed_per_endpoint": {
+              "oneOf": [{"const": [true, true]}, {"const": [false, false]}]
+            },
             "endpoint_session_counts_after_recovery": {"const": [1, 1]},
             "alternate_transit_fsp_session_count": {"const": 0},
             "identity_values_retained": {"const": false}

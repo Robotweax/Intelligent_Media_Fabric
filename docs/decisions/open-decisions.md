@@ -29,7 +29,9 @@ clock-boundary case and a [reviewed healthy live result](../qualification/g4-liv
 transition, independent downstream media observation, and first-divergent-layer evidence are still
 required. OD-01, OD-03, OD-04, and OD-14 must close before G3 can pass. OD-12 must close before
 an external contributor or distributable artifact is accepted. OD-15 must close before G6 can pass;
-the retained FIPS result proves route reparenting but not a usable session or media continuity.
+the retained v0.5.1 result proved route reparenting with a session restart, and the
+[v0.5.3 result](../qualification/fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md) shows the
+session preserved with ~39 s payload recovery, still without SRT or media continuity evidence.
 OD-16 must close before a reactive path-MTU result can contribute to G6; the current stock-daemon
 limitation and acceptance contract are documented in the
 [reactive path-MTU capability-gap assessment](../qualification/fips-g2-reactive-mtu-gap-2026-08-30.md).

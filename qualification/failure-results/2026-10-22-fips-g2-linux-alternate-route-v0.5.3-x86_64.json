@@ -1,0 +1,22 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "daemons_stopped": true,
+    "faulted_daemon_reaped": true,
+    "namespaces_removed": true,
+    "persistent_identity_directory_removed": true
+  },
+  "evidence_type": "fips-g2-linux-alternate-route",
+  "failure_class": "QualificationError",
+  "failure_detail": "FSP session was not automatically re-established after route loss",
+  "failure_phase": "post-failure-data-plane",
+  "finished_at": "2026-10-22T14:17:20.790822Z",
+  "gate_ids": [
+    "G2"
+  ],
+  "project_revision": "d9ef20ea5201c7c98743602af598581d492fce62",
+  "run_id": "0864ea90-eba9-4a93-aa45-beabba541407",
+  "schema_version": 1,
+  "started_at": "2026-10-22T14:16:31.926725Z",
+  "status": "failed"
+}

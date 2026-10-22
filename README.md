@@ -62,10 +62,10 @@ For continuation on another machine, start with the [agent handoff](HANDOFF.md).
 
 ## Local checks
 
-New experiments pin SRT v0.2.6 and FIPS v0.5.1 as **requalification candidates**,
-not as already qualified releases. SRT Telemetry stays at its pinned pre-alpha
-revision. See [ADR-0006](docs/decisions/0006-srt-026-baseline.md) and the
-[historical refresh assessment](docs/qualification/dependency-refresh-2026-09-19.md).
+New experiments pin SRT v0.3.0, SRT Telemetry `24475483` and FIPS v0.5.3 as
+**requalification candidates**, not as already qualified releases. See
+[ADR-0007](docs/decisions/0007-dependency-refresh-2026-10-22.md) and the
+[refresh assessment](docs/qualification/dependency-refresh-2026-10-22.md).
 
 Python 3.11 or newer is the only requirement for the initial harness.
 

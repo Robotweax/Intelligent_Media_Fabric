@@ -48,13 +48,32 @@ from .fips_g2_linux import (
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
 
-EXPECTED_SRT_COMMIT = "50cba37bc89f423ee7c0a292c3c3eae71b5fc7f9"
-EXPECTED_SRT_VERSION = "0.2.6"
-HISTORICAL_SRT_COMMIT = "def14a7b6d8a2ba1860677414e415fd86bbc953a"
-HISTORICAL_G4_RESULT_SHA256 = (
-    "ba417e4869910940939308203602a5643c24dc7ba834bea96e49ac5d9ba8092b"
+EXPECTED_SRT_COMMIT = "4ae6330d62f2b5030d96964bf3500283f32dd39c"
+EXPECTED_SRT_VERSION = "0.3.0"
+EXPECTED_TELEMETRY_COMMIT = "2447548388a47aaac647bb2eafdc4f9e962f0baa"
+# Retained healthy pilots are evidence only for their own recorded revisions.
+# Each historical bundle is accepted solely when its original result manifest
+# matches the digest recorded here; a new run cannot present an old pin as the
+# active candidate. See ADR-0006 and ADR-0007.
+HISTORICAL_G4_BUNDLES = {
+    # 2026-09-23, run 35857439840: SRT main snapshot 0.2.4, FIPS v0.5.1.
+    "ba417e4869910940939308203602a5643c24dc7ba834bea96e49ac5d9ba8092b": {
+        "srt_commit": "def14a7b6d8a2ba1860677414e415fd86bbc953a",
+        "srt_version": "0.2.4",
+        "telemetry_commit": "bf10da0431fdf23772210262755f745b62b6ff58",
+        "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+    },
+    # 2026-09-27, run 36309262514: SRT v0.2.6, FIPS v0.5.1.
+    "a9fa7d9059acd1accd71d70e4bb2c50bd0640a36ed6a60850804df282beca090": {
+        "srt_commit": "50cba37bc89f423ee7c0a292c3c3eae71b5fc7f9",
+        "srt_version": "0.2.6",
+        "telemetry_commit": "bf10da0431fdf23772210262755f745b62b6ff58",
+        "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+    },
+}
+HISTORICAL_SRT_COMMITS = frozenset(
+    bundle["srt_commit"] for bundle in HISTORICAL_G4_BUNDLES.values()
 )
-EXPECTED_TELEMETRY_COMMIT = "bf10da0431fdf23772210262755f745b62b6ff58"
 SRT_REPOSITORY = "https://github.com/Robotweax/srt.git"
 TELEMETRY_REPOSITORY = "https://github.com/Robotweax/srt_telemetry.git"
 SENDER_EVENT_NAMESPACE = "86b17e98-889a-5e37-af06-9456c88e70bc"
@@ -904,7 +923,11 @@ def run_g4_srt_over_fips_live(
 
 
 def validate_g4_live_capture_result(
-    result: Any, *, expected_srt_commit: str = EXPECTED_SRT_COMMIT
+    result: Any,
+    *,
+    expected_srt_commit: str = EXPECTED_SRT_COMMIT,
+    expected_telemetry_commit: str = EXPECTED_TELEMETRY_COMMIT,
+    expected_fips_commit: str = EXPECTED_FIPS_COMMIT,
 ) -> None:
     if not isinstance(result, dict):
         raise ContractError("G4 live result must be an object")
@@ -983,12 +1006,12 @@ def validate_g4_live_capture_result(
         raise ContractError("G4 live provenance is invalid")
     for field, expected in (
         ("fips_repository", FIPS_REPOSITORY),
-        ("fips_commit", EXPECTED_FIPS_COMMIT),
+        ("fips_commit", expected_fips_commit),
         ("fips_source_tree_state", "clean"),
         ("srt_repository", SRT_REPOSITORY),
         ("srt_commit", expected_srt_commit),
         ("telemetry_repository", TELEMETRY_REPOSITORY),
-        ("telemetry_commit", EXPECTED_TELEMETRY_COMMIT),
+        ("telemetry_commit", expected_telemetry_commit),
     ):
         if provenance.get(field) != expected:
             raise ContractError(f"G4 live provenance {field} is invalid")
@@ -1065,15 +1088,25 @@ def validate_g4_live_capture_bundle(directory: Path) -> None:
     provenance = result.get("provenance") if isinstance(result, dict) else None
     expected_srt_commit = EXPECTED_SRT_COMMIT
     expected_srt_version = EXPECTED_SRT_VERSION
+    expected_telemetry_commit = EXPECTED_TELEMETRY_COMMIT
+    expected_fips_commit = EXPECTED_FIPS_COMMIT
     if (
         isinstance(provenance, dict)
-        and provenance.get("srt_commit") == HISTORICAL_SRT_COMMIT
+        and provenance.get("srt_commit") in HISTORICAL_SRT_COMMITS
     ):
-        if sha256_file(result_path) != HISTORICAL_G4_RESULT_SHA256:
+        historical = HISTORICAL_G4_BUNDLES.get(sha256_file(result_path))
+        if historical is None or historical["srt_commit"] != provenance.get("srt_commit"):
             raise ContractError("historical G4 result digest mismatch")
-        expected_srt_commit = HISTORICAL_SRT_COMMIT
-        expected_srt_version = "0.2.4"
-    validate_g4_live_capture_result(result, expected_srt_commit=expected_srt_commit)
+        expected_srt_commit = historical["srt_commit"]
+        expected_srt_version = historical["srt_version"]
+        expected_telemetry_commit = historical["telemetry_commit"]
+        expected_fips_commit = historical["fips_commit"]
+    validate_g4_live_capture_result(
+        result,
+        expected_srt_commit=expected_srt_commit,
+        expected_telemetry_commit=expected_telemetry_commit,
+        expected_fips_commit=expected_fips_commit,
+    )
     if result["status"] == "failed":
         return
     for name, record in result["files"].items():

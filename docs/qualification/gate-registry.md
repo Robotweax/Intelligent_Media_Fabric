@@ -28,6 +28,16 @@ healthy G4 bundle remains revision-bound. The new
 [healthy v0.2.6 pilot](g4-live-capture-srt-026-2026-09-27.md) passed but does not
 change any gate status.
 
+[ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selects SRT v0.3.0,
+SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
+Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.
+See the [refresh assessment](dependency-refresh-2026-10-22.md). The
+[v0.5.3 alternate-route experiment](fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md) passed
+with the endpoint FSP sessions preserved and payload recovery in 39.3 s; this is retained G2
+evidence, not hitless recovery, and does not alone pass G2. A
+[healthy SRT v0.3.0 over FIPS v0.5.3 pilot](g4-live-capture-srt-030-2026-10-22.md) passed and
+is retained; like its predecessors it changes no gate status.
+
 One [FIPS v0.5.1 four-node alternate-route experiment](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
 passed on 2026-09-23 after correcting a fixed-parent harness assumption. This is
 retained G2 evidence but does not alone pass G2 or establish hitless recovery.
@@ -35,12 +45,13 @@ retained G2 evidence but does not alone pass G2 or establish hitless recovery.
 The historical stock FIPS `v0.4.2` assessment could not place the reactive-MTU experiment into its required
 state without route/session disruption or prior proactive MTU discovery. This is recorded as a
 [capability gap](fips-g2-reactive-mtu-gap-2026-08-30.md), not a failed gate: G2 remains
-`in-progress`, and no G6 claim has started. That capability gap has not yet been reassessed on v0.5.1.
+`in-progress`, and no G6 claim has started. That capability gap has not yet been reassessed on v0.5.1 or v0.5.3.
 
 G4 has a deterministic SRT adapter fixture, a paired synthetic clock-domain boundary case,
 and healthy live SRT-over-FIPS pilots at
-[the previous pin](g4-live-capture-2026-09-23.md) and
-[v0.2.6](g4-live-capture-srt-026-2026-09-27.md). The analyzer correctly
+[the previous pin](g4-live-capture-2026-09-23.md),
+[v0.2.6](g4-live-capture-srt-026-2026-09-27.md) and
+[v0.3.0 over FIPS v0.5.3](g4-live-capture-srt-030-2026-10-22.md). The analyzer correctly
 returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
 incident, first-divergent-layer, or fault-domain claim exists yet; see the
 [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).

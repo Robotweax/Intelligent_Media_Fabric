@@ -1,0 +1,126 @@
+{
+  "capture": {
+    "application_exact_delivery": true,
+    "application_message_bytes": 1024,
+    "application_message_count": 240,
+    "fips_observation_count": 14,
+    "sample_interval_ns": 100000000,
+    "srt_fips_ordering": "srt-before-peer",
+    "srt_media_ordering": "srt-before-peer",
+    "srt_samples_per_endpoint": 14
+  },
+  "classification": "experiment",
+  "cleanup": {
+    "ephemeral_identity_directory_removed": true,
+    "fips_daemons_stopped": true,
+    "namespaces_removed": true,
+    "srt_peers_stopped": true
+  },
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-c840d8485fd01f910489e99a",
+    "max_error_ns": null,
+    "same_host": true,
+    "synchronization": "local-only"
+  },
+  "evidence_type": "g4-srt-over-fips-live",
+  "files": {
+    "fips-observations.jsonl": {
+      "bytes": 9044,
+      "sha256": "d233f13482d4ddc7c62ceff2810859fdc9fc515a59473cb2b56eb2b634edfe01"
+    },
+    "media-observation.json": {
+      "bytes": 901,
+      "sha256": "ae6d0244174d785798da3f760810f13936c019bad551107020a1e3aa3d6eeafb"
+    },
+    "receiver-context.json": {
+      "bytes": 696,
+      "sha256": "7d82fa06c7332aa22f8bb50d818bebcbdd9530ce021682d52deb1c8e23ca6860"
+    },
+    "receiver-observations.jsonl": {
+      "bytes": 54875,
+      "sha256": "072ccd1cf4355338b49bcc4aeba672a2628376e14ca291cbb6d697adbfeaab88"
+    },
+    "receiver-source.jsonl": {
+      "bytes": 27489,
+      "sha256": "8ec27f57710c76d3e6ad3adb737107bee84fcfa8eb065b24ff53524aee79ea30"
+    },
+    "selected-fips-observation.json": {
+      "bytes": 782,
+      "sha256": "cf9d5d4ae6b25286787a62170fe834aa55c2bbb446d9f22a45d80131f495226a"
+    },
+    "selected-srt-observation.json": {
+      "bytes": 4936,
+      "sha256": "42ca6094a882ef5d4162791c4e5daeb3b02fa22a0fb825e1e70ccc8b940709ce"
+    },
+    "sender-context.json": {
+      "bytes": 696,
+      "sha256": "3a571996b085bdc6f5ac0d96b2741fe5ae7263d325914e8cc8a01596498eb928"
+    },
+    "sender-observations.jsonl": {
+      "bytes": 54701,
+      "sha256": "280e66a656e5e327a4cf5eefdd2a0f66c4c629aa58cc79537bd4730f93e41729"
+    },
+    "sender-source.jsonl": {
+      "bytes": 27359,
+      "sha256": "8adeac13ce32412dc87bcaf63d52cde143e8e4a4118f74015fbd473aae7f5cd2"
+    },
+    "srt-fips-ordering.json": {
+      "bytes": 1557,
+      "sha256": "5281532b5c1b9de751295e14406afc2ab03f20f15e3d518abda476def71307e6"
+    },
+    "srt-media-ordering.json": {
+      "bytes": 1599,
+      "sha256": "9e7abea637d574e45a72626ab802fd6f9de5f46ded6640ba206f753c97c9c616"
+    }
+  },
+  "finished_at": "2026-10-22T14:51:25.380998Z",
+  "gate_conclusion": {
+    "G3": "not-passed",
+    "G4": "not-passed",
+    "reason": "single-healthy-live-pilot-without-fault-or-route-transition"
+  },
+  "gate_ids": [
+    "G3",
+    "G4"
+  ],
+  "limitations": [
+    "One healthy direct-veth FIPS path only; no loss, delay, outage, or route transition was injected.",
+    "The provider-linked receiver validates application message identity but is not yet an independent media decoder.",
+    "Authorized temporal ordering does not identify a first divergent layer, fault domain, or root cause.",
+    "This experiment does not authorize route, SRT, encoder, relay, or other control mutation."
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "6.17.0-1022-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "cargo_lock_sha256": "70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a",
+    "fips_binary_sha256": "97624ca8ccb1840507eeaef1b97fd163e0f0a1dc197e1392e214e39082e6f6d1",
+    "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "354b6a46548762dcdce5acd2b3829fdf51d55b81fc5e945cb14938385453d2d8",
+    "incident_peer_sha256": "aac00d69cd18daf4c49f0d2f380a7c78753a00710c56a9c6087aff471d1d5db1",
+    "project_revision": "c093d9b27134996ff6d235fda81dfd5948bd21f9",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3",
+    "srt_commit": "4ae6330d62f2b5030d96964bf3500283f32dd39c",
+    "srt_library_sha256": "971a72b89206689da1fafccf5aceb19ef0c1054df6ea0b9072d8b363348e7e96",
+    "srt_repository": "https://github.com/Robotweax/srt.git",
+    "telemetry_commit": "2447548388a47aaac647bb2eafdc4f9e962f0baa",
+    "telemetry_repository": "https://github.com/Robotweax/srt_telemetry.git"
+  },
+  "route_epoch": 1,
+  "run_id": "fe9e82d9-bfa2-4981-824f-2e485c76ac11",
+  "schema_version": 1,
+  "started_at": "2026-10-22T14:51:19.783366Z",
+  "status": "passed",
+  "topology": {
+    "isolation": "linux-network-namespaces",
+    "node_count": 2,
+    "overlay": "srt-ipv6-over-fips0",
+    "underlay": "direct-veth-ipv4-udp"
+  }
+}
