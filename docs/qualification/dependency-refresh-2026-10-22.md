@@ -80,7 +80,40 @@ majors; no Fabric workflow uses `pull_request_target`.
 
 ## Linux qualification
 
-PENDING_WORKFLOWS
+All eight G2 workflows ran on FIPS v0.5.3 with unchanged acceptance budgets; the seven
+two-/three-node and MMP scenarios on project revision `d9ef20ea` and the alternate route on
+`9ab26fa9` (after the contract extension described below). Successful, schema-validated
+artifacts are retained under `qualification/retained-results/2026-10-22-*-v0.5.3-x86_64.json`.
+
+| Scenario | Run | Outcome |
+| --- | --- | --- |
+| Direct + MTU boundary | [39793251435](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793251435) | passed |
+| NAT | [39793255603](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793255603) | passed |
+| Heterogeneous multihop MTU | [39793259583](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793259583) | passed |
+| Managed transit | [39793263295](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793263295) | passed |
+| Lifecycle | [39793267303](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793267303) | passed |
+| Delay / MMP | [39793271477](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793271477) | passed |
+| Loss / MMP | [39793275588](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793275588) | passed |
+| Alternate route, first attempt | [39793279574](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793279574) | failed during post-failure-data-plane |
+| Alternate route, after contract extension | [39796547753](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39796547753) | passed, session preserved |
+| G4 media framehash harness (new Actions pins) | [39793245134](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793245134) and later commits | passed |
+| SRT over FIPS, interim SRT v0.2.9 (`d9ef20ea`) | [39793287761](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793287761) | passed; not retained (v0.2.9 was replaced before merge) |
+| SRT over FIPS, SRT v0.3.0 (`c093d9b2`) | [39795866081](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39795866081) | PENDING_G4 |
+
+The alternate-route first attempt reparented and recovered the overlay route, then failed
+because the contract required a rebuilt FSP session per endpoint; v0.5.3 kept the session.
+That requirement had frozen the v0.5.1 teardown-and-rebuild observed on 2026-09-23. The
+failure is [retained unchanged](../../qualification/failure-results/README.md); the harness,
+validator and schema now record `session_continuity` (`re-established` or `preserved`) with
+consistent companion fields, results without the field keep the historical meaning, and no
+budget changed. The rerun is written up in the
+[v0.5.3 alternate-route record](fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md):
+reparent 31.733 s (v0.5.1: 31.436 s), payload recovery 39.261 s (v0.5.1: 92.896 s), session
+preserved. One run per revision; not a statistical comparison and not hitless recovery.
+
+The interim v0.2.9 G4 run built SRT v0.2.9 with Telemetry `24475483`, passed the complete
+Telemetry suite on the runner and delivered the capture; it is recorded here only to show that
+the Telemetry head integrates with ABI line 0.2 as well, and its bundle is not retained.
 
 ## Limits
 

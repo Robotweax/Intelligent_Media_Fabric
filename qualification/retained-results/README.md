@@ -91,3 +91,11 @@ PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-multihop-mtu \
 PYTHONPATH=src python3 -m rimf_lab validate-fips-g2-linux-delay-mmp \
   qualification/retained-results/2026-08-30-fips-g2-linux-delay-mmp-x86_64.json
 ```
+
+The
+[FIPS v0.5.3 alternate-route result](2026-10-22-fips-g2-linux-alternate-route-v0.5.3-x86_64.json)
+repeats the four-node diamond on the v0.5.3 pin: exclusive initial forwarding through `r1`,
+`SIGKILL` of `r1`, automatic reparenting to `r2` in 31.733 s, and exact post-failure delivery in
+39.261 s with the endpoint FSP sessions preserved (`session_continuity: preserved`). It is
+[written up here](../../docs/qualification/fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md)
+and is not a hitless or media-continuity claim.

@@ -31,7 +31,10 @@ change any gate status.
 [ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selects SRT v0.3.0,
 SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
 Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.
-See the [refresh assessment](dependency-refresh-2026-10-22.md).
+See the [refresh assessment](dependency-refresh-2026-10-22.md). The
+[v0.5.3 alternate-route experiment](fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md) passed
+with the endpoint FSP sessions preserved and payload recovery in 39.3 s; this is retained G2
+evidence, not hitless recovery, and does not alone pass G2.
 
 One [FIPS v0.5.1 four-node alternate-route experiment](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
 passed on 2026-09-23 after correcting a fixed-parent harness assumption. This is
