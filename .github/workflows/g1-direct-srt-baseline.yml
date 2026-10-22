@@ -121,7 +121,7 @@ jobs:
               --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
               --library-dir "$SRT_BUILD" \
               --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
-              --project-revision "$GITHUB_SHA" \
+              --project-revision "${{ github.event.pull_request.head.sha || github.sha }}" \
               --repetitions "${{ github.event.inputs.repetitions || '3' }}"
           sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
 
