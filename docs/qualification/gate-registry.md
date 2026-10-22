@@ -7,7 +7,7 @@ or an approved ADR can change a gate status.
 | --- | --- | --- | --- |
 | G0-A Contract Pack | in-progress | Are security- and measurement-critical choices explicit? | ADRs, pins, schemas, threat model, open-decision register |
 | G0-B Harness Integrity | in-progress | Can the lab create reproducible, bounded, provenance-complete results? | CI, negative tests, scenario/result validation, harness smoke |
-| G1 Direct SRT Baseline | not-started | Is the control correct and the harness non-distorting? | payload and timing validation, repeated direct runs |
+| G1 Direct SRT Baseline | in-progress | Is the control correct and the harness non-distorting? | payload and timing validation, repeated direct runs |
 | G2 FIPS Connectivity | in-progress | Does the selected FIPS baseline provide the documented connectivity and telemetry? | build provenance, Linux two-node TUN, NAT and managed-transit classes, direct and heterogeneous multihop MTU boundaries, direct-link lifecycle, bounded non-hitless alternate-route recovery, fixed-delay and fixed-loss MMP responses, control-socket observations |
 | G3 Transparent SRT over FIPS | not-started | Does SRT over `fips0` meet frozen correctness and overhead budgets? | direct/FIPS scorecard, mandatory correctness, CPU/wire/timing evidence |
 | G4 Unified Observation | in-progress | Can correlation identify the first divergent layer and fault domain? | accepted SRT adapter contract, route epochs, data-quality cases, retained cross-layer golden incidents |
@@ -58,6 +58,11 @@ incident, first-divergent-layer, or fault-domain claim exists yet; see the
 The next [faulted-diamond experiment plan](g4-faulted-diamond-experiment-plan-2026-09-23.md)
 is predeclared but not yet executable or qualifying evidence; it requires a
 separate four-node runner and independent downstream decoder.
+
+G1 moved to `in-progress` on 2026-10-22 with the
+[first retained direct-SRT baseline](g1-direct-srt-baseline-2026-10-22.md): three exact repetitions
+over a plain veth at the v0.3.0 pin, zero loss, with timing, CPU and RSS recorded but not graded.
+Passing G1 requires repeated retained runs and owner review; no budget is frozen by this run.
 
 ## Mandatory correctness rules
 

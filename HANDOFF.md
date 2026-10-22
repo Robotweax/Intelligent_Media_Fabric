@@ -82,6 +82,9 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
   [healthy SRT v0.3.0 pilot](docs/qualification/g4-live-capture-srt-030-2026-10-22.md)
   (run 39795866081) delivered 240/240 messages and is retained. Nothing below
   is evidence for the new pins; nothing above changes a gate.
+- [G1 direct-SRT baseline](docs/qualification/g1-direct-srt-baseline-2026-10-22.md):
+  run 39806840201, three exact repetitions over a plain veth with zero loss; timing, CPU
+  and RSS recorded without thresholds. G1 is `in-progress`, not passed.
 - [SRT v0.2.6 healthy pilot](docs/qualification/g4-live-capture-srt-026-2026-09-27.md):
   [Linux run 36309262514](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/36309262514)
   built the pinned SRT/Telemetry/FIPS combination, passed the Telemetry suite,
@@ -99,16 +102,17 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
   validates bounded FFmpeg output comparison, but has not observed a faulted
   network path or independent downstream media in the same experiment.
 
-The [gate registry](docs/qualification/gate-registry.md) is authoritative: G1
-and G3 have not started, G2 and G4 are in progress, and G5–G9 have not started.
+The [gate registry](docs/qualification/gate-registry.md) is authoritative: G1,
+G2 and G4 are in progress, G3 has not started, and G5–G9 have not started.
 Do not promote a gate from green CI or a healthy pilot alone. Keep failed runs
 and unavailable measurements explicit; preserve source commits, binary hashes,
 clock domains, route epochs and downstream identity checks.
 
 ## Bounded next work
 
-1. Establish a repeated direct-SRT control (G1), then compare direct SRT with
-   SRT-over-FIPS at the same 0.3.0 pin for G3. Freeze the workload and budgets
+1. Repeat the direct-SRT control (G1) — the
+   [first run](docs/qualification/g1-direct-srt-baseline-2026-10-22.md) is retained — then
+   compare direct SRT with SRT-over-FIPS at the same 0.3.0 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
 2. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
