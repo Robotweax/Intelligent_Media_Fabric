@@ -7,6 +7,11 @@ on:
         description: Number of repeated transfers in one run (1-10)
         required: false
         default: "3"
+  pull_request:
+    paths:
+      - .github/workflows/g1-direct-srt-baseline.yml
+      - src/rimf_lab/g1_direct_srt.py
+      - tests/test_g1_direct_srt.py
 
 permissions:
   contents: read
