@@ -2912,13 +2912,21 @@ def validate_repository(root: Path) -> None:
 
     retained_bundles = root / "qualification/retained-bundles"
     if retained_bundles.is_dir():
+        from .g1_direct_srt import validate_g1_direct_srt_bundle
         from .g4_srt_over_fips import validate_g4_live_capture_bundle
 
         for bundle in sorted(retained_bundles.iterdir()):
             if not bundle.is_dir():
                 continue
             try:
-                validate_g4_live_capture_bundle(bundle)
+                manifest = load_json(bundle / "result.json")
+                evidence_type = manifest.get("evidence_type") if isinstance(manifest, dict) else None
+                if evidence_type == "g4-srt-over-fips-live":
+                    validate_g4_live_capture_bundle(bundle)
+                elif evidence_type == "g1-direct-srt-baseline":
+                    validate_g1_direct_srt_bundle(bundle)
+                else:
+                    errors.append(f"{bundle.relative_to(root)}: unknown retained bundle evidence_type")
             except (ContractError, OSError, ValueError) as exc:
                 errors.append(f"{bundle.relative_to(root)}: {exc}")
 

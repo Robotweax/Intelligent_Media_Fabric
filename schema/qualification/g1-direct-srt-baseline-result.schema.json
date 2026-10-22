@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robotweax.example/schema/rimf/qualification/g1-direct-srt-baseline-result-v1.json",
+  "title": "RIMF G1 direct-SRT baseline result v1",
+  "description": "Control experiment for the SRT-over-FIPS pilots: the same workload, incident peers, Telemetry adapter and same-host ordering, run directly over a veth pair without FIPS and repeated in one run. Correctness is fail-closed; distortion indicators are recorded without thresholds.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "status",
+    "classification",
+    "gate_ids",
+    "run_id",
+    "started_at",
+    "finished_at",
+    "cleanup",
+    "gate_conclusion"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_type": {"const": "g1-direct-srt-baseline"},
+    "status": {"enum": ["passed", "failed"]},
+    "classification": {"const": "experiment"},
+    "gate_ids": {"const": ["G1"]},
+    "run_id": {"type": "string", "format": "uuid"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "project_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "failure_phase": {"type": "string", "minLength": 1},
+    "failure_class": {"type": "string", "minLength": 1},
+    "failure_detail": {"type": "string"},
+    "completed_repetitions": {"type": "integer", "minimum": 0},
+    "provenance": {
+      "type": "object",
+      "required": [
+        "project_revision",
+        "srt_repository",
+        "srt_commit",
+        "srt_library_sha256",
+        "telemetry_repository",
+        "telemetry_commit",
+        "incident_peer_sha256"
+      ],
+      "properties": {
+        "project_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "srt_repository": {"const": "https://github.com/Robotweax/srt.git"},
+        "srt_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "srt_library_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "telemetry_repository": {"const": "https://github.com/Robotweax/srt_telemetry.git"},
+        "telemetry_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "incident_peer_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "platform": {"type": "object"},
+    "clock": {
+      "type": "object",
+      "required": [
+        "domain_id",
+        "synchronization",
+        "max_error_ns",
+        "cross_host_ordering_allowed",
+        "same_host"
+      ],
+      "properties": {
+        "domain_id": {"type": "string", "pattern": "^linux-host-monotonic-[0-9a-f]{24}$"},
+        "synchronization": {"const": "local-only"},
+        "max_error_ns": {"type": "null"},
+        "cross_host_ordering_allowed": {"const": false},
+        "same_host": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "route_epoch": {"const": 1},
+    "topology": {
+      "const": {
+        "node_count": 2,
+        "isolation": "linux-network-namespaces",
+        "underlay": "direct-veth-ipv6",
+        "overlay": "none",
+        "link_mtu": 1500
+      }
+    },
+    "workload": {
+      "type": "object",
+      "required": [
+        "application_message_count",
+        "application_message_bytes",
+        "send_pacing_microseconds",
+        "sample_interval_ns",
+        "active_sample_count",
+        "repetitions"
+      ],
+      "properties": {
+        "application_message_count": {"const": 240},
+        "application_message_bytes": {"const": 1024},
+        "send_pacing_microseconds": {"const": 5000},
+        "sample_interval_ns": {"const": 100000000},
+        "active_sample_count": {"const": 12},
+        "repetitions": {"type": "integer", "minimum": 1, "maximum": 10}
+      },
+      "additionalProperties": false
+    },
+    "repetitions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/repetition"}
+    },
+    "summary": {
+      "type": "object",
+      "description": "Ranges [min, max] over repetitions of the recorded indicators; no threshold is applied."
+    },
+    "files": {
+      "type": "object",
+      "description": "Keys are rep-N/<file>; each repetition contributes nine files.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["bytes", "sha256"],
+        "properties": {
+          "bytes": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "required": ["srt_peers_stopped", "namespaces_removed", "work_directory_removed"],
+      "properties": {
+        "srt_peers_stopped": {"type": "boolean"},
+        "namespaces_removed": {"type": "boolean"},
+        "work_directory_removed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "gate_conclusion": {
+      "type": "object",
+      "required": ["G1", "reason"],
+      "properties": {
+        "G1": {"const": "not-passed"},
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {"type": "array", "minItems": 3, "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": [
+        "sent_packet_total",
+        "unique_sent_packet_total",
+        "received_packet_total",
+        "unique_received_packet_total",
+        "retransmitted_packet_total",
+        "sender_loss_packet_total",
+        "receiver_loss_packet_total",
+        "sender_drop_packet_total",
+        "receiver_drop_packet_total",
+        "sent_wire_byte_total",
+        "received_wire_byte_total",
+        "rtt_seconds_min",
+        "rtt_seconds_max",
+        "cpu_user_ms",
+        "cpu_system_ms",
+        "peak_rss_kib",
+        "accounting"
+      ],
+      "properties": {
+        "sent_packet_total": {"type": "integer", "minimum": 0},
+        "unique_sent_packet_total": {"type": "integer", "minimum": 0},
+        "received_packet_total": {"type": "integer", "minimum": 0},
+        "unique_received_packet_total": {"type": "integer", "minimum": 0},
+        "retransmitted_packet_total": {"type": "integer", "minimum": 0},
+        "sender_loss_packet_total": {"type": "integer", "minimum": 0},
+        "receiver_loss_packet_total": {"type": "integer", "minimum": 0},
+        "sender_drop_packet_total": {"const": 0},
+        "receiver_drop_packet_total": {"const": 0},
+        "sent_wire_byte_total": {"type": "integer", "minimum": 0},
+        "received_wire_byte_total": {"type": "integer", "minimum": 0},
+        "rtt_seconds_min": {"type": ["number", "null"], "minimum": 0},
+        "rtt_seconds_max": {"type": ["number", "null"], "minimum": 0},
+        "cpu_user_ms": {"type": "integer", "minimum": 0},
+        "cpu_system_ms": {"type": "integer", "minimum": 0},
+        "peak_rss_kib": {"type": "integer", "minimum": 0},
+        "accounting": {"const": "procfs-before-exit"}
+      },
+      "additionalProperties": false
+    },
+    "repetition": {
+      "type": "object",
+      "required": [
+        "index",
+        "flow_id",
+        "application_exact_delivery",
+        "srt_samples_per_endpoint",
+        "sampling",
+        "receiver_complete_sample_index",
+        "transfer_confirmed_after_ms",
+        "endpoints",
+        "srt_media_ordering"
+      ],
+      "properties": {
+        "index": {"type": "integer", "minimum": 1, "maximum": 10},
+        "flow_id": {"type": "string", "pattern": "^g1-[0-9a-f-]{36}-[0-9]+$"},
+        "application_exact_delivery": {"const": true},
+        "srt_samples_per_endpoint": {"const": 14},
+        "sampling": {
+          "type": "object",
+          "required": ["missed_intervals", "schedule_error_ns", "max_abs_schedule_error_ns"],
+          "properties": {
+            "missed_intervals": {"const": 0},
+            "schedule_error_ns": {
+              "type": "array",
+              "minItems": 12,
+              "maxItems": 12,
+              "items": {"type": "integer"}
+            },
+            "max_abs_schedule_error_ns": {"type": "integer", "minimum": 0, "maximum": 99999999}
+          },
+          "additionalProperties": false
+        },
+        "receiver_complete_sample_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 13},
+        "transfer_confirmed_after_ms": {"type": "integer", "minimum": 0},
+        "endpoints": {
+          "type": "object",
+          "required": ["sender", "receiver"],
+          "properties": {
+            "sender": {"$ref": "#/$defs/endpoint"},
+            "receiver": {"$ref": "#/$defs/endpoint"}
+          },
+          "additionalProperties": false
+        },
+        "srt_media_ordering": {"enum": ["srt-before-peer", "peer-before-srt", "simultaneous"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "passed"}}},
+      "then": {
+        "required": [
+          "provenance", "platform", "clock", "route_epoch", "topology", "workload",
+          "repetitions", "summary", "files", "limitations"
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "failed"}}},
+      "then": {
+        "required": ["project_revision", "failure_phase", "failure_class", "failure_detail", "completed_repetitions"]
+      }
+    }
+  ]
+}

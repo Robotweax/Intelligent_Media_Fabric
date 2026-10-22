@@ -1,0 +1,152 @@
+name: G1 Direct SRT Baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      repetitions:
+        description: Number of repeated transfers in one run (1-10)
+        required: false
+        default: "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g1-direct-srt-baseline
+  cancel-in-progress: false
+
+env:
+  SRT_COMMIT: 4ae6330d62f2b5030d96964bf3500283f32dd39c
+  TELEMETRY_COMMIT: 2447548388a47aaac647bb2eafdc4f9e962f0baa
+  SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
+  SRT_BUILD: /tmp/rimf-g1-srt-build
+  TELEMETRY_SOURCE: ${{ github.workspace }}/dependencies/srt_telemetry
+  TELEMETRY_BUILD: /tmp/rimf-g1-telemetry-build
+  OUTPUT_DIR: artifacts/g1-direct-srt-baseline
+
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Require bounded private dependency read token
+        env:
+          ROBOTWEAX_REPO_TOKEN: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+        run: |
+          test -n "$ROBOTWEAX_REPO_TOKEN" || {
+            echo "ROBOTWEAX_REPO_TOKEN must read Contents for Robotweax/srt and Robotweax/srt_telemetry" >&2
+            exit 1
+          }
+
+      - name: Checkout pinned private Robotweax SRT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt
+          ref: ${{ env.SRT_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt
+          persist-credentials: false
+
+      - name: Checkout pinned private SRT Telemetry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt_telemetry
+          ref: ${{ env.TELEMETRY_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt_telemetry
+          persist-credentials: false
+
+      - name: Install bounded Linux build and network dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake \
+            g++ \
+            iproute2 \
+            iputils-ping \
+            libssl-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Verify pinned source revisions
+        run: |
+          test "$(git -C "$SRT_SOURCE" rev-parse HEAD)" = "$SRT_COMMIT"
+          test "$(git -C "$TELEMETRY_SOURCE" rev-parse HEAD)" = "$TELEMETRY_COMMIT"
+
+      - name: Build pinned shared Robotweax SRT
+        run: |
+          cmake -S "$SRT_SOURCE" -B "$SRT_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DROBOTWEAX_SRT_BUILD_TESTS=OFF \
+            -DROBOTWEAX_SRT_BUILD_BENCHMARKS=OFF \
+            -DROBOTWEAX_SRT_BUILD_TOOLS=OFF
+          cmake --build "$SRT_BUILD" --parallel --target robotweax_srt
+          test -f "$SRT_BUILD/librobotweax-srt.so"
+
+      - name: Build pinned addressable Telemetry incident peer
+        run: |
+          cmake -S "$TELEMETRY_SOURCE" -B "$TELEMETRY_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_TESTS=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_PUBLIC_SRT_ADAPTER=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_INCLUDE_DIR="$SRT_SOURCE/include" \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/librobotweax-srt.so" \
+            -DROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt
+          cmake --build "$TELEMETRY_BUILD" --parallel
+          ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure
+          PEER_HELP="$(env LD_LIBRARY_PATH="$SRT_BUILD" \
+            "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" --help 2>&1 || true)"
+          grep --fixed-strings -- '--bind-address IP' <<< "$PEER_HELP"
+          grep --fixed-strings -- '--message-bytes 1..1316' <<< "$PEER_HELP"
+
+      - name: Run privileged repeated direct-SRT control
+        run: |
+          sudo env \
+            "PATH=$PATH" \
+            "PYTHONPATH=$GITHUB_WORKSPACE/src" \
+            python3 -m rimf_lab run-g1-direct-srt-baseline \
+              --srt-source "$SRT_SOURCE" \
+              --srt-library "$SRT_BUILD/librobotweax-srt.so" \
+              --telemetry-source "$TELEMETRY_SOURCE" \
+              --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
+              --library-dir "$SRT_BUILD" \
+              --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
+              --project-revision "$GITHUB_SHA" \
+              --repetitions "${{ github.event.inputs.repetitions || '3' }}"
+          sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+
+      - name: Validate fail-closed baseline bundle
+        run: |
+          PYTHONPATH=src python3 -m rimf_lab validate-g1-direct-srt-baseline "$OUTPUT_DIR"
+
+      - name: Publish bounded job summary
+        if: success()
+        run: |
+          {
+            echo "## G1 direct-SRT baseline"
+            echo
+            echo "- Experiment status: $(jq -r '.status' "$OUTPUT_DIR/result.json")"
+            echo "- Repetitions: $(jq -r '.summary.repetition_count' "$OUTPUT_DIR/result.json")"
+            echo "- All exact delivery: $(jq -r '.summary.all_exact_delivery' "$OUTPUT_DIR/result.json")"
+            echo "- Sender retransmitted packets [min,max]: $(jq -c '.summary.sender_retransmitted_packet_total_range' "$OUTPUT_DIR/result.json")"
+            echo "- Receiver loss packets [min,max]: $(jq -c '.summary.receiver_loss_packet_total_range' "$OUTPUT_DIR/result.json")"
+            echo "- Max abs schedule error ns [min,max]: $(jq -c '.summary.max_abs_schedule_error_ns_range' "$OUTPUT_DIR/result.json")"
+            echo "- Receiver complete at sample [min,max]: $(jq -c '.summary.receiver_complete_sample_index_range' "$OUTPUT_DIR/result.json")"
+            echo "- Sender CPU ms [min,max]: $(jq -c '.summary.sender_cpu_total_ms_range' "$OUTPUT_DIR/result.json")"
+            echo "- Receiver CPU ms [min,max]: $(jq -c '.summary.receiver_cpu_total_ms_range' "$OUTPUT_DIR/result.json")"
+            echo "- G1 conclusion: $(jq -r '.gate_conclusion.G1' "$OUTPUT_DIR/result.json")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bounded baseline bundle
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: g1-direct-srt-baseline-${{ github.run_id }}
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
