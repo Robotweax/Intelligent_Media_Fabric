@@ -60,7 +60,10 @@ majors; no Fabric workflow uses `pull_request_target`.
   (GCC 13.3, CMake 3.28, OpenSSL 3.0.13).
 - Telemetry `24475483` configured against the v0.3.0 headers and `librobotweax-srt.so` with
   `ROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt`, built, and its CTest suite ran
-  (72 tests at this revision, up from 42 at `bf10da04`). PENDING_CTEST_DETAIL
+  (72 tests at this revision, up from 42 at `bf10da04`): **72/72 passed**, including the
+  `public_srt_fault_lab` gate (14/14 scenarios, sender advice 10/10, receiver advice 8/8) and
+  the lifecycle, recording-schema and incident-peer checks; the `--help` sentinels the G4
+  workflow greps for are present. The JSONL recording test is skipped by the suite itself.
 - An earlier pass of the same procedure against SRT v0.2.9 (the interim selection) built and
   scored 71/72: all 14 `public_srt_fault_lab` scenarios reached their expected verdicts, but the
   gate's sender-advice criterion scored 9/10 (`maxbw_too_low`, 10 wrong advice reads from 9.1 s)
@@ -71,9 +74,9 @@ majors; no Fabric workflow uses `pull_request_target`.
 | Local check | Outcome |
 | --- | --- |
 | Fabric unit/contract/validation | passed (129) |
-| SRT v0.3.0 shared build | PENDING_BUILD |
-| Telemetry build against v0.3.0 | PENDING_BUILD |
-| Telemetry CTest suite | PENDING_CTEST |
+| SRT v0.3.0 shared build | passed |
+| Telemetry build against v0.3.0 (ABI 0.3) | passed |
+| Telemetry CTest suite | 72/72 passed |
 
 ## Linux qualification
 
