@@ -75,9 +75,13 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 - [2026-10-22 dependency refresh](docs/qualification/dependency-refresh-2026-10-22.md):
   ADR-0007 moved the pins to SRT v0.3.0, Telemetry `24475483` and FIPS v0.5.3.
-  Local Fabric checks and the SRT/Telemetry build passed; the eight G2
-  workflows and a new healthy G4 capture on the new pins are the next required
-  evidence. Nothing below is evidence for the new pins.
+  All eight G2 scenarios passed on v0.5.3 and are retained; the
+  [v0.5.3 alternate-route run](docs/qualification/fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md)
+  preserved the FSP session and recovered payload in 39.3 s (v0.5.1: 92.9 s
+  with a session restart). The
+  [healthy SRT v0.3.0 pilot](docs/qualification/g4-live-capture-srt-030-2026-10-22.md)
+  (run 39795866081) delivered 240/240 messages and is retained. Nothing below
+  is evidence for the new pins; nothing above changes a gate.
 - [SRT v0.2.6 healthy pilot](docs/qualification/g4-live-capture-srt-026-2026-09-27.md):
   [Linux run 36309262514](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/36309262514)
   built the pinned SRT/Telemetry/FIPS combination, passed the Telemetry suite,
@@ -103,18 +107,16 @@ clock domains, route epochs and downstream identity checks.
 
 ## Bounded next work
 
-1. Complete the ADR-0007 requalification: eight G2 workflows on FIPS v0.5.3,
-   then a healthy G4 capture on SRT v0.3.0; retain results and failures as-is.
-2. Establish a repeated direct-SRT control (G1), then compare direct SRT with
+1. Establish a repeated direct-SRT control (G1), then compare direct SRT with
    SRT-over-FIPS at the same 0.3.0 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
-3. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
+2. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
    four-node Linux runner, observed route-epoch transition, negative tests,
    fail-closed result schema and an independent downstream decoder/collector.
    Do not retrofit the healthy two-node workflow or claim causality from time
    ordering alone.
-4. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
+3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable
    production route mutation or a FIPS fork without a separate approved ADR.
 

@@ -34,7 +34,9 @@ Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for t
 See the [refresh assessment](dependency-refresh-2026-10-22.md). The
 [v0.5.3 alternate-route experiment](fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md) passed
 with the endpoint FSP sessions preserved and payload recovery in 39.3 s; this is retained G2
-evidence, not hitless recovery, and does not alone pass G2.
+evidence, not hitless recovery, and does not alone pass G2. A
+[healthy SRT v0.3.0 over FIPS v0.5.3 pilot](g4-live-capture-srt-030-2026-10-22.md) passed and
+is retained; like its predecessors it changes no gate status.
 
 One [FIPS v0.5.1 four-node alternate-route experiment](fips-g2-linux-alternate-route-v0.5.1-2026-09-23.md)
 passed on 2026-09-23 after correcting a fixed-parent harness assumption. This is
@@ -47,8 +49,9 @@ state without route/session disruption or prior proactive MTU discovery. This is
 
 G4 has a deterministic SRT adapter fixture, a paired synthetic clock-domain boundary case,
 and healthy live SRT-over-FIPS pilots at
-[the previous pin](g4-live-capture-2026-09-23.md) and
-[v0.2.6](g4-live-capture-srt-026-2026-09-27.md). The analyzer correctly
+[the previous pin](g4-live-capture-2026-09-23.md),
+[v0.2.6](g4-live-capture-srt-026-2026-09-27.md) and
+[v0.3.0 over FIPS v0.5.3](g4-live-capture-srt-030-2026-10-22.md). The analyzer correctly
 returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
 incident, first-divergent-layer, or fault-domain claim exists yet; see the
 [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).

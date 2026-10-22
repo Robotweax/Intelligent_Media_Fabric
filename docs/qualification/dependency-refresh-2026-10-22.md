@@ -1,7 +1,8 @@
 # Dependency refresh assessment — 2026-10-22
 
 Status: candidates selected by [ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md);
-Linux requalification pending; no gate status changed.
+eight G2 scenarios and a healthy G4 capture passed on the new pins and are retained; no gate
+status changed.
 
 This records what was checked before the Linux workflows ran on the new pins. It is not
 SRT-over-FIPS evidence and does not supersede the retained results or bundles.
@@ -98,7 +99,7 @@ artifacts are retained under `qualification/retained-results/2026-10-22-*-v0.5.3
 | Alternate route, after contract extension | [39796547753](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39796547753) | passed, session preserved |
 | G4 media framehash harness (new Actions pins) | [39793245134](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793245134) and later commits | passed |
 | SRT over FIPS, interim SRT v0.2.9 (`d9ef20ea`) | [39793287761](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39793287761) | passed; not retained (v0.2.9 was replaced before merge) |
-| SRT over FIPS, SRT v0.3.0 (`c093d9b2`) | [39795866081](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39795866081) | PENDING_G4 |
+| SRT over FIPS, SRT v0.3.0 (`c093d9b2`) | [39795866081](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/39795866081) | passed; [bundle retained](g4-live-capture-srt-030-2026-10-22.md) |
 
 The alternate-route first attempt reparented and recovered the overlay route, then failed
 because the contract required a rebuilt FSP session per endpoint; v0.5.3 kept the session.

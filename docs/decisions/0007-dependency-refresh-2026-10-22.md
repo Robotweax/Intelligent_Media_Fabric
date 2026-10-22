@@ -90,10 +90,12 @@ Fabric workflow uses that trigger.
 4. G1, G3 and the faulted-diamond G4 plan keep their prerequisites from ADR-0006 and the gate
    registry. No gate status changes with this ADR.
 
-## Local preliminary checks (2026-10-22)
+## Requalification outcome (2026-10-22)
 
-See the [refresh assessment](../qualification/dependency-refresh-2026-10-22.md) for what was
-and was not verified before the Linux workflows ran.
+Items 1 and 2 above completed the same day: all eight G2 scenarios passed on v0.5.3 and the
+healthy G4 capture passed on v0.3.0; see the
+[refresh assessment](../qualification/dependency-refresh-2026-10-22.md). Item 3's first run is
+the retained v0.5.3 alternate-route record. Item 4 is unchanged. No gate status changed.
 
 ## Sources
 
