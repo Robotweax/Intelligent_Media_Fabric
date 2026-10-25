@@ -29,7 +29,9 @@ healthy G4 bundle remains revision-bound. The new
 change any gate status.
 
 [ADR-0008](../decisions/0008-srt-031-refresh.md) moves SRT to v0.3.1 and Telemetry to
-`1a018dfd` on 2026-10-25; the 0.3.0 G4 and G1 bundles become digest-locked historical evidence.
+`1a018dfd` on 2026-10-25; the 0.3.0 G4 and G1 bundles become digest-locked historical evidence. The
+[v0.3.1 pilot](g4-live-capture-srt-031-2026-10-25.md) and [v0.3.1 G1 run](g1-direct-srt-baseline-2026-10-25.md)
+passed and are retained; neither changes a gate.
 [ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selected SRT v0.3.0,
 SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
 Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.
@@ -52,8 +54,9 @@ state without route/session disruption or prior proactive MTU discovery. This is
 G4 has a deterministic SRT adapter fixture, a paired synthetic clock-domain boundary case,
 and healthy live SRT-over-FIPS pilots at
 [the previous pin](g4-live-capture-2026-09-23.md),
-[v0.2.6](g4-live-capture-srt-026-2026-09-27.md) and
-[v0.3.0 over FIPS v0.5.3](g4-live-capture-srt-030-2026-10-22.md). The analyzer correctly
+[v0.2.6](g4-live-capture-srt-026-2026-09-27.md),
+[v0.3.0 over FIPS v0.5.3](g4-live-capture-srt-030-2026-10-22.md) and
+[v0.3.1 over FIPS v0.5.3](g4-live-capture-srt-031-2026-10-25.md). The analyzer correctly
 returns `insufficient-evidence` for distinct `local-only` clocks. No faulted live cross-layer
 incident, first-divergent-layer, or fault-domain claim exists yet; see the
 [G4 data-quality foundation](g4-unified-observation-data-quality-2026-08-30.md).

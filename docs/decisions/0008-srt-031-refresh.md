@@ -49,6 +49,11 @@ adapter uses changed semantics; `srt_telemetry.h` gained the `1alpha3` pairing t
 3. FIPS-only G2 evidence is unaffected by the SRT change and is not rerun for this ADR.
 4. G3 and the faulted-diamond G4 plan keep their prerequisites. No gate status changes.
 
+## Requalification outcome (2026-10-25)
+
+Items 1 and 2 completed the same day; see the
+[refresh assessment](../qualification/dependency-refresh-2026-10-25.md). No gate status changed.
+
 ## Sources
 
 - [Robotweax SRT v0.3.1 release](https://github.com/Robotweax/srt/releases/tag/v0.3.1)

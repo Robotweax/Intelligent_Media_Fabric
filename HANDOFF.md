@@ -75,7 +75,10 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 - [2026-10-25 SRT 0.3.1 refresh](docs/qualification/dependency-refresh-2026-10-25.md):
   ADR-0008 moved SRT to v0.3.1 and Telemetry to `1a018dfd` (same ABI line 0.3,
-  FIPS unchanged). The G4 pilot and G1 baseline at this pin are PENDING_HANDOFF.
+  FIPS unchanged). The [v0.3.1 pilot](docs/qualification/g4-live-capture-srt-031-2026-10-25.md)
+  (run 40190670233, 240/240) and [v0.3.1 G1 run](docs/qualification/g1-direct-srt-baseline-2026-10-25.md)
+  (run 40189973066, 3/3 exact) are retained; a first G4 attempt failed in the
+  upstream Telemetry fault-lab gate before capture and is recorded, not hidden.
   The 0.3.0 bundles below are digest-locked history, not evidence for 0.3.1.
 - [2026-10-22 dependency refresh](docs/qualification/dependency-refresh-2026-10-22.md):
   ADR-0007 moved the pins to SRT v0.3.0, Telemetry `24475483` and FIPS v0.5.3.

@@ -1,7 +1,7 @@
 # Dependency refresh assessment — 2026-10-25 (SRT 0.3.1)
 
 Status: candidates selected by [ADR-0008](../decisions/0008-srt-031-refresh.md);
-PENDING_STATUS
+the G4 pilot and the G1 baseline passed on the new pins and are retained; no gate status changed.
 
 ## Selected sources
 
@@ -41,7 +41,18 @@ ADR-0007 are unchanged.
 
 ## Linux qualification
 
-PENDING_WORKFLOWS
+| Scenario | Run | Outcome |
+| --- | --- | --- |
+| G1 direct-SRT baseline (`91ac7262`) | [40189211598](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/40189211598) | passed; indicators cited, not retained |
+| G1 direct-SRT baseline (`eeca6b40`) | [40189973066](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/40189973066) | passed; [bundle retained](g1-direct-srt-baseline-2026-10-25.md) |
+| SRT over FIPS, first attempt (`91ac7262`) | [40189210887](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/40189210887) | failed before capture: Telemetry `public_srt_fault_lab` receiver advice 7/8 on the runner |
+| SRT over FIPS, rerun (`eeca6b40`) | [40190670233](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/40190670233) | passed; Telemetry suite 74/74; [bundle retained](g4-live-capture-srt-031-2026-10-25.md) |
+
+FIPS-only G2 scenarios were not rerun: FIPS is unchanged. The G4 first attempt is a failure
+of the upstream test-suite gate, recorded in the [G4 record](g4-live-capture-srt-031-2026-10-25.md);
+it produced no Fabric result. Across both pins the G1 indicators differ only in peak RSS
+(about 300–500 KiB higher at 0.3.1); the [G1 record](g1-direct-srt-baseline-2026-10-25.md)
+tabulates them without grading.
 
 ## Limits
 
