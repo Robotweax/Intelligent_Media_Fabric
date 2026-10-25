@@ -35,9 +35,9 @@ ADR-0007 are unchanged.
 | Local check | Outcome |
 | --- | --- |
 | Fabric unit/contract/validation | passed (146 tests); both 0.3.0 bundles validate as digest-locked history |
-| SRT v0.3.1 shared build | PENDING_BUILD |
-| Telemetry `1a018dfd` build against v0.3.1 (ABI 0.3) | PENDING_BUILD |
-| Telemetry CTest suite | PENDING_CTEST |
+| SRT v0.3.1 shared build | passed (GCC 13.3, CMake 3.28, OpenSSL 3.0.13) |
+| Telemetry `1a018dfd` build against v0.3.1 (ABI 0.3) | passed |
+| Telemetry CTest suite | 73/73 passed (72 at `24475483`); fault-lab gate 14/14 scenarios, sender advice 10/10, receiver 8/8; `--help` sentinels present |
 
 ## Linux qualification
 
