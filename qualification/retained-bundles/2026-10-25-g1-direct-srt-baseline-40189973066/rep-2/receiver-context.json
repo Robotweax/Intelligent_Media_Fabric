@@ -1,0 +1,23 @@
+{
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-ab29bdec6664d4401fc88504",
+    "max_error_ns": null,
+    "synchronization": "local-only"
+  },
+  "event_namespace": "9c4d2e71-5b8f-5a3a-8e0d-6d1f7b2c3a44",
+  "fabric_identity": {
+    "device_id": "two-node-direct-control",
+    "mapping": {
+      "device_id": "explicit-policy",
+      "stream_id": "explicit-policy",
+      "tenant_id": "explicit-policy"
+    },
+    "stream_id": "g1-c62794aa-24f4-4998-ba51-6c9e5c2ad51a-2",
+    "tenant_id": "qualification"
+  },
+  "route_epoch": 1,
+  "schema_version": 1,
+  "source_identifiers_pseudonymous": true,
+  "telemetry_revision": "1a018dfdc89a964b03159aebc155d39bca524384"
+}

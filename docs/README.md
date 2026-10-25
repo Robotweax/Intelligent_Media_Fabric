@@ -43,6 +43,7 @@
 - [G1 direct-SRT baseline predeclared contract](qualification/g1-direct-srt-baseline-plan-2026-10-22.md)
 - [G1 direct-SRT baseline, first retained run](qualification/g1-direct-srt-baseline-2026-10-22.md)
 - [Dependency refresh assessment 2026-10-25 (SRT 0.3.1)](qualification/dependency-refresh-2026-10-25.md)
+- [G1 direct-SRT baseline, second retained run (SRT v0.3.1)](qualification/g1-direct-srt-baseline-2026-10-25.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

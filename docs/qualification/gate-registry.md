@@ -64,7 +64,8 @@ separate four-node runner and independent downstream decoder.
 G1 moved to `in-progress` on 2026-10-22 with the
 [first retained direct-SRT baseline](g1-direct-srt-baseline-2026-10-22.md): three exact repetitions
 over a plain veth at the v0.3.0 pin, zero loss, with timing, CPU and RSS recorded but not graded.
-Passing G1 requires repeated retained runs and owner review; no budget is frozen by this run.
+A [second run at SRT v0.3.1](g1-direct-srt-baseline-2026-10-25.md) is retained from 2026-10-25.
+Passing G1 requires repeated retained runs and owner review; no budget is frozen by these runs.
 
 ## Mandatory correctness rules
 
