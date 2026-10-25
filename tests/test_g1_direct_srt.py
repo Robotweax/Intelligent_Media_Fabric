@@ -12,6 +12,7 @@ from rimf_lab.g1_direct_srt import (
     DEVICE_ID,
     EXPECTED_SRT_COMMIT,
     EXPECTED_TELEMETRY_COMMIT,
+    HISTORICAL_G1_BUNDLES,
     MESSAGE_BYTES,
     MESSAGE_COUNT,
     RECORDED_COUNTERS,
@@ -225,6 +226,24 @@ class G1DirectSrtResultTests(unittest.TestCase):
             result["provenance"]["srt_commit"] = historical["srt_commit"]
             with self.assertRaisesRegex(ContractError, "srt_commit"):
                 validate_g1_direct_srt_result(result)
+
+    def test_rejects_historical_g1_pin_as_active_control(self):
+        for historical in HISTORICAL_G1_BUNDLES.values():
+            result = success_result()
+            result["provenance"]["srt_commit"] = historical["srt_commit"]
+            with self.assertRaisesRegex(ContractError, "srt_commit"):
+                validate_g1_direct_srt_result(result)
+
+    def test_rejects_rewritten_historical_g1_bundle(self):
+        historical = next(iter(HISTORICAL_G1_BUNDLES.values()))
+        result = success_result(repetitions=1)
+        result["provenance"]["srt_commit"] = historical["srt_commit"]
+        result["provenance"]["telemetry_commit"] = historical["telemetry_commit"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "result.json"
+            path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "digest mismatch"):
+                validate_g1_direct_srt_bundle(Path(directory))
 
     def test_rejects_flow_identity_drift(self):
         result = success_result()

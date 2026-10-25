@@ -65,6 +65,20 @@ from .srt_adapter import adapt_srt_telemetry_jsonl
 
 
 EVIDENCE_TYPE = "g1-direct-srt-baseline"
+# Retained G1 bundles are evidence only for their own recorded revisions.
+# Each historical bundle is accepted solely when its result manifest matches
+# the digest recorded here; a new run cannot present an old pin as current.
+HISTORICAL_G1_BUNDLES = {
+    # 2026-10-22, run 39806840201: SRT v0.3.0, Telemetry 24475483.
+    "6b8d341b97ae0eef0d9a5d1b761231a0a17ae189d386b882a9dcb26283ca6827": {
+        "srt_commit": "4ae6330d62f2b5030d96964bf3500283f32dd39c",
+        "srt_version": "0.3.0",
+        "telemetry_commit": "2447548388a47aaac647bb2eafdc4f9e962f0baa",
+    },
+}
+HISTORICAL_G1_SRT_COMMITS = frozenset(
+    bundle["srt_commit"] for bundle in HISTORICAL_G1_BUNDLES.values()
+)
 DEVICE_ID = "two-node-direct-control"
 SENDER_EVENT_NAMESPACE = "3f0b1d6e-7a0c-5d5e-9a62-2f8e4a1c9b10"
 RECEIVER_EVENT_NAMESPACE = "9c4d2e71-5b8f-5a3a-8e0d-6d1f7b2c3a44"
@@ -899,8 +913,27 @@ def _validate_repetition(repetition: Any, position: int, run_id: str) -> None:
 
 def validate_g1_direct_srt_bundle(directory: Path) -> None:
     directory = directory.resolve()
-    result = load_json(directory / "result.json")
-    validate_g1_direct_srt_result(result)
+    result_path = directory / "result.json"
+    result = load_json(result_path)
+    provenance = result.get("provenance") if isinstance(result, dict) else None
+    expected_srt_commit = EXPECTED_SRT_COMMIT
+    expected_srt_version = EXPECTED_SRT_VERSION
+    expected_telemetry_commit = EXPECTED_TELEMETRY_COMMIT
+    if (
+        isinstance(provenance, dict)
+        and provenance.get("srt_commit") in HISTORICAL_G1_SRT_COMMITS
+    ):
+        historical = HISTORICAL_G1_BUNDLES.get(sha256_file(result_path))
+        if historical is None or historical["srt_commit"] != provenance.get("srt_commit"):
+            raise ContractError("historical G1 result digest mismatch")
+        expected_srt_commit = historical["srt_commit"]
+        expected_srt_version = historical["srt_version"]
+        expected_telemetry_commit = historical["telemetry_commit"]
+    validate_g1_direct_srt_result(
+        result,
+        expected_srt_commit=expected_srt_commit,
+        expected_telemetry_commit=expected_telemetry_commit,
+    )
     if result["status"] == "failed":
         return
     for name, record in result["files"].items():
@@ -911,14 +944,13 @@ def validate_g1_direct_srt_bundle(directory: Path) -> None:
             raise ContractError(f"cannot read G1 bundle file {name}: {exc}") from exc
         if actual != record:
             raise ContractError(f"G1 bundle file digest/size mismatch: {name}")
-    expected_srt_commit = result["provenance"]["srt_commit"]
     for repetition in result["repetitions"]:
         rep_dir = directory / f"rep-{repetition['index']}"
         for role in ("sender", "receiver"):
             records = _read_jsonl(rep_dir / f"{role}-source.jsonl")
             if (
                 not records
-                or records[0].get("providerVersion") != EXPECTED_SRT_VERSION
+                or records[0].get("providerVersion") != expected_srt_version
                 or records[0].get("providerRevision") != expected_srt_commit
                 or records[0].get("flowId") != repetition["flow_id"]
             ):

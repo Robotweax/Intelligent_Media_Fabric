@@ -1,6 +1,6 @@
 # ADR-0007: Refresh SRT, SRT Telemetry, FIPS and CI toolchain candidates
 
-- Status: accepted
+- Status: superseded by ADR-0008 for the SRT and Telemetry selections; FIPS, toolchain and evidence policy retained
 - Date: 2026-10-22
 - Supersedes ADR-0006 for new dependency selections; its evidence policy is retained
 
