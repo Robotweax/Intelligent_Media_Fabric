@@ -1,6 +1,6 @@
 # Agent handoff — Intelligent Media Fabric
 
-Snapshot: 2026-10-22. This is an orientation file, not a substitute for the
+Snapshot: 2026-10-25. This is an orientation file, not a substitute for the
 current `main`, PR checks, ADRs or gate registry. Refresh remote state before
 making a decision. The repository is private, proprietary and pre-alpha; no
 product, security, performance or continuity claim is released.
@@ -48,7 +48,7 @@ Read these before implementation:
 
 1. [README](README.md) and [architecture](docs/architecture/overview.md) for scope and layer boundaries.
 2. [Gate registry](docs/qualification/gate-registry.md) and [open decisions](docs/decisions/open-decisions.md) for current authorization.
-3. [ADR index](docs/decisions/README.md), especially [ADR-0004](docs/decisions/0004-srt-telemetry-adapter-boundary.md), [ADR-0006](docs/decisions/0006-srt-026-baseline.md) and [ADR-0007](docs/decisions/0007-dependency-refresh-2026-10-22.md).
+3. [ADR index](docs/decisions/README.md), especially [ADR-0004](docs/decisions/0004-srt-telemetry-adapter-boundary.md), [ADR-0007](docs/decisions/0007-dependency-refresh-2026-10-22.md) and [ADR-0008](docs/decisions/0008-srt-031-refresh.md).
 4. [Strategy pointer](docs/strategy/README.md) to the authoritative private Knowledge Base document. Do not maintain a divergent strategy copy here.
 5. [Evidence lab](docs/qualification/evidence-lab.md) and [contribution rules](CONTRIBUTING.md) before changing schemas or experiments.
 
@@ -60,8 +60,8 @@ workflows must agree with it. Do not substitute a moving `main` or a local build
 
 | Component | Selected revision | Role |
 | --- | --- | --- |
-| Robotweax SRT v0.3.0 | `4ae6330d62f2b5030d96964bf3500283f32dd39c` | Public C API and `librobotweax-srt` media transport |
-| Robotweax SRT Telemetry | `2447548388a47aaac647bb2eafdc4f9e962f0baa` | Public SRT adapter and source measurements |
+| Robotweax SRT v0.3.1 | `57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1` | Public C API and `librobotweax-srt` media transport |
+| Robotweax SRT Telemetry | `1a018dfdc89a964b03159aebc155d39bca524384` | Public SRT adapter and source measurements |
 | FIPS v0.5.3 | `f4a5b4a8e61e340e6be7551608109a5c399f8353` | External daemon and `fips0` overlay |
 
 The historical FIPS development candidate in the manifest is research-only.
@@ -73,6 +73,13 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 ## Evidence and its limits
 
+- [2026-10-25 SRT 0.3.1 refresh](docs/qualification/dependency-refresh-2026-10-25.md):
+  ADR-0008 moved SRT to v0.3.1 and Telemetry to `1a018dfd` (same ABI line 0.3,
+  FIPS unchanged). The [v0.3.1 pilot](docs/qualification/g4-live-capture-srt-031-2026-10-25.md)
+  (run 40190670233, 240/240) and [v0.3.1 G1 run](docs/qualification/g1-direct-srt-baseline-2026-10-25.md)
+  (run 40189973066, 3/3 exact) are retained; a first G4 attempt failed in the
+  upstream Telemetry fault-lab gate before capture and is recorded, not hidden.
+  The 0.3.0 bundles below are digest-locked history, not evidence for 0.3.1.
 - [2026-10-22 dependency refresh](docs/qualification/dependency-refresh-2026-10-22.md):
   ADR-0007 moved the pins to SRT v0.3.0, Telemetry `24475483` and FIPS v0.5.3.
   All eight G2 scenarios passed on v0.5.3 and are retained; the
@@ -112,7 +119,7 @@ clock domains, route epochs and downstream identity checks.
 
 1. Repeat the direct-SRT control (G1) — the
    [first run](docs/qualification/g1-direct-srt-baseline-2026-10-22.md) is retained — then
-   compare direct SRT with SRT-over-FIPS at the same 0.3.0 pin for G3. Freeze the workload and budgets
+   compare direct SRT with SRT-over-FIPS at the same 0.3.1 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
 2. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):

@@ -1,6 +1,6 @@
 # G1 direct-SRT baseline — predeclared experiment contract
 
-Status: predeclared on 2026-10-22. Retained runs: [2026-10-22, run 39806840201](g1-direct-srt-baseline-2026-10-22.md).
+Status: predeclared on 2026-10-22. Retained runs: [2026-10-22, run 39806840201, SRT v0.3.0](g1-direct-srt-baseline-2026-10-22.md); [2026-10-25, run 40189973066, SRT v0.3.1](g1-direct-srt-baseline-2026-10-25.md).
 
 G1 asks whether the control is correct and the harness non-distorting. This experiment is
 the control for the SRT-over-FIPS pilots: the identical workload, measurement path and

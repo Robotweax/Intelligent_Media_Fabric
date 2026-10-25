@@ -1,0 +1,30 @@
+{
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-ab29bdec6664d4401fc88504",
+    "max_error_ns": null,
+    "synchronization": "local-only"
+  },
+  "device_id": "two-node-direct-control",
+  "event_id": "83dca7d3-a86c-5a80-8347-c67f7c04bfd4",
+  "monotonic_ns": 817080835315,
+  "observed_at": "2026-10-25T11:56:23.932591068Z",
+  "payload": {
+    "exact_delivery": true,
+    "message_bytes": 1024,
+    "message_count": 240,
+    "metric_namespace": "media.application",
+    "metric_semantics": "receiver-byte-identity",
+    "stream_sha256": "4eb9e333c551ba71f5c6d980f790854634891ea12563ba63a1070ddf05fce575"
+  },
+  "quality": {
+    "availability": "available",
+    "confidence": 1.0,
+    "reason": null
+  },
+  "route_epoch": 1,
+  "schema_version": 1,
+  "source": "media-validator",
+  "stream_id": "g1-c62794aa-24f4-4998-ba51-6c9e5c2ad51a-2",
+  "tenant_id": "qualification"
+}
