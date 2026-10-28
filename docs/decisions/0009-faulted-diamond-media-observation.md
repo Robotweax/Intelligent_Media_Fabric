@@ -74,6 +74,13 @@ are reported as unordered. No first divergent layer, cause, hitless claim, produ
 interruption budget or gate passage follows from it. OD-01 and OD-14 still block a
 continuity threshold, and OD-15 still asks for the SRT-group comparison.
 
+## Outcome (2026-10-28)
+
+The [first faulted-diamond run](../qualification/g4-faulted-diamond-2026-10-28.md) passed and is
+retained, as are the [healthy pilot](../qualification/g4-live-capture-telemetry-1b12f8d7-2026-10-28.md)
+and the [G1 run](../qualification/g1-direct-srt-baseline-2026-10-28.md) at `1b12f8d7`. No gate
+status changes.
+
 ## Sources
 
 - [srt_telemetry#67, incident peer media relay](https://github.com/Robotweax/srt_telemetry/pull/67)

@@ -5,6 +5,8 @@ Status: **predeclared design; executable since 2026-10-28** through the separate
 `g4-faulted-diamond` result contract, with the execution profile frozen below and in
 [ADR-0009](../decisions/0009-faulted-diamond-media-observation.md) before the first run.
 The two-node healthy pilot, its workflow and its retained bundles are unchanged.
+The [first retained run](g4-faulted-diamond-2026-10-28.md) (40743995191) passed this
+experiment on 2026-10-28; it is ordering-only and does not pass G4.
 
 ## Question and fixed setup
 

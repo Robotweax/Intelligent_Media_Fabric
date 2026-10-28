@@ -1,6 +1,6 @@
 # Agent handoff — Intelligent Media Fabric
 
-Snapshot: 2026-10-25. This is an orientation file, not a substitute for the
+Snapshot: 2026-10-28. This is an orientation file, not a substitute for the
 current `main`, PR checks, ADRs or gate registry. Refresh remote state before
 making a decision. The repository is private, proprietary and pre-alpha; no
 product, security, performance or continuity claim is released.
@@ -73,6 +73,14 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 ## Evidence and its limits
 
+- [2026-10-28 faulted diamond](docs/qualification/g4-faulted-diamond-2026-10-28.md):
+  ADR-0009 moved Telemetry to `1b12f8d7` (incident-peer media relay). Run 40743995191
+  killed the active transit; FIPS reparented after about 31 s, one SRT session (peer idle
+  60 s) spanned both route epochs, and an independent FFmpeg decode showed 782 missing and
+  19 concealed frames. It is ordering-only, not causal or hitless, and does not pass G4. The
+  [healthy pilot](docs/qualification/g4-live-capture-telemetry-1b12f8d7-2026-10-28.md) (run 40745656211)
+  and [G1 run](docs/qualification/g1-direct-srt-baseline-2026-10-28.md) (run 40743995008) at the
+  new pin are retained; the 2026-10-25 bundles are digest-locked history.
 - [2026-10-25 SRT 0.3.1 refresh](docs/qualification/dependency-refresh-2026-10-25.md):
   ADR-0008 moved SRT to v0.3.1 and Telemetry to `1a018dfd` (same ABI line 0.3,
   FIPS unchanged). The [v0.3.1 pilot](docs/qualification/g4-live-capture-srt-031-2026-10-25.md)
@@ -106,8 +114,8 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
   observed automatic reparenting, not hitless SRT/media recovery. FIPS-only G2
   remains in progress; the reactive-MTU capability gap is not yet resolved.
 - [Framehash harness](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md)
-  validates bounded FFmpeg output comparison, but has not observed a faulted
-  network path or independent downstream media in the same experiment.
+  validates bounded FFmpeg output comparison; the faulted-diamond run above is its
+  first use on a faulted network path.
 
 The [gate registry](docs/qualification/gate-registry.md) is authoritative: G1,
 G2 and G4 are in progress, G3 has not started, and G5–G9 have not started.
@@ -122,11 +130,10 @@ clock domains, route epochs and downstream identity checks.
    compare direct SRT with SRT-over-FIPS at the same 0.3.1 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
-2. Implement the separate [faulted-diamond G4 plan](docs/qualification/g4-faulted-diamond-experiment-plan-2026-09-23.md):
-   four-node Linux runner, observed route-epoch transition, negative tests,
-   fail-closed result schema and an independent downstream decoder/collector.
-   Do not retrofit the healthy two-node workflow or claim causality from time
-   ordering alone.
+2. Build on the [first faulted-diamond run](docs/qualification/g4-faulted-diamond-2026-10-28.md):
+   repeat it, then predeclare variants (default 5 s peer idle, other fault types, the
+   SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
+   claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable
    production route mutation or a FIPS fork without a separate approved ADR.

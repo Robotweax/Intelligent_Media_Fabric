@@ -1,0 +1,30 @@
+{
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-ff3d2d2e2b42eb76eae2a297",
+    "max_error_ns": null,
+    "synchronization": "local-only"
+  },
+  "device_id": "two-node-pilot",
+  "event_id": "12890a77-afd9-5181-a8cd-40bd2905de5c",
+  "monotonic_ns": 979841609957,
+  "observed_at": "2026-10-28T18:45:47.903337030Z",
+  "payload": {
+    "etx": 1.0,
+    "loss_rate": 0.0,
+    "metric_namespace": "fips.mmp",
+    "metric_semantics": "link-estimator",
+    "mode": "full",
+    "srtt_ms": 1.875
+  },
+  "quality": {
+    "availability": "available",
+    "confidence": 1.0,
+    "reason": null
+  },
+  "route_epoch": 1,
+  "schema_version": 1,
+  "source": "fips",
+  "stream_id": "712cb5b6-ae0d-41c1-adcd-6944b4276d96",
+  "tenant_id": "qualification"
+}
