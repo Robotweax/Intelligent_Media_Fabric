@@ -6,6 +6,7 @@ from copy import deepcopy
 from rimf_lab.contracts import ContractError
 from rimf_lab.g4_faulted_diamond import (
     BUNDLE_FILES,
+    DATAGRAM_BYTES,
     EXPECTED_FFMPEG_VERSION,
     FIXTURE_ENCODE,
     FIXTURE_FRAMES,
@@ -93,6 +94,9 @@ def passed_result() -> dict:
                      "overlay": "srt-ipv6-over-fips0", "initial_active_transit": "r1",
                      "alternate_transit": "r2"},
         "profile": {"srt_peer_idle_timeout_ms": SRT_PEER_IDLE_TIMEOUT_MS,
+                    "datagram_bytes": DATAGRAM_BYTES,
+                    "packet_budget": {"media_datagram_bytes": DATAGRAM_BYTES,
+                                      "clear_srt_payload_budget_bytes": 1139},
                     "inject_after_source_start_ms": INJECT_AFTER_SOURCE_START_NS // MS,
                     "fixture": {"frames": FIXTURE_FRAMES, "encode": list(FIXTURE_ENCODE), "sha256": "0" * 64}},
         "capture": {"route_epochs": [1, 2], "frames": {"expected_frames": FIXTURE_FRAMES}},
@@ -178,6 +182,7 @@ class ResultContractTests(unittest.TestCase):
             (("cleanup", "faulted_daemon_reaped"), False, "cleanup"),
             (("capture", "route_epochs"), [1], "two route epochs"),
             (("profile", "srt_peer_idle_timeout_ms"), 5000, "predeclared"),
+            (("profile", "datagram_bytes"), 1316, "packet budget"),
             (("provenance", "telemetry_commit"), "f" * 40, "telemetry_commit"),
             (("provenance", "ffmpeg_version"), "ffmpeg version 7.0", "ffmpeg_version"),
             (("timeline", "causal_claim"), "fips", "causal"),

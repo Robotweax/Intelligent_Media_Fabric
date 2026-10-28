@@ -49,8 +49,11 @@ needs about 39 s to restore the path, while SRT's default peer-idle timeout is 5
    different version fails closed.
 5. **Media fixture.** A deterministic 160 s `testsrc2` 320×180 at 25 fps, MPEG-2 GOP 25
    without B-frames, 600 kbit/s video in a 1 Mbit/s constant-rate transport stream
-   (bit-exact flags, single thread): 4000 frames, sent as 1316-byte datagrams on an absolute
-   schedule (datagram *i* at start + *i* × 10.528 ms). Two encodes on 2026-10-28 were
+   (bit-exact flags, single thread): 4000 frames, sent as 1128-byte datagrams (six TS packets)
+   on an absolute schedule (datagram *i* at start + *i* × 9.024 ms). The size is bounded by the
+   fips0 packet budget (reported inner IPv6 MTU 1203 − 64 B of IPv6/UDP/SRT headers = 1139 B of
+   clear SRT payload), checked before each run; a first attempt with 1316-byte datagrams
+   delivered nothing and is retained as a failure. Two encodes on 2026-10-28 were
    byte-identical; each run still records the fixture digest.
 
 ## Consequences

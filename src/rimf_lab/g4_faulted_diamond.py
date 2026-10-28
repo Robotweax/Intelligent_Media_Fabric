@@ -89,7 +89,7 @@ from .g4_srt_over_fips import (
     _write_jsonl,
 )
 from .media_frames import assess_media_frames
-from .media_stream import DATAGRAM_BYTES, GAP_THRESHOLD_NS, datagram_interval_ns
+from .media_stream import GAP_THRESHOLD_NS, TS_PACKET_BYTES, datagram_interval_ns
 from .srt_adapter import adapt_srt_telemetry_jsonl
 
 EVIDENCE_TYPE = "g4-faulted-diamond"
@@ -111,6 +111,11 @@ FIXTURE_ENCODE = (
     "-f", "mpegts", "-muxrate", "1000000", "-pcr_period", "20",
 )
 SOURCE_RATE_BPS = 1_000_000
+# Packet budget over fips0 (docs/protocols/srt-over-fips-profile-v0.md): the inner IPv6
+# MTU FIPS reports, minus IPv6 (40), UDP (8) and SRT (16) headers, bounds the clear SRT
+# payload. Six TS packets fit the documented 1139-byte budget; seven (1316) do not.
+SRT_IPV6_UDP_HEADER_BYTES = 64
+DATAGRAM_BYTES = 6 * TS_PACKET_BYTES
 INJECT_AFTER_SOURCE_START_NS = 20_000_000_000
 SRT_SAMPLE_INTERVAL_NS = 500_000_000
 FIPS_OBSERVATION_EVERY = 2
@@ -611,6 +616,18 @@ def run_g4_faulted_diamond(
         statuses = _wait_for(controls_ready, label="four FIPS control sockets", timeout=30)
         if [item.get("npub") for item in statuses] != list(identities):
             raise QualificationError("daemon identities did not match role-assigned key files")
+        endpoint_mtus = [statuses[0].get("effective_ipv6_mtu"), statuses[3].get("effective_ipv6_mtu")]
+        packet_budget = {
+            "endpoint_effective_ipv6_mtu": endpoint_mtus,
+            "srt_ipv6_udp_header_bytes": SRT_IPV6_UDP_HEADER_BYTES,
+            "clear_srt_payload_budget_bytes": min(endpoint_mtus) - SRT_IPV6_UDP_HEADER_BYTES
+            if all(isinstance(value, int) for value in endpoint_mtus) else None,
+            "media_datagram_bytes": DATAGRAM_BYTES,
+            "ts_packets_per_datagram": DATAGRAM_BYTES // TS_PACKET_BYTES,
+        }
+        if (packet_budget["clear_srt_payload_budget_bytes"] is None
+                or DATAGRAM_BYTES > packet_budget["clear_srt_payload_budget_bytes"]):
+            raise QualificationError("media datagrams do not fit the fips0 clear SRT payload budget")
         for index, node_status in enumerate(statuses):
             if (node_status.get("tun_state") != "active" or node_status.get("tun_name") != "fips0"
                     or node_status.get("effective_ipv6_mtu") != EFFECTIVE_IPV6_MTU):
@@ -723,7 +740,7 @@ def run_g4_faulted_diamond(
             ["ip", "netns", "exec", namespaces[0], "env", f"PYTHONPATH={package_root}",
              sys.executable, "-m", "rimf_lab.media_stream", "source", "--fixture", str(fixture),
              "--destination", f"127.0.0.1:{SOURCE_PORT}", "--rate-bps", str(SOURCE_RATE_BPS),
-             "--output", str(source_summary)],
+             "--datagram-bytes", str(DATAGRAM_BYTES), "--output", str(source_summary)],
             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, start_new_session=True,
         )
         helpers.append(source)
@@ -945,6 +962,7 @@ def run_g4_faulted_diamond(
                             "frames": FIXTURE_FRAMES, "sha256": source_record["fixture_sha256"]},
                 "source_rate_bps": SOURCE_RATE_BPS,
                 "datagram_bytes": DATAGRAM_BYTES,
+                "packet_budget": packet_budget,
                 "inject_after_source_start_ms": INJECT_AFTER_SOURCE_START_NS // 1_000_000,
                 "srt_sample_interval_ms": SRT_SAMPLE_INTERVAL_NS // 1_000_000,
                 "fips_observation_interval_ms": SRT_SAMPLE_INTERVAL_NS * FIPS_OBSERVATION_EVERY // 1_000_000,
@@ -1110,6 +1128,12 @@ def validate_g4_faulted_diamond_result(result: Any) -> None:
              and {topology.get("initial_active_transit"), topology.get("alternate_transit")} == {"r1", "r2"},
              "faulted-diamond topology is invalid")
     profile = result["profile"]
+    budget = profile.get("packet_budget", {})
+    _require(profile.get("datagram_bytes") == DATAGRAM_BYTES
+             and budget.get("media_datagram_bytes") == DATAGRAM_BYTES
+             and isinstance(budget.get("clear_srt_payload_budget_bytes"), int)
+             and DATAGRAM_BYTES <= budget["clear_srt_payload_budget_bytes"],
+             "faulted-diamond media datagrams do not fit the recorded packet budget")
     _require(profile.get("srt_peer_idle_timeout_ms") == SRT_PEER_IDLE_TIMEOUT_MS
              and profile.get("inject_after_source_start_ms") == INJECT_AFTER_SOURCE_START_NS // 1_000_000
              and profile.get("fixture", {}).get("frames") == FIXTURE_FRAMES
@@ -1184,5 +1208,6 @@ def validate_g4_faulted_diamond_bundle(directory: Path) -> None:
     _require(timeline == result["timeline"], "timeline is not reproducible from the retained files")
     source = load_json(directory / "media-source.json")
     _require(source.get("fixture_sha256") == result["profile"]["fixture"]["sha256"]
-             and source.get("interval_ns") == datagram_interval_ns(SOURCE_RATE_BPS),
+             and source.get("datagram_bytes") == DATAGRAM_BYTES
+             and source.get("interval_ns") == datagram_interval_ns(SOURCE_RATE_BPS, DATAGRAM_BYTES),
              "media source record disagrees with the profile")

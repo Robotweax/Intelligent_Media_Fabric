@@ -19,7 +19,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-DATAGRAM_BYTES = 1316
+TS_PACKET_BYTES = 188
+DATAGRAM_BYTES = 1316  # largest accepted datagram: seven TS packets
 MAX_STREAM_BYTES = 64 * 1024 * 1024
 MAX_GAPS = 64
 GAP_THRESHOLD_NS = 250_000_000
@@ -45,23 +46,31 @@ def _write_exclusive(path: Path, value: dict[str, Any]) -> None:
         stream.write("\n")
 
 
-def _datagrams(data: bytes) -> list[bytes]:
-    return [data[offset : offset + DATAGRAM_BYTES] for offset in range(0, len(data), DATAGRAM_BYTES)]
+def _datagram_bytes(value: int) -> int:
+    if not isinstance(value, int) or value % TS_PACKET_BYTES or not TS_PACKET_BYTES <= value <= DATAGRAM_BYTES:
+        raise ValueError("datagram size must be one to seven whole 188-byte TS packets")
+    return value
 
 
-def datagram_interval_ns(rate_bps: int) -> int:
+def _datagrams(data: bytes, size: int) -> list[bytes]:
+    return [data[offset : offset + size] for offset in range(0, len(data), size)]
+
+
+def datagram_interval_ns(rate_bps: int, datagram_bytes: int = DATAGRAM_BYTES) -> int:
     if not isinstance(rate_bps, int) or not 100_000 <= rate_bps <= 50_000_000:
         raise ValueError("source rate must be between 100 kbit/s and 50 Mbit/s")
-    return round(DATAGRAM_BYTES * 8 * 1_000_000_000 / rate_bps)
+    return round(_datagram_bytes(datagram_bytes) * 8 * 1_000_000_000 / rate_bps)
 
 
-def run_source(fixture: Path, destination: str, rate_bps: int, output: Path) -> dict[str, Any]:
+def run_source(
+    fixture: Path, destination: str, rate_bps: int, output: Path, datagram_bytes: int = DATAGRAM_BYTES
+) -> dict[str, Any]:
     """Send the fixture once, datagram i at start + i * interval, and summarize."""
     data = fixture.read_bytes()
     if not data or len(data) > MAX_STREAM_BYTES:
         raise ValueError("fixture is empty or exceeds the stream byte limit")
-    datagrams = _datagrams(data)
-    interval = datagram_interval_ns(rate_bps)
+    datagrams = _datagrams(data, _datagram_bytes(datagram_bytes))
+    interval = datagram_interval_ns(rate_bps, datagram_bytes)
     host, port = _endpoint(destination)
     sender = socket.socket(_family(host), socket.SOCK_DGRAM)
     max_lateness = 0
@@ -82,7 +91,7 @@ def run_source(fixture: Path, destination: str, rate_bps: int, output: Path) -> 
         "component": "media-source",
         "fixture_sha256": hashlib.sha256(data).hexdigest(),
         "fixture_bytes": len(data),
-        "datagram_bytes": DATAGRAM_BYTES,
+        "datagram_bytes": datagram_bytes,
         "datagrams": len(datagrams),
         "rate_bps": rate_bps,
         "interval_ns": interval,
@@ -175,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     source.add_argument("--fixture", type=Path, required=True)
     source.add_argument("--destination", required=True)
     source.add_argument("--rate-bps", type=int, required=True)
+    source.add_argument("--datagram-bytes", type=int, default=DATAGRAM_BYTES)
     source.add_argument("--output", type=Path, required=True)
     collector = commands.add_parser("collect")
     collector.add_argument("--bind", required=True)
@@ -184,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "source":
-            run_source(args.fixture, args.destination, args.rate_bps, args.output)
+            run_source(args.fixture, args.destination, args.rate_bps, args.output, args.datagram_bytes)
         else:
             run_collector(args.bind, args.stream, args.output, args.ready)
     except (OSError, ValueError) as error:
