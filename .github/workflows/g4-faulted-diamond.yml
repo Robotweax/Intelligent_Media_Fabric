@@ -2,6 +2,11 @@ name: G4 Faulted Diamond
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/g4-faulted-diamond.yml
+      - src/rimf_lab/g4_faulted_diamond.py
+      - src/rimf_lab/media_stream.py
 
 permissions:
   contents: read
@@ -165,7 +170,7 @@ jobs:
               --library-dir "$SRT_BUILD" \
               --ffmpeg /usr/bin/ffmpeg \
               --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
-              --project-revision "$GITHUB_SHA"
+              --project-revision "${{ github.event.pull_request.head.sha || github.sha }}"
           sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
 
       - name: Validate fail-closed faulted-diamond bundle
