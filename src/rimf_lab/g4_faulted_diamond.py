@@ -1038,7 +1038,9 @@ def run_g4_faulted_diamond(
             os.unlink(staging / "result.json")
         _write_json(staging / "result.json", failure)
         staging.rename(output_dir)
-        raise QualificationError(f"faulted-diamond experiment failed during {phase_at_failure}") from error
+        raise QualificationError(
+            f"faulted-diamond experiment failed during {phase_at_failure}: {failure['failure_detail']}"
+        ) from error
     assert result is not None
     result["cleanup"] = cleanup
     _write_json(staging / "result.json", result)

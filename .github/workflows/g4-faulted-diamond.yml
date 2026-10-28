@@ -171,7 +171,17 @@ jobs:
               --ffmpeg /usr/bin/ffmpeg \
               --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
               --project-revision "${{ github.event.pull_request.head.sha || github.sha }}"
-          sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+
+      - name: Make the bundle readable and show a failed result
+        if: always()
+        run: |
+          if [ -d "$OUTPUT_DIR" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+            if [ "$(jq -r '.status' "$OUTPUT_DIR/result.json")" = failed ]; then
+              jq '{failure_phase, failure_class, failure_detail, cleanup}' "$OUTPUT_DIR/result.json"
+              test -f "$OUTPUT_DIR/diagnostics.json" && jq -c '{srt_samples_per_endpoint, receiver_unique_received_deltas, fault_events, route_epochs}' "$OUTPUT_DIR/diagnostics.json" || true
+            fi
+          fi
 
       - name: Validate fail-closed faulted-diamond bundle
         run: |
