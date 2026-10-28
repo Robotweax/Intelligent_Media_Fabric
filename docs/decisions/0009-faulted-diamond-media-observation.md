@@ -24,8 +24,9 @@ needs about 39 s to restore the path, while SRT's default peer-idle timeout is 5
    `START_MEDIA`/`STOP_MEDIA`) and `--peer-idle-timeout-ms`. SRT hosting and SRT semantics
    stay in Telemetry (ADR-0004); Fabric still consumes only its CLI, its recordings and the
    `1alpha1` JSONL contract. Pin SRT Telemetry at
-   `1b12f8d7d75658cb7b7e00a0575fc77d965dbbec`, the commit that adds the relay; the incident
-   peer's existing commands, outputs and recording are unchanged.
+   `1b12f8d7d75658cb7b7e00a0575fc77d965dbbec`, the commit that adds the relay, merged to
+   Telemetry `main` on 2026-10-28 as `6702dfee` (identical tree); the incident peer's
+   existing commands, outputs and recording are unchanged.
 2. **SRT profile for the first faulted run.** Live mode with the default 120 ms latency and
    too-late-packet drop, `SRTO_PEERIDLETIMEO` 60 000 ms so one session can span the
    measured outage, receive timeout 500 ms. This is an experiment profile chosen by the
