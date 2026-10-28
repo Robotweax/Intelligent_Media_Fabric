@@ -105,6 +105,14 @@ MTU documented in the [SRT-over-FIPS profile](../protocols/srt-over-fips-profile
 media was delivered and the runner stopped before the fault; the
 [failed attempt is retained](../../qualification/failure-results/README.md). Nothing else changed.
 
+Second revision 2026-10-28, after run 40740237463: both decodes add `-dts_delta_threshold
+1000000`. With FFmpeg's default 10 s MPEG-TS discontinuity threshold, the 31 s outage was
+re-based out of the timestamps, so every post-gap frame compared as changed (2745) and the
+outage appeared as 756 frames missing at the end. The fixture contains no real
+discontinuity, so disabling the correction measures the stream as sent; a run now fails
+closed if an observed frame equals a reference frame at another timestamp. That run's
+timeline is valid but it is superseded and not retained as a result. Nothing else changed.
+
 | Item | Value |
 | --- | --- |
 | Topology | Retained G2 alternate-route diamond: same FIPS timers, 20 ms one-way stimulus on r2–b, no a–b underlay, IPv4 forwarding off on both transits |
@@ -112,7 +120,7 @@ media was delivered and the runner stopped before the fault; the
 | Fixture | `testsrc2` 320×180, 25 fps, 160 s, MPEG-2 GOP 25 without B-frames, 600 kbit/s video in a 1 Mbit/s CBR transport stream, bit-exact: 4000 frames |
 | Source | 1128-byte datagrams (six TS packets) on an absolute schedule (9.024 ms), into the caller's relay on `a`; must fit the fips0 clear SRT payload budget (reported inner IPv6 MTU − 64 B), checked before the run |
 | SRT | Live, default 120 ms latency, too-late drop on, peer idle 60 000 ms, receive timeout 500 ms |
-| Downstream | Collector process on `b` (UDP from the listener's relay, arrival gaps ≥ 250 ms), offline FFmpeg `framehash` SHA-256 decode compared with the fixture's own decode |
+| Downstream | Collector process on `b` (UDP from the listener's relay, arrival gaps ≥ 250 ms), offline FFmpeg `framehash` SHA-256 decode (`-dts_delta_threshold 1000000`) compared with the fixture's own decode; fail closed on re-timed frames |
 | Sampling | SRT both endpoints every 500 ms; FIPS control state every 1 s, every 500 ms between the fault and the observed reparent |
 | Fault | SIGKILL of the transit that is `b`'s observed tree parent, 20 s after the source starts; underlay left up |
 | Route epoch 2 | Only when a FIPS observation shows `b` on the other transit with the G2 peer/link/tree conditions; evidence = that observation and the one before it |

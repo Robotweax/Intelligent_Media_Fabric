@@ -46,7 +46,11 @@ needs about 39 s to restore the path, while SRT's default peer-idle timeout is 5
    offline, not a live player; the arrival timeline comes from the collector. FFmpeg is the
    Ubuntu 24.04 package, pinned by its exact version string
    (`ffmpeg version 6.1.1-3ubuntu5`, checked before the run) and recorded binary digest; a
-   different version fails closed.
+   different version fails closed. Both decodes run with `-dts_delta_threshold 1000000`, which
+   disables FFmpeg's MPEG-TS timestamp-discontinuity correction; the fixture has no real
+   discontinuity, and with the default 10 s threshold run 40740237463 re-based every frame
+   after its 31 s outage by 756 frames, so they compared as changed. A run fails closed if
+   any observed frame matches a reference frame at another timestamp.
 5. **Media fixture.** A deterministic 160 s `testsrc2` 320×180 at 25 fps, MPEG-2 GOP 25
    without B-frames, 600 kbit/s video in a 1 Mbit/s constant-rate transport stream
    (bit-exact flags, single thread): 4000 frames, sent as 1128-byte datagrams (six TS packets)

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 from copy import deepcopy
+from pathlib import Path
 
 from rimf_lab.contracts import ContractError
 from rimf_lab.g4_faulted_diamond import (
@@ -12,7 +14,9 @@ from rimf_lab.g4_faulted_diamond import (
     FIXTURE_FRAMES,
     INJECT_AFTER_SOURCE_START_NS,
     SRT_PEER_IDLE_TIMEOUT_MS,
+    DECODE_OPTIONS,
     compute_timeline,
+    retimed_frame_count,
     validate_g4_faulted_diamond_result,
     validate_route_epoch_event,
 )
@@ -95,6 +99,7 @@ def passed_result() -> dict:
                      "alternate_transit": "r2"},
         "profile": {"srt_peer_idle_timeout_ms": SRT_PEER_IDLE_TIMEOUT_MS,
                     "datagram_bytes": DATAGRAM_BYTES,
+                    "decode_options": list(DECODE_OPTIONS),
                     "packet_budget": {"media_datagram_bytes": DATAGRAM_BYTES,
                                       "clear_srt_payload_budget_bytes": 1139},
                     "inject_after_source_start_ms": INJECT_AFTER_SOURCE_START_NS // MS,
@@ -151,6 +156,29 @@ class TimelineTests(unittest.TestCase):
         self.assertIsNone(timeline["media_downstream_gap_ms"])
         self.assertIsNone(timeline["srt_receiver_stall"])
         self.assertIsNone(timeline["srt_receiver_resume"])
+
+
+class RetimingGuardTests(unittest.TestCase):
+    HEADER = "#hash: SHA256\n#tb 0: 1/25\n#media_type 0: video\n#stream#, dts, pts, duration, size, hash\n"
+
+    def write(self, directory: Path, name: str, hashes: dict[int, str]) -> Path:
+        path = directory / name
+        lines = [f"0, {pts}, {pts}, 1, 86400, {digest * 64}" for pts, digest in sorted(hashes.items())]
+        path.write_text(self.HEADER + "\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    def test_detects_shifted_frames_and_accepts_a_true_gap(self):
+        reference = {pts: "0123456789abcdef"[pts] for pts in range(10)}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ref = self.write(root, "ref", reference)
+            gap = self.write(root, "gap", {pts: reference[pts] for pts in (0, 1, 2, 7, 8, 9)})
+            shifted = self.write(root, "shifted", {0: reference[0], 1: reference[1], 2: reference[2],
+                                                    3: reference[7], 4: reference[8], 5: reference[9]})
+            corrupt = self.write(root, "corrupt", {**{pts: reference[pts] for pts in range(10)}, 4: "f"})
+            self.assertEqual(retimed_frame_count(ref, gap), 0)
+            self.assertEqual(retimed_frame_count(ref, shifted), 3)
+            self.assertEqual(retimed_frame_count(ref, corrupt), 0)
 
 
 class RouteEpochEventTests(unittest.TestCase):

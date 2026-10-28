@@ -330,6 +330,25 @@ def compute_timeline(
     return timeline
 
 
+def retimed_frame_count(reference: Path, observed: Path) -> int:
+    """Count observed frames whose content is a reference frame at another timestamp.
+
+    A non-zero count means the downstream decode re-timed frames, so a per-timestamp
+    comparison would misattribute missing and changed frames; the run fails closed.
+    """
+    from .media_frames import parse_framehash
+
+    _, expected = parse_framehash(reference)
+    _, actual = parse_framehash(observed)
+    by_hash: dict[str, set[int]] = {}
+    for pts, (_, _, digest) in expected.items():
+        by_hash.setdefault(digest, set()).add(pts)
+    return sum(
+        1 for pts, (_, _, digest) in actual.items()
+        if expected.get(pts, (None, None, None))[2] != digest and by_hash.get(digest, set()) - {pts}
+    )
+
+
 def _ffmpeg_version(ffmpeg: Path) -> str:
     return _run([str(ffmpeg), "-hide_banner", "-version"], label="FFmpeg version").stdout.splitlines()[0]
 
@@ -343,10 +362,17 @@ def _generate_fixture(ffmpeg: Path, output: Path) -> None:
     )
 
 
+# FFmpeg's MPEG-TS input treats a timestamp jump beyond dts_delta_threshold (default 10 s)
+# as a discontinuity and re-bases later timestamps. That closes an outage gap in the
+# numbering: post-gap frames compare as "changed" and the missing frames appear at the end.
+# The fixture has no real discontinuity, so the correction is disabled for both decodes.
+DECODE_OPTIONS = ("-dts_delta_threshold", "1000000")
+
+
 def _framehash(ffmpeg: Path, media: Path, output: Path, label: str) -> None:
     _run(
-        [str(ffmpeg), "-nostdin", "-hide_banner", "-loglevel", "error", "-i", str(media),
-         "-map", "0:v:0", "-f", "framehash", "-hash", "SHA256", str(output)],
+        [str(ffmpeg), "-nostdin", "-hide_banner", "-loglevel", "error", *DECODE_OPTIONS,
+         "-i", str(media), "-map", "0:v:0", "-f", "framehash", "-hash", "SHA256", str(output)],
         label=label,
         timeout=300,
     )
@@ -917,6 +943,9 @@ def run_g4_faulted_diamond(
         phase = "decode-and-adapt"
         _framehash(ffmpeg, received, staging / "observed.framehash", "independent downstream decode")
         assessment = assess_media_frames(staging / "reference.framehash", staging / "observed.framehash")
+        retimed = retimed_frame_count(staging / "reference.framehash", staging / "observed.framehash")
+        if retimed:
+            raise QualificationError(f"downstream decode re-timed {retimed} frames; comparison is invalid")
         _write_json(staging / "frame-assessment.json", assessment)
         for name in ("media-source.json", "media-collector.json"):
             shutil.copyfile(work / name, staging / name)
@@ -971,6 +1000,7 @@ def run_g4_faulted_diamond(
                 "reparent_budget_ms": REPARENT_BUDGET_SECS * 1000,
                 "srt_recovery_budget_ms": SRT_RECOVERY_BUDGET_NS // 1_000_000,
                 "collector_gap_threshold_ms": GAP_THRESHOLD_NS // 1_000_000,
+                "decode_options": list(DECODE_OPTIONS),
             },
             "capture": {
                 "srt_samples_per_endpoint": len(sender_samples),
@@ -1137,7 +1167,8 @@ def validate_g4_faulted_diamond_result(result: Any) -> None:
     _require(profile.get("srt_peer_idle_timeout_ms") == SRT_PEER_IDLE_TIMEOUT_MS
              and profile.get("inject_after_source_start_ms") == INJECT_AFTER_SOURCE_START_NS // 1_000_000
              and profile.get("fixture", {}).get("frames") == FIXTURE_FRAMES
-             and profile.get("fixture", {}).get("encode") == list(FIXTURE_ENCODE),
+             and profile.get("fixture", {}).get("encode") == list(FIXTURE_ENCODE)
+             and profile.get("decode_options") == list(DECODE_OPTIONS),
              "faulted-diamond profile is not the predeclared profile")
     capture = result["capture"]
     _require(capture.get("route_epochs") == [1, 2], "faulted-diamond capture must hold two route epochs")
@@ -1200,6 +1231,8 @@ def validate_g4_faulted_diamond_bundle(directory: Path) -> None:
     stored = load_json(directory / "frame-assessment.json")
     recomputed = assess_media_frames(directory / "reference.framehash", directory / "observed.framehash")
     _require(stored == recomputed, "frame assessment is not reproducible from the retained framehashes")
+    _require(retimed_frame_count(directory / "reference.framehash", directory / "observed.framehash") == 0,
+             "downstream decode re-timed frames; the frame comparison is invalid")
     timeline = compute_timeline(
         fault_events=faults, fips_observations=fips, route_epochs=route_epochs,
         sender=_read_jsonl(directory / "sender-observations.jsonl"),
