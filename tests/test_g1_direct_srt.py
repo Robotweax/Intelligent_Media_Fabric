@@ -220,18 +220,14 @@ class G1DirectSrtResultTests(unittest.TestCase):
         result["summary"] = _summary(result["repetitions"])
         validate_g1_direct_srt_result(result)
 
-    def test_rejects_historical_srt_pin_as_active_control(self):
-        for historical in HISTORICAL_G4_BUNDLES.values():
+    def test_rejects_historical_pin_sets_as_active_control(self):
+        # A historical entry may share the active SRT commit (a Telemetry-only re-pin),
+        # so the whole pin set decides: each historical set is rejected as a new run.
+        for historical in (*HISTORICAL_G4_BUNDLES.values(), *HISTORICAL_G1_BUNDLES.values()):
             result = success_result()
             result["provenance"]["srt_commit"] = historical["srt_commit"]
-            with self.assertRaisesRegex(ContractError, "srt_commit"):
-                validate_g1_direct_srt_result(result)
-
-    def test_rejects_historical_g1_pin_as_active_control(self):
-        for historical in HISTORICAL_G1_BUNDLES.values():
-            result = success_result()
-            result["provenance"]["srt_commit"] = historical["srt_commit"]
-            with self.assertRaisesRegex(ContractError, "srt_commit"):
+            result["provenance"]["telemetry_commit"] = historical["telemetry_commit"]
+            with self.assertRaisesRegex(ContractError, "provenance (srt|telemetry)_commit"):
                 validate_g1_direct_srt_result(result)
 
     def test_rejects_rewritten_historical_g1_bundle(self):

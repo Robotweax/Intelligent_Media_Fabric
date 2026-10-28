@@ -50,7 +50,7 @@ from .srt_adapter import adapt_srt_telemetry_jsonl
 
 EXPECTED_SRT_COMMIT = "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1"
 EXPECTED_SRT_VERSION = "0.3.1"
-EXPECTED_TELEMETRY_COMMIT = "1a018dfdc89a964b03159aebc155d39bca524384"
+EXPECTED_TELEMETRY_COMMIT = "1b12f8d7d75658cb7b7e00a0575fc77d965dbbec"
 # Retained healthy pilots are evidence only for their own recorded revisions.
 # Each historical bundle is accepted solely when its original result manifest
 # matches the digest recorded here; a new run cannot present an old pin as the
@@ -69,6 +69,13 @@ HISTORICAL_G4_BUNDLES = {
         "srt_version": "0.2.6",
         "telemetry_commit": "bf10da0431fdf23772210262755f745b62b6ff58",
         "fips_commit": "c5aeef39ef9442d9e5047331156df368ace40cbd",
+    },
+    # 2026-10-25, run 40190670233: SRT v0.3.1, Telemetry 1a018dfd, FIPS v0.5.3.
+    "82c1107b4c7bb9a31aee2b1a87294b3e32371785e5f0567219eea054a480e16c": {
+        "srt_commit": "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1",
+        "srt_version": "0.3.1",
+        "telemetry_commit": "1a018dfdc89a964b03159aebc155d39bca524384",
+        "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
     },
     # 2026-10-22, run 39795866081: SRT v0.3.0, Telemetry 24475483, FIPS v0.5.3.
     "5d7c5188946ce6631455894c56e6f2a5ac3b19aa7c469c5b60b6f01e2c43b547": {
@@ -1097,12 +1104,17 @@ def validate_g4_live_capture_bundle(directory: Path) -> None:
     expected_srt_version = EXPECTED_SRT_VERSION
     expected_telemetry_commit = EXPECTED_TELEMETRY_COMMIT
     expected_fips_commit = EXPECTED_FIPS_COMMIT
-    if (
-        isinstance(provenance, dict)
-        and provenance.get("srt_commit") in HISTORICAL_SRT_COMMITS
-    ):
+    # A bundle is historical when any recorded pin differs from the active set; it is
+    # then accepted only through its digest-locked entry, with that entry's pins.
+    current = (EXPECTED_SRT_COMMIT, EXPECTED_TELEMETRY_COMMIT, EXPECTED_FIPS_COMMIT)
+    if isinstance(provenance, dict) and tuple(
+        provenance.get(field) for field in ("srt_commit", "telemetry_commit", "fips_commit")
+    ) != current and provenance.get("srt_commit") in HISTORICAL_SRT_COMMITS | {EXPECTED_SRT_COMMIT}:
         historical = HISTORICAL_G4_BUNDLES.get(sha256_file(result_path))
-        if historical is None or historical["srt_commit"] != provenance.get("srt_commit"):
+        if historical is None or any(
+            historical[field] != provenance.get(field)
+            for field in ("srt_commit", "telemetry_commit", "fips_commit")
+        ):
             raise ContractError("historical G4 result digest mismatch")
         expected_srt_commit = historical["srt_commit"]
         expected_srt_version = historical["srt_version"]

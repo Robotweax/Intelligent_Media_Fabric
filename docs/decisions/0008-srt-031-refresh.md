@@ -1,6 +1,6 @@
 # ADR-0008: Select Robotweax SRT 0.3.1 and the matching Telemetry revision
 
-- Status: accepted
+- Status: superseded by ADR-0009 for the SRT Telemetry selection; SRT v0.3.1 and evidence policy retained
 - Date: 2026-10-25
 - Supersedes ADR-0007 for the SRT and Telemetry selections; its FIPS and toolchain pins and its evidence policy are retained
 

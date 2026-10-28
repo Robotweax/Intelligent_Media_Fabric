@@ -22,7 +22,7 @@ concurrency:
 
 env:
   SRT_COMMIT: 57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1
-  TELEMETRY_COMMIT: 1a018dfdc89a964b03159aebc155d39bca524384
+  TELEMETRY_COMMIT: 1b12f8d7d75658cb7b7e00a0575fc77d965dbbec
   SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
   SRT_BUILD: /tmp/rimf-g1-srt-build
   TELEMETRY_SOURCE: ${{ github.workspace }}/dependencies/srt_telemetry

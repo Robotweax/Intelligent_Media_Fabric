@@ -324,3 +324,23 @@ records `G1: not-passed`. See the
 [predeclared contract](g1-direct-srt-baseline-plan-2026-10-22.md). Because the sandbox used
 for local harness checks has no IPv6, the address family is a module constant that a local dry
 run may switch to IPv4; the committed contract and the workflow use IPv6 only.
+
+## Privileged G4 faulted-diamond experiment
+
+The manually dispatched `G4 Faulted Diamond` workflow runs the predeclared
+[faulted-diamond plan](g4-faulted-diamond-experiment-plan-2026-09-23.md) on the retained G2
+alternate-route topology. A deterministic CBR MPEG-TS fixture is paced into the Telemetry
+incident peer's media relay on `a`, carried over `fips0` by one SRT session with a 60 s peer
+idle timeout, relayed on `b` to a separate collector process, and decoded afterwards by a
+separate FFmpeg process. The coordinator samples SRT on both endpoints and FIPS control
+state on one host monotonic clock, kills `b`'s observed active transit with SIGKILL, and
+emits route epoch 2 only when a FIPS observation proves reparenting to the other transit.
+
+The bundle holds both Telemetry recordings, their adapter contexts (with the epoch marker
+as `route_epoch_transitions`) and byte-replayable observations, FIPS observation and fault
+envelopes, route-epoch events, source and collector summaries, both relays' counters, both
+framehash files and their comparison, and an ordering-only timeline that the validator
+recomputes from those files. Missing reparenting, missing recovery, a profile mismatch or an
+incomplete teardown fails the run. A passing run records `G4: not-passed` and makes no
+first-divergent-layer or causal claim. See
+[ADR-0009](../decisions/0009-faulted-diamond-media-observation.md).

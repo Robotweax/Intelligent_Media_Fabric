@@ -17,6 +17,7 @@ from .contracts import (
     SRT_TELEMETRY_SCHEMA_SHA256,
     SRT_TELEMETRY_VERSION,
     load_json,
+    route_epoch_at,
     validate_srt_adapter_context,
     validate_srt_telemetry_observation,
 )
@@ -295,7 +296,7 @@ def _observation(
         "source": "srt",
         "observed_at_unix_nano": raw["observed_at_unix_nano"],
         "monotonic_ns": raw["sample_monotonic_nano"],
-        "route_epoch": context["route_epoch"],
+        "route_epoch": route_epoch_at(context, raw["sample_monotonic_nano"]),
         "clock": deepcopy(context["clock"]),
         "fabric_identity": deepcopy(context["fabric_identity"]),
         "source_identity": {
