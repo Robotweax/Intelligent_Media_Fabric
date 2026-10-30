@@ -43,6 +43,7 @@ from .g1_direct_srt import (
     run_g1_direct_srt_baseline,
     validate_g1_direct_srt_bundle,
 )
+from .g4_faulted_diamond import run_g4_faulted_diamond, validate_g4_faulted_diamond_bundle
 from .media_frames import write_media_frame_assessment
 from .runner import run_scenario
 from .srt_adapter import adapt_srt_telemetry_jsonl
@@ -125,6 +126,22 @@ def _parser() -> argparse.ArgumentParser:
     g4_live_run_parser.add_argument("--library-dir", type=Path, required=True)
     g4_live_run_parser.add_argument("--output-dir", type=Path, required=True)
     g4_live_run_parser.add_argument("--project-revision", required=True)
+
+    diamond_run_parser = subparsers.add_parser(
+        "run-g4-faulted-diamond",
+        help="run the privileged Linux four-node faulted-diamond SRT media experiment",
+    )
+    for option in ("--fips-source", "--fips", "--fipsctl", "--srt-source", "--srt-library",
+                   "--telemetry-source", "--incident-peer", "--library-dir", "--ffmpeg",
+                   "--output-dir"):
+        diamond_run_parser.add_argument(option, type=Path, required=True)
+    diamond_run_parser.add_argument("--project-revision", required=True)
+
+    diamond_bundle_parser = subparsers.add_parser(
+        "validate-g4-faulted-diamond",
+        help="validate a retained G4 faulted-diamond bundle directory",
+    )
+    diamond_bundle_parser.add_argument("directory", type=Path)
 
     g1_run_parser = subparsers.add_parser(
         "run-g1-direct-srt-baseline",
@@ -340,6 +357,24 @@ def main(argv: list[str] | None = None) -> int:
                 project_revision=args.project_revision,
             )
             print(f"G4 SRT-over-FIPS live capture: {result['status']} ({args.output_dir})")
+        elif args.command == "run-g4-faulted-diamond":
+            result = run_g4_faulted_diamond(
+                fips_source=args.fips_source,
+                fips_binary=args.fips,
+                fipsctl_binary=args.fipsctl,
+                srt_source=args.srt_source,
+                srt_library=args.srt_library,
+                telemetry_source=args.telemetry_source,
+                incident_peer=args.incident_peer,
+                library_dir=args.library_dir,
+                ffmpeg=args.ffmpeg,
+                output_dir=args.output_dir,
+                project_revision=args.project_revision,
+            )
+            print(f"G4 faulted diamond: {result['status']} ({args.output_dir})")
+        elif args.command == "validate-g4-faulted-diamond":
+            validate_g4_faulted_diamond_bundle(args.directory)
+            print(f"G4 faulted-diamond bundle validation: OK ({args.directory})")
         elif args.command == "run-g1-direct-srt-baseline":
             result = run_g1_direct_srt_baseline(
                 srt_source=args.srt_source,

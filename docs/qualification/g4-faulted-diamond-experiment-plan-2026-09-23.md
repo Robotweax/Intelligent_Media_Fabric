@@ -1,10 +1,13 @@
 # Proposed G4 faulted-diamond live experiment
 
-Status: **predeclared design, not executable or qualified evidence**. The current
-two-node healthy pilot cannot establish a route transition; adding a fault to
-that topology would only disconnect its sole path. This design requires a
-separate runner, result contract and manual workflow. The existing healthy
-pilot and its retained bundle must remain unchanged.
+Status: **predeclared design; executable since 2026-10-28** through the separate
+`G4 Faulted Diamond` workflow, `rimf-lab run-g4-faulted-diamond` and the
+`g4-faulted-diamond` result contract, with the execution profile frozen below and in
+[ADR-0009](../decisions/0009-faulted-diamond-media-observation.md) before the first run.
+The two-node healthy pilot, its workflow and its retained bundles are unchanged.
+The [first retained run](g4-faulted-diamond-2026-10-28.md) (40743995191) passed this
+experiment on 2026-10-28 and a [repeat](g4-faulted-diamond-repeat-2026-10-28.md) (40748574042)
+reproduced it; both are ordering-only and do not pass G4.
 
 ## Question and fixed setup
 
@@ -94,3 +97,35 @@ SRT stream to the independent observer before this component can contribute
 G4 evidence. For new runs, use the SRT v0.2.6 candidate selected by
 [ADR-0006](../decisions/0006-srt-026-baseline.md); the linked 0.2.4 integration
 and framehash workflow remain historical harness evidence only.
+
+## Frozen execution profile (2026-10-28)
+
+Set before the first run; a change is a new predeclaration, not a tuning of a result.
+
+Revision 2026-10-28, after the first attempts: the datagram changed from seven TS packets
+(1316 B) to six (1128 B). At 1316 B each SRT data packet exceeded the 1203-byte inner IPv6
+MTU documented in the [SRT-over-FIPS profile](../protocols/srt-over-fips-profile-v0.md), so no
+media was delivered and the runner stopped before the fault; the
+[failed attempt is retained](../../qualification/failure-results/README.md). Nothing else changed.
+
+Second revision 2026-10-28, after run 40740237463: both decodes add `-dts_delta_threshold
+1000000`. With FFmpeg's default 10 s MPEG-TS discontinuity threshold, the 31 s outage was
+re-based out of the timestamps, so every post-gap frame compared as changed (2745) and the
+outage appeared as 756 frames missing at the end. The fixture contains no real
+discontinuity, so disabling the correction measures the stream as sent; a run now fails
+closed if an observed frame equals a reference frame at another timestamp. That run's
+timeline is valid but it is superseded and not retained as a result. Nothing else changed.
+
+| Item | Value |
+| --- | --- |
+| Topology | Retained G2 alternate-route diamond: same FIPS timers, 20 ms one-way stimulus on r2–b, no a–b underlay, IPv4 forwarding off on both transits |
+| Pins | SRT v0.3.1 `57fcf51a`, SRT Telemetry `1b12f8d7` (media relay), FIPS v0.5.3 `f4a5b4a8`, FFmpeg `6.1.1-3ubuntu5` |
+| Fixture | `testsrc2` 320×180, 25 fps, 160 s, MPEG-2 GOP 25 without B-frames, 600 kbit/s video in a 1 Mbit/s CBR transport stream, bit-exact: 4000 frames |
+| Source | 1128-byte datagrams (six TS packets) on an absolute schedule (9.024 ms), into the caller's relay on `a`; must fit the fips0 clear SRT payload budget (reported inner IPv6 MTU − 64 B), checked before the run |
+| SRT | Live, default 120 ms latency, too-late drop on, peer idle 60 000 ms, receive timeout 500 ms |
+| Downstream | Collector process on `b` (UDP from the listener's relay, arrival gaps ≥ 250 ms), offline FFmpeg `framehash` SHA-256 decode (`-dts_delta_threshold 1000000`) compared with the fixture's own decode; fail closed on re-timed frames |
+| Sampling | SRT both endpoints every 500 ms; FIPS control state every 1 s, every 500 ms between the fault and the observed reparent |
+| Fault | SIGKILL of the transit that is `b`'s observed tree parent, 20 s after the source starts; underlay left up |
+| Route epoch 2 | Only when a FIPS observation shows `b` on the other transit with the G2 peer/link/tree conditions; evidence = that observation and the one before it |
+| Stop rules | Reparent within 60 s and SRT delivery resumed within 120 s of the fault, at least 10 s of media after recovery; otherwise failed |
+| Output | Ordering-only timeline (intervals in ms from the SIGKILL, unordered when they overlap), frame comparison, replayable adapters; `G4: not-passed`, no causal claim |

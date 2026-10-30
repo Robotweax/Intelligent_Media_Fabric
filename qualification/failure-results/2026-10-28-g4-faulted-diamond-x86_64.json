@@ -1,0 +1,28 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "faulted_daemon_reaped": false,
+    "fips_daemons_stopped": true,
+    "media_processes_stopped": true,
+    "namespaces_removed": true,
+    "srt_peers_stopped": true,
+    "work_directory_removed": true
+  },
+  "evidence_type": "g4-faulted-diamond",
+  "failure_class": "QualificationError",
+  "failure_detail": "no SRT media delivery was observed before fault injection",
+  "failure_phase": "faulted-capture",
+  "finished_at": "2026-10-28T17:52:35.503070Z",
+  "gate_conclusion": {
+    "G4": "not-passed",
+    "reason": "experiment-failed-before-completion"
+  },
+  "gate_ids": [
+    "G4"
+  ],
+  "project_revision": "1310bf9f7101863b0c20aa40db4ae4d392229438",
+  "run_id": "532c7d67-7bde-42ba-82aa-f99bde5dc92e",
+  "schema_version": 1,
+  "started_at": "2026-10-28T17:52:01.977881Z",
+  "status": "failed"
+}

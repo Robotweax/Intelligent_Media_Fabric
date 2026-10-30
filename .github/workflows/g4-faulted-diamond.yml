@@ -1,0 +1,216 @@
+name: G4 Faulted Diamond
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/g4-faulted-diamond.yml
+      - src/rimf_lab/g4_faulted_diamond.py
+      - src/rimf_lab/media_stream.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g4-faulted-diamond
+  cancel-in-progress: false
+
+env:
+  FIPS_COMMIT: f4a5b4a8e61e340e6be7551608109a5c399f8353
+  FIPS_CARGO_LOCK_SHA256: 70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a
+  FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
+  SRT_COMMIT: 57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1
+  TELEMETRY_COMMIT: 1b12f8d7d75658cb7b7e00a0575fc77d965dbbec
+  FIPS_SOURCE: /tmp/rimf-g4-fips
+  SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
+  SRT_BUILD: /tmp/rimf-g4-srt-build
+  TELEMETRY_SOURCE: ${{ github.workspace }}/dependencies/srt_telemetry
+  TELEMETRY_BUILD: /tmp/rimf-g4-telemetry-build
+  OUTPUT_DIR: artifacts/g4-faulted-diamond
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Require bounded private dependency read token
+        env:
+          ROBOTWEAX_REPO_TOKEN: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+        run: |
+          test -n "$ROBOTWEAX_REPO_TOKEN" || {
+            echo "ROBOTWEAX_REPO_TOKEN must read Contents for Robotweax/srt and Robotweax/srt_telemetry" >&2
+            exit 1
+          }
+
+      - name: Checkout pinned private Robotweax SRT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt
+          ref: ${{ env.SRT_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt
+          persist-credentials: false
+
+      - name: Checkout pinned private SRT Telemetry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt_telemetry
+          ref: ${{ env.TELEMETRY_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt_telemetry
+          persist-credentials: false
+
+      - name: Install bounded Linux build and network dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake \
+            dnsutils \
+            ffmpeg \
+            g++ \
+            iproute2 \
+            iputils-ping \
+            libclang-dev \
+            libdbus-1-dev \
+            libssl-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Fetch immutable FIPS source and verify all revisions
+        run: |
+          git init "$FIPS_SOURCE"
+          git -C "$FIPS_SOURCE" remote add origin https://github.com/jmcorgan/fips.git
+          git -C "$FIPS_SOURCE" fetch --depth=1 origin "$FIPS_COMMIT"
+          git -C "$FIPS_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$FIPS_SOURCE" rev-parse HEAD)" = "$FIPS_COMMIT"
+          printf '%s  %s\n' "$FIPS_CARGO_LOCK_SHA256" "$FIPS_SOURCE/Cargo.lock" |
+            sha256sum --check --strict
+          printf '%s  %s\n' "$FIPS_RUST_TOOLCHAIN_SHA256" "$FIPS_SOURCE/rust-toolchain.toml" |
+            sha256sum --check --strict
+
+          test "$(git -C "$SRT_SOURCE" rev-parse HEAD)" = "$SRT_COMMIT"
+          test "$(git -C "$TELEMETRY_SOURCE" rev-parse HEAD)" = "$TELEMETRY_COMMIT"
+
+      - name: Prepare immutable FIPS toolchain
+        run: |
+          rustup toolchain install 1.94.1 \
+            --profile minimal \
+            --component rustfmt \
+            --component clippy \
+            --no-self-update
+
+      - name: Restore pinned FIPS build cache
+        id: fips-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-g4-fips/target
+          key: ${{ runner.os }}-fips-v0.5.3-rust-1.94.1-70b1e2a25c3d
+
+      - name: Build pinned FIPS binaries
+        working-directory: ${{ env.FIPS_SOURCE }}
+        run: cargo build --release --locked --bin fips --bin fipsctl
+
+      - name: Save pinned FIPS build cache
+        if: steps.fips-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-g4-fips/target
+          key: ${{ steps.fips-cache.outputs.cache-primary-key }}
+
+      - name: Build pinned shared Robotweax SRT
+        run: |
+          cmake -S "$SRT_SOURCE" -B "$SRT_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DROBOTWEAX_SRT_BUILD_TESTS=OFF \
+            -DROBOTWEAX_SRT_BUILD_BENCHMARKS=OFF \
+            -DROBOTWEAX_SRT_BUILD_TOOLS=OFF
+          cmake --build "$SRT_BUILD" --parallel --target robotweax_srt
+          test -f "$SRT_BUILD/librobotweax-srt.so"
+
+      - name: Build pinned addressable Telemetry incident peer
+        run: |
+          cmake -S "$TELEMETRY_SOURCE" -B "$TELEMETRY_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_TESTS=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_PUBLIC_SRT_ADAPTER=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_INCLUDE_DIR="$SRT_SOURCE/include" \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/librobotweax-srt.so" \
+            -DROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt
+          cmake --build "$TELEMETRY_BUILD" --parallel
+          ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure
+          PEER_HELP="$(env LD_LIBRARY_PATH="$SRT_BUILD" \
+            "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" --help 2>&1 || true)"
+          grep --fixed-strings -- '--bind-address IP' <<< "$PEER_HELP"
+          grep --fixed-strings -- '--message-bytes 1..1316' <<< "$PEER_HELP"
+
+      - name: Run privileged four-node faulted-diamond media experiment
+        run: |
+          sudo env \
+            "PATH=$PATH" \
+            "PYTHONPATH=$GITHUB_WORKSPACE/src" \
+            python3 -m rimf_lab run-g4-faulted-diamond \
+              --fips-source "$FIPS_SOURCE" \
+              --fips "$FIPS_SOURCE/target/release/fips" \
+              --fipsctl "$FIPS_SOURCE/target/release/fipsctl" \
+              --srt-source "$SRT_SOURCE" \
+              --srt-library "$SRT_BUILD/librobotweax-srt.so" \
+              --telemetry-source "$TELEMETRY_SOURCE" \
+              --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
+              --library-dir "$SRT_BUILD" \
+              --ffmpeg /usr/bin/ffmpeg \
+              --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
+              --project-revision "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Make the bundle readable and show a failed result
+        if: always()
+        run: |
+          if [ -d "$OUTPUT_DIR" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+            if [ "$(jq -r '.status' "$OUTPUT_DIR/result.json")" = failed ]; then
+              jq '{failure_phase, failure_class, failure_detail, cleanup}' "$OUTPUT_DIR/result.json"
+              test -f "$OUTPUT_DIR/diagnostics.json" && jq -c '{srt_samples_per_endpoint, receiver_unique_received_deltas, fault_events, route_epochs}' "$OUTPUT_DIR/diagnostics.json" || true
+            fi
+          fi
+
+      - name: Validate fail-closed faulted-diamond bundle
+        run: |
+          PYTHONPATH=src python3 -m rimf_lab validate-g4-faulted-diamond "$OUTPUT_DIR"
+
+      - name: Publish bounded job summary
+        if: success()
+        run: |
+          r="$OUTPUT_DIR/result.json"
+          {
+            echo "## G4 faulted diamond"
+            echo
+            echo "- Experiment status: $(jq -r '.status' "$r")"
+            echo "- Killed transit / alternate: $(jq -r '.topology.initial_active_transit' "$r") / $(jq -r '.topology.alternate_transit' "$r")"
+            echo "- Route epochs: $(jq -c '.capture.route_epochs' "$r")"
+            echo "- SRT session survived: $(jq -r '.capture.srt_session_survived' "$r")"
+            echo "- Frames expected / observed / missing / changed: $(jq -r '.capture.frames | "\(.expected_frames) / \(.observed_frames) / \(.missing_frames) / \(.changed_frames)"' "$r")"
+            echo "- Downstream media gap ms: $(jq -r '.timeline.media_downstream_gap_ms' "$r")"
+            echo "- FIPS reparent interval ms: $(jq -c '.timeline.fips_reparent' "$r")"
+            echo "- SRT receiver stall / resume ms: $(jq -c '.timeline.srt_receiver_stall' "$r") / $(jq -c '.timeline.srt_receiver_resume' "$r")"
+            echo "- Earliest observed change: $(jq -r '.timeline.earliest_observed_change' "$r") (resolved: $(jq -r '.timeline.ordering_resolved' "$r"))"
+            echo "- G4 conclusion: $(jq -r '.gate_conclusion.G4' "$r")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bounded faulted-diamond bundle
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: g4-faulted-diamond-${{ github.run_id }}
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14

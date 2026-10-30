@@ -24,6 +24,21 @@
       "$ref": "https://robotweax.example/schema/rimf/telemetry/srt-telemetry-observation-v1.json#/$defs/fabricIdentity"
     },
     "source_identifiers_pseudonymous": {"const": true},
-    "telemetry_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+    "telemetry_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "route_epoch_transitions": {
+      "description": "Optional explicit route-epoch markers within one recording. Each sample takes the epoch of the last transition whose from_monotonic_ns is at or before its sample_monotonic_nano; epochs increase by one.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": ["route_epoch", "from_monotonic_ns"],
+        "properties": {
+          "route_epoch": {"type": "integer", "minimum": 1},
+          "from_monotonic_ns": {"type": "integer", "minimum": 0}
+        },
+        "additionalProperties": false
+      }
+    }
   }
 }

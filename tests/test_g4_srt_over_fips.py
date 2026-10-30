@@ -133,11 +133,14 @@ class G4SrtOverFipsContractTests(unittest.TestCase):
     def test_accepts_successful_experiment_without_gate_passage(self):
         validate_g4_live_capture_result(success_result())
 
-    def test_rejects_historical_srt_as_new_capture(self):
+    def test_rejects_historical_pin_sets_as_new_capture(self):
+        # A historical entry may share the active SRT commit (a Telemetry-only re-pin),
+        # so the whole pin set decides: each historical set is rejected as a new capture.
         for historical in HISTORICAL_G4_BUNDLES.values():
             result = success_result()
-            result["provenance"]["srt_commit"] = historical["srt_commit"]
-            with self.assertRaisesRegex(ContractError, "srt_commit"):
+            for field in ("srt_commit", "telemetry_commit", "fips_commit"):
+                result["provenance"][field] = historical[field]
+            with self.assertRaisesRegex(ContractError, "provenance (fips|srt|telemetry)_commit"):
                 validate_g4_live_capture_result(result)
 
     def test_rejects_historical_telemetry_or_fips_as_new_capture(self):

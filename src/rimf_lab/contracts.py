@@ -352,21 +352,25 @@ def _validate_fabric_identity(value: Any) -> dict[str, Any]:
     return fabric_identity
 
 
+MAX_ROUTE_EPOCH_TRANSITIONS = 16
+
+
 def validate_srt_adapter_context(data: Any) -> None:
     root = _require_object(data, "SRT adapter context")
-    _require_exact_fields(
-        root,
-        {
-            "schema_version",
-            "event_namespace",
-            "route_epoch",
-            "clock",
-            "fabric_identity",
-            "source_identifiers_pseudonymous",
-            "telemetry_revision",
-        },
-        "SRT adapter context",
-    )
+    required = {
+        "schema_version",
+        "event_namespace",
+        "route_epoch",
+        "clock",
+        "fabric_identity",
+        "source_identifiers_pseudonymous",
+        "telemetry_revision",
+    }
+    # route_epoch_transitions is optional explicit Fabric context: the observed
+    # route-epoch markers that apply within one recording (ADR-0009).
+    if "route_epoch_transitions" in root:
+        required = required | {"route_epoch_transitions"}
+    _require_exact_fields(root, required, "SRT adapter context")
     if root.get("schema_version") != 1:
         raise ContractError("SRT adapter context schema_version must be 1")
     event_namespace = _require_string(root.get("event_namespace"), "event_namespace")
@@ -380,6 +384,45 @@ def validate_srt_adapter_context(data: Any) -> None:
     telemetry_revision = _require_string(root.get("telemetry_revision"), "telemetry_revision")
     if not COMMIT_RE.fullmatch(telemetry_revision):
         raise ContractError("telemetry_revision must be a full lowercase Git commit")
+    if "route_epoch_transitions" in root:
+        transitions = root["route_epoch_transitions"]
+        if (
+            not isinstance(transitions, list)
+            or not 1 <= len(transitions) <= MAX_ROUTE_EPOCH_TRANSITIONS
+        ):
+            raise ContractError("route_epoch_transitions must be a non-empty bounded array")
+        epoch = root["route_epoch"]
+        previous_ns = -1
+        for index, transition in enumerate(transitions):
+            transition = _require_object(transition, f"route_epoch_transitions[{index}]")
+            _require_exact_fields(
+                transition,
+                {"route_epoch", "from_monotonic_ns"},
+                f"route_epoch_transitions[{index}]",
+            )
+            next_epoch = _require_nonnegative_integer(
+                transition.get("route_epoch"), f"route_epoch_transitions[{index}].route_epoch"
+            )
+            from_ns = _require_nonnegative_integer(
+                transition.get("from_monotonic_ns"),
+                f"route_epoch_transitions[{index}].from_monotonic_ns",
+            )
+            if next_epoch != epoch + 1 or from_ns <= previous_ns:
+                raise ContractError(
+                    "route_epoch_transitions must increase the epoch by one at strictly "
+                    "increasing monotonic times"
+                )
+            epoch = next_epoch
+            previous_ns = from_ns
+
+
+def route_epoch_at(context: dict, monotonic_ns: int) -> int:
+    """Return the epoch an explicit adapter context assigns to one monotonic time."""
+    epoch = context["route_epoch"]
+    for transition in context.get("route_epoch_transitions", ()):
+        if monotonic_ns >= transition["from_monotonic_ns"]:
+            epoch = transition["route_epoch"]
+    return epoch
 
 
 def validate_correlation_envelope(data: Any) -> None:
@@ -2913,6 +2956,7 @@ def validate_repository(root: Path) -> None:
     retained_bundles = root / "qualification/retained-bundles"
     if retained_bundles.is_dir():
         from .g1_direct_srt import validate_g1_direct_srt_bundle
+        from .g4_faulted_diamond import validate_g4_faulted_diamond_bundle
         from .g4_srt_over_fips import validate_g4_live_capture_bundle
 
         for bundle in sorted(retained_bundles.iterdir()):
@@ -2925,6 +2969,8 @@ def validate_repository(root: Path) -> None:
                     validate_g4_live_capture_bundle(bundle)
                 elif evidence_type == "g1-direct-srt-baseline":
                     validate_g1_direct_srt_bundle(bundle)
+                elif evidence_type == "g4-faulted-diamond":
+                    validate_g4_faulted_diamond_bundle(bundle)
                 else:
                     errors.append(f"{bundle.relative_to(root)}: unknown retained bundle evidence_type")
             except (ContractError, OSError, ValueError) as exc:

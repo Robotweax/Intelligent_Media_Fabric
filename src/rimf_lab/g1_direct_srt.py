@@ -69,6 +69,12 @@ EVIDENCE_TYPE = "g1-direct-srt-baseline"
 # Each historical bundle is accepted solely when its result manifest matches
 # the digest recorded here; a new run cannot present an old pin as current.
 HISTORICAL_G1_BUNDLES = {
+    # 2026-10-25, run 40189973066: SRT v0.3.1, Telemetry 1a018dfd.
+    "98b352713b76c99a709067c17066a8b5949e048be81e4c896627e0e11acfd85c": {
+        "srt_commit": "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1",
+        "srt_version": "0.3.1",
+        "telemetry_commit": "1a018dfdc89a964b03159aebc155d39bca524384",
+    },
     # 2026-10-22, run 39806840201: SRT v0.3.0, Telemetry 24475483.
     "6b8d341b97ae0eef0d9a5d1b761231a0a17ae189d386b882a9dcb26283ca6827": {
         "srt_commit": "4ae6330d62f2b5030d96964bf3500283f32dd39c",
@@ -919,12 +925,16 @@ def validate_g1_direct_srt_bundle(directory: Path) -> None:
     expected_srt_commit = EXPECTED_SRT_COMMIT
     expected_srt_version = EXPECTED_SRT_VERSION
     expected_telemetry_commit = EXPECTED_TELEMETRY_COMMIT
-    if (
-        isinstance(provenance, dict)
-        and provenance.get("srt_commit") in HISTORICAL_G1_SRT_COMMITS
-    ):
+    # A bundle is historical when any recorded pin differs from the active set; it is
+    # then accepted only through its digest-locked entry, with that entry's pins.
+    current = (EXPECTED_SRT_COMMIT, EXPECTED_TELEMETRY_COMMIT)
+    if isinstance(provenance, dict) and tuple(
+        provenance.get(field) for field in ("srt_commit", "telemetry_commit")
+    ) != current and provenance.get("srt_commit") in HISTORICAL_G1_SRT_COMMITS | {EXPECTED_SRT_COMMIT}:
         historical = HISTORICAL_G1_BUNDLES.get(sha256_file(result_path))
-        if historical is None or historical["srt_commit"] != provenance.get("srt_commit"):
+        if historical is None or any(
+            historical[field] != provenance.get(field) for field in ("srt_commit", "telemetry_commit")
+        ):
             raise ContractError("historical G1 result digest mismatch")
         expected_srt_commit = historical["srt_commit"]
         expected_srt_version = historical["srt_version"]

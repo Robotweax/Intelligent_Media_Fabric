@@ -21,3 +21,18 @@ existing one. That requirement encoded the v0.5.1 teardown-and-rebuild observed 
 extended to record `session_continuity` (`re-established` or `preserved`) rather than demand
 one outcome; this artifact is retained unchanged and is evidence of neither recovery nor
 continuity. Only one 5-second diagnostics sample exists because the run failed early.
+
+The first executable faulted-diamond attempts on 2026-10-28 delivered no media.
+[Run 40735801062](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/40735801062)
+(result and diagnostics files) built a stable diamond (`b` on `r1`, both links up for all 21
+FIPS observations) and an SRT session, but the receiver's unique-received delta stayed 0 for
+all 40 samples, so the runner stopped before injecting the fault. The cause was the frozen
+profile's 1316-byte media datagram: with 64 bytes of IPv6/UDP/SRT headers it exceeds the
+1203-byte inner IPv6 MTU on `fips0` that the
+[SRT-over-FIPS profile](../../docs/protocols/srt-over-fips-profile-v0.md) budgets as a 1139-byte
+clear SRT payload, while the small handshake still connected. An earlier attempt
+([40732541677](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/40732541677))
+failed in the same phase; its bundle was not uploaded because the workflow only made it
+readable after a successful step (fixed). The profile was re-predeclared with six-packet
+1128-byte datagrams and a fail-closed packet-budget check; these artifacts are retained
+unchanged and are not evidence about failover.
