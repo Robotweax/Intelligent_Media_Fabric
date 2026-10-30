@@ -7,7 +7,9 @@ Status: **predeclared design; executable since 2026-10-28** through the separate
 The two-node healthy pilot, its workflow and its retained bundles are unchanged.
 The [first retained run](g4-faulted-diamond-2026-10-28.md) (40743995191) passed this
 experiment on 2026-10-28 and a [repeat](g4-faulted-diamond-repeat-2026-10-28.md) (40748574042)
-reproduced it; both are ordering-only and do not pass G4.
+reproduced it; both are ordering-only and do not pass G4. The
+[fast-detection variant](g4-faulted-diamond-fast-detection-2026-10-30.md) (41022516133) ran on
+2026-10-30 alongside a same-revision baseline.
 
 ## Question and fixed setup
 

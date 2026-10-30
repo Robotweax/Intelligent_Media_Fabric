@@ -70,7 +70,10 @@ The first [faulted-diamond run](g4-faulted-diamond-2026-10-28.md), executed unde
 SIGKILL of the active transit, an observed route-epoch transition after a 31 s FIPS reparent, one SRT
 session spanning both epochs, and an independent downstream decode with 782 missing and 19 concealed
 frames. A [repeat](g4-faulted-diamond-repeat-2026-10-28.md) reproduced it (FIPS reparent in the same
-500 ms window, 758 missing and 18 concealed frames). Both are ordering-only evidence on one local clock domain: no first-divergent-layer,
+500 ms window, 758 missing and 18 concealed frames). A predeclared
+[fast-FIPS-detection variant](g4-faulted-diamond-fast-detection-2026-10-30.md) (link-dead 3 s instead of 30 s)
+cut the downstream gap from 31.2 s to 5.2 s against a same-revision baseline: the outage tracks the FIPS
+link-dead timer. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
 fault-domain, causal or hitless claim exists yet, and G4 stays `in-progress`.
 
 G1 moved to `in-progress` on 2026-10-22 with the
