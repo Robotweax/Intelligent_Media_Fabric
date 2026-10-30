@@ -58,6 +58,9 @@ from .fips_g2_linux import (
 )
 from .fips_g2_linux_alternate_route import (
     ALTERNATE_PATH_ONE_WAY_DELAY_MS,
+    HEARTBEAT_INTERVAL_SECS,
+    LINK_DEAD_TIMEOUT_SECS,
+    TICK_INTERVAL_SECS,
     NODE_ADDR_RE,
     NODE_ADDRESSES,
     REPARENT_BUDGET_SECS,
@@ -435,6 +438,24 @@ def _failure_result(run_id: str, started_at: str, project_revision: str, phase: 
     }
 
 
+# Predeclared FIPS liveness profiles. "g2-alternate-route" is the retained G2 diamond's
+# timer set (also FIPS v0.5.3's defaults) and the profile of the first two retained runs,
+# whose results predate this field. "fast-detection" was predeclared on 2026-10-30.
+FIPS_TIMER_PROFILES: dict[str, dict[str, int]] = {
+    "g2-alternate-route": {"tick_interval_secs": TICK_INTERVAL_SECS,
+                           "heartbeat_interval_secs": HEARTBEAT_INTERVAL_SECS,
+                           "link_dead_timeout_secs": LINK_DEAD_TIMEOUT_SECS},
+    "fast-detection": {"tick_interval_secs": 1, "heartbeat_interval_secs": 1, "link_dead_timeout_secs": 3},
+}
+DEFAULT_FIPS_TIMER_PROFILE = "g2-alternate-route"
+
+
+def fips_timer_profile(name: str) -> dict[str, Any]:
+    if name not in FIPS_TIMER_PROFILES:
+        raise QualificationError(f"unknown FIPS timer profile {name!r}")
+    return {"name": name, **FIPS_TIMER_PROFILES[name]}
+
+
 def run_g4_faulted_diamond(
     *,
     fips_source: Path,
@@ -448,7 +469,9 @@ def run_g4_faulted_diamond(
     ffmpeg: Path,
     output_dir: Path,
     project_revision: str,
+    fips_timers: str = DEFAULT_FIPS_TIMER_PROFILE,
 ) -> dict[str, Any]:
+    timers = fips_timer_profile(fips_timers)
     run_id = str(uuid.uuid4())
     started_at = utc_now()
     phase = "preflight"
@@ -576,7 +599,9 @@ def run_g4_faulted_diamond(
         )
         for index, config in enumerate(configs):
             config.write_text(
-                render_alternate_route_config(sockets[index], dns_enabled=index in (0, 3), peers=peer_specs[index]),
+                render_alternate_route_config(sockets[index], dns_enabled=index in (0, 3), peers=peer_specs[index],
+                                              heartbeat_interval_secs=timers["heartbeat_interval_secs"],
+                                              link_dead_timeout_secs=timers["link_dead_timeout_secs"]),
                 encoding="utf-8",
             )
             config.chmod(0o600)
@@ -852,6 +877,9 @@ def run_g4_faulted_diamond(
                 recovered_ns = time.monotonic_ns()
             if tick % FIPS_OBSERVATION_EVERY == 0 or (injected_ns is not None and reparent_ns is None):
                 envelope = observe_fips(len(fips_observations))
+                if (injected_ns is None and envelope["quality"]["availability"] == "available"
+                        and envelope["payload"]["b_parent_role"] != ROLE_NAMES[active_index]):
+                    raise QualificationError("b's tree parent changed before the fault was injected")
                 if injected_ns is not None and reparent_ns is None and reparented(envelope):
                     reparent_ns = envelope["monotonic_ns"]
                     epoch = 2
@@ -1001,6 +1029,7 @@ def run_g4_faulted_diamond(
                 "srt_recovery_budget_ms": SRT_RECOVERY_BUDGET_NS // 1_000_000,
                 "collector_gap_threshold_ms": GAP_THRESHOLD_NS // 1_000_000,
                 "decode_options": list(DECODE_OPTIONS),
+                "fips_timers": timers,
             },
             "capture": {
                 "srt_samples_per_endpoint": len(sender_samples),
@@ -1170,6 +1199,11 @@ def validate_g4_faulted_diamond_result(result: Any) -> None:
              and profile.get("fixture", {}).get("encode") == list(FIXTURE_ENCODE)
              and profile.get("decode_options") == list(DECODE_OPTIONS),
              "faulted-diamond profile is not the predeclared profile")
+    # Results written before the field existed ran the G2 diamond's timers.
+    timers = profile.get("fips_timers", fips_timer_profile(DEFAULT_FIPS_TIMER_PROFILE))
+    _require(isinstance(timers, dict) and timers.get("name") in FIPS_TIMER_PROFILES
+             and timers == fips_timer_profile(timers["name"]),
+             "faulted-diamond FIPS timers are not a predeclared profile")
     capture = result["capture"]
     _require(capture.get("route_epochs") == [1, 2], "faulted-diamond capture must hold two route epochs")
     _require(capture.get("frames", {}).get("expected_frames") == FIXTURE_FRAMES,
