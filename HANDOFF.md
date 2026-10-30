@@ -77,7 +77,8 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
   ADR-0009 moved Telemetry to `1b12f8d7` (incident-peer media relay). Run 40743995191
   killed the active transit; FIPS reparented after about 31 s, one SRT session (peer idle
   60 s) spanned both route epochs, and an independent FFmpeg decode showed 782 missing and
-  19 concealed frames. It is ordering-only, not causal or hitless, and does not pass G4. The
+  19 concealed frames; a [repeat](docs/qualification/g4-faulted-diamond-repeat-2026-10-28.md)
+  (run 40748574042) reproduced it. It is ordering-only, not causal or hitless, and does not pass G4. The
   [healthy pilot](docs/qualification/g4-live-capture-telemetry-1b12f8d7-2026-10-28.md) (run 40745656211)
   and [G1 run](docs/qualification/g1-direct-srt-baseline-2026-10-28.md) (run 40743995008) at the
   new pin are retained; the 2026-10-25 bundles are digest-locked history.
@@ -131,7 +132,7 @@ clock domains, route epochs and downstream identity checks.
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
 2. Build on the [first faulted-diamond run](docs/qualification/g4-faulted-diamond-2026-10-28.md):
-   repeat it, then predeclare variants (default 5 s peer idle, other fault types, the
+   it is repeated once; next predeclare variants (default 5 s peer idle, other fault types, the
    SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)

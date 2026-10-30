@@ -69,7 +69,8 @@ The first [faulted-diamond run](g4-faulted-diamond-2026-10-28.md), executed unde
 [predeclared plan](g4-faulted-diamond-experiment-plan-2026-09-23.md), is retained from 2026-10-28:
 SIGKILL of the active transit, an observed route-epoch transition after a 31 s FIPS reparent, one SRT
 session spanning both epochs, and an independent downstream decode with 782 missing and 19 concealed
-frames. It is ordering-only evidence on one local clock domain: no first-divergent-layer,
+frames. A [repeat](g4-faulted-diamond-repeat-2026-10-28.md) reproduced it (FIPS reparent in the same
+500 ms window, 758 missing and 18 concealed frames). Both are ordering-only evidence on one local clock domain: no first-divergent-layer,
 fault-domain, causal or hitless claim exists yet, and G4 stays `in-progress`.
 
 G1 moved to `in-progress` on 2026-10-22 with the
