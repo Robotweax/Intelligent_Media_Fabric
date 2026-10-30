@@ -136,6 +136,8 @@ def _parser() -> argparse.ArgumentParser:
                    "--output-dir"):
         diamond_run_parser.add_argument(option, type=Path, required=True)
     diamond_run_parser.add_argument("--project-revision", required=True)
+    diamond_run_parser.add_argument("--fips-timers", choices=("g2-alternate-route", "fast-detection"),
+                                    default="g2-alternate-route")
 
     diamond_bundle_parser = subparsers.add_parser(
         "validate-g4-faulted-diamond",
@@ -370,6 +372,7 @@ def main(argv: list[str] | None = None) -> int:
                 ffmpeg=args.ffmpeg,
                 output_dir=args.output_dir,
                 project_revision=args.project_revision,
+                fips_timers=args.fips_timers,
             )
             print(f"G4 faulted diamond: {result['status']} ({args.output_dir})")
         elif args.command == "validate-g4-faulted-diamond":

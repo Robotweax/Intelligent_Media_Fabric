@@ -7,7 +7,9 @@ Status: **predeclared design; executable since 2026-10-28** through the separate
 The two-node healthy pilot, its workflow and its retained bundles are unchanged.
 The [first retained run](g4-faulted-diamond-2026-10-28.md) (40743995191) passed this
 experiment on 2026-10-28 and a [repeat](g4-faulted-diamond-repeat-2026-10-28.md) (40748574042)
-reproduced it; both are ordering-only and do not pass G4.
+reproduced it; both are ordering-only and do not pass G4. The
+[fast-detection variant](g4-faulted-diamond-fast-detection-2026-10-30.md) (41022516133) ran on
+2026-10-30 alongside a same-revision baseline.
 
 ## Question and fixed setup
 
@@ -118,7 +120,7 @@ timeline is valid but it is superseded and not retained as a result. Nothing els
 
 | Item | Value |
 | --- | --- |
-| Topology | Retained G2 alternate-route diamond: same FIPS timers, 20 ms one-way stimulus on r2–b, no a–b underlay, IPv4 forwarding off on both transits |
+| Topology | Retained G2 alternate-route diamond: same FIPS timers (profile `g2-alternate-route`; see the variant below), 20 ms one-way stimulus on r2–b, no a–b underlay, IPv4 forwarding off on both transits |
 | Pins | SRT v0.3.1 `57fcf51a`, SRT Telemetry `1b12f8d7` (media relay), FIPS v0.5.3 `f4a5b4a8`, FFmpeg `6.1.1-3ubuntu5` |
 | Fixture | `testsrc2` 320×180, 25 fps, 160 s, MPEG-2 GOP 25 without B-frames, 600 kbit/s video in a 1 Mbit/s CBR transport stream, bit-exact: 4000 frames |
 | Source | 1128-byte datagrams (six TS packets) on an absolute schedule (9.024 ms), into the caller's relay on `a`; must fit the fips0 clear SRT payload budget (reported inner IPv6 MTU − 64 B), checked before the run |
@@ -129,3 +131,36 @@ timeline is valid but it is superseded and not retained as a result. Nothing els
 | Route epoch 2 | Only when a FIPS observation shows `b` on the other transit with the G2 peer/link/tree conditions; evidence = that observation and the one before it |
 | Stop rules | Reparent within 60 s and SRT delivery resumed within 120 s of the fault, at least 10 s of media after recovery; otherwise failed |
 | Output | Ordering-only timeline (intervals in ms from the SIGKILL, unordered when they overlap), frame comparison, replayable adapters; `G4: not-passed`, no causal claim |
+
+## Variant: fast FIPS detection (predeclared 2026-10-30)
+
+Set before any run of the variant, after the two retained runs of the profile above
+([first](g4-faulted-diamond-2026-10-28.md), [repeat](g4-faulted-diamond-repeat-2026-10-28.md)).
+Both showed FIPS link loss and reparent in the same 500 ms window about 31 s after the kill,
+which matches the diamond's configured `link_dead_timeout_secs: 30` (heartbeat 10 s, tick
+1 s, the FIPS v0.5.3 defaults). The variant asks one question: does the media outage track
+the FIPS link-dead timer?
+
+Exactly one thing changes. The FIPS liveness timers on all four nodes become heartbeat 1 s
+and link-dead 3 s (tick stays 1 s). This is profile `fast-detection`. The baseline
+profile is now named `g2-alternate-route`, and results recorded before the field existed
+are read as that profile. Everything else in the frozen table above is unchanged, including
+the 60 s SRT peer-idle timeout, the fault, its timing, the sampling and the stop rules. Each
+workflow run executes both profiles side by side, so every variant run comes with a
+same-revision baseline run.
+
+FIPS v0.5.3 has no floor for `heartbeat_interval_secs`, and its own tests cover a 1 s
+interval. Two couplings in the pinned source are recorded as known and not compensated:
+- The msg1 replay damper (15 s) is documented as sitting below a 30 s link-dead timeout.
+- FMP's liveness interval is a 10 s constant that does not follow the config.
+
+Neither applies to a transit that stays dead for the rest of the run. A shorter link-dead
+timeout can also reap a healthy but delayed link. The 20 ms stimulus on r2–b is far below
+3 s. A reap before the fault would show up as an early route change, so from this
+declaration on, both profiles fail closed if any FIPS observation before the kill shows `b`
+on a parent other than the transit about to be killed.
+
+What will be reported, with no budget or threshold attached: the same ordering-only
+timeline and frame comparison, side by side with the same-revision baseline run. The
+variant cannot pass G4 or set a FIPS product timer. Choosing production FIPS timers stays an
+owner decision outside this experiment.

@@ -47,6 +47,7 @@
 - [Healthy SRT v0.3.1 over FIPS v0.5.3 live capture](qualification/g4-live-capture-srt-031-2026-10-25.md)
 - [G4 faulted-diamond experiment, first retained run](qualification/g4-faulted-diamond-2026-10-28.md)
 - [G4 faulted-diamond experiment, repeat](qualification/g4-faulted-diamond-repeat-2026-10-28.md)
+- [G4 faulted-diamond fast-FIPS-detection variant](qualification/g4-faulted-diamond-fast-detection-2026-10-30.md)
 - [Healthy live capture at Telemetry 1b12f8d7](qualification/g4-live-capture-telemetry-1b12f8d7-2026-10-28.md)
 - [G1 direct-SRT baseline, third retained run (Telemetry 1b12f8d7)](qualification/g1-direct-srt-baseline-2026-10-28.md)
 

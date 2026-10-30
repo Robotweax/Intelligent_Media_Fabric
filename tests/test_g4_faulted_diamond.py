@@ -16,6 +16,7 @@ from rimf_lab.g4_faulted_diamond import (
     SRT_PEER_IDLE_TIMEOUT_MS,
     DECODE_OPTIONS,
     compute_timeline,
+    fips_timer_profile,
     retimed_frame_count,
     validate_g4_faulted_diamond_result,
     validate_route_epoch_event,
@@ -234,6 +235,48 @@ class ResultContractTests(unittest.TestCase):
         result["files"] = {}
         with self.assertRaisesRegex(ContractError, "failed"):
             validate_g4_faulted_diamond_result(result)
+
+
+class FipsTimerProfileTests(unittest.TestCase):
+    def config(self, **timers: int) -> str:
+        from rimf_lab.fips_g2_linux_alternate_route import render_alternate_route_config
+
+        return render_alternate_route_config(Path("/run/fips.sock"), dns_enabled=False, peers=[], **timers)
+
+    def test_default_rendering_is_the_g2_diamond_config(self):
+        g2 = fips_timer_profile("g2-alternate-route")
+        self.assertEqual(self.config(), self.config(heartbeat_interval_secs=g2["heartbeat_interval_secs"],
+                                                    link_dead_timeout_secs=g2["link_dead_timeout_secs"]))
+        self.assertIn("heartbeat_interval_secs: 10\n  link_dead_timeout_secs: 30\n", self.config())
+
+    def test_fast_detection_renders_its_predeclared_timers(self):
+        fast = fips_timer_profile("fast-detection")
+        self.assertEqual((fast["tick_interval_secs"], fast["heartbeat_interval_secs"], fast["link_dead_timeout_secs"]),
+                         (1, 1, 3))
+        text = self.config(heartbeat_interval_secs=1, link_dead_timeout_secs=3)
+        self.assertIn("tick_interval_secs: 1\n  heartbeat_interval_secs: 1\n  link_dead_timeout_secs: 3\n", text)
+
+    def test_rejects_unordered_or_out_of_range_timers(self):
+        for heartbeat, dead in ((3, 3), (0, 3), (1, 31)):
+            with self.subTest(heartbeat=heartbeat, dead=dead), self.assertRaises(ValueError):
+                self.config(heartbeat_interval_secs=heartbeat, link_dead_timeout_secs=dead)
+
+    def test_result_contract_accepts_only_predeclared_timer_profiles(self):
+        legacy = passed_result()
+        legacy["profile"].pop("fips_timers", None)
+        validate_g4_faulted_diamond_result(legacy)
+        for name in ("g2-alternate-route", "fast-detection"):
+            result = passed_result()
+            result["profile"]["fips_timers"] = fips_timer_profile(name)
+            validate_g4_faulted_diamond_result(result)
+        for timers in ({**fips_timer_profile("fast-detection"), "link_dead_timeout_secs": 5},
+                       {**fips_timer_profile("fast-detection"), "name": "tuned"},
+                       "fast-detection"):
+            with self.subTest(timers=timers):
+                result = passed_result()
+                result["profile"]["fips_timers"] = timers
+                with self.assertRaisesRegex(ContractError, "FIPS timers"):
+                    validate_g4_faulted_diamond_result(result)
 
 
 if __name__ == "__main__":

@@ -163,7 +163,12 @@ def render_alternate_route_config(
     *,
     dns_enabled: bool,
     peers: list[tuple[str, str, str]],
+    heartbeat_interval_secs: int = HEARTBEAT_INTERVAL_SECS,
+    link_dead_timeout_secs: int = LINK_DEAD_TIMEOUT_SECS,
 ) -> str:
+    if not (isinstance(heartbeat_interval_secs, int) and isinstance(link_dead_timeout_secs, int)
+            and 1 <= heartbeat_interval_secs < link_dead_timeout_secs <= LINK_DEAD_TIMEOUT_SECS):
+        raise ValueError("FIPS liveness timers must satisfy 1 <= heartbeat < link-dead <= 30 s")
     peer_lines: list[str] = []
     for alias, npub, address in peers:
         if not alias or not NPUB_RE.fullmatch(npub):
@@ -192,8 +197,8 @@ def render_alternate_route_config(
     enabled: true
     socket_path: "{control_socket}"
   tick_interval_secs: {TICK_INTERVAL_SECS}
-  heartbeat_interval_secs: {HEARTBEAT_INTERVAL_SECS}
-  link_dead_timeout_secs: {LINK_DEAD_TIMEOUT_SECS}
+  heartbeat_interval_secs: {heartbeat_interval_secs}
+  link_dead_timeout_secs: {link_dead_timeout_secs}
   retry:
     max_retries: 5
     base_interval_secs: {RETRY_BASE_INTERVAL_SECS}
