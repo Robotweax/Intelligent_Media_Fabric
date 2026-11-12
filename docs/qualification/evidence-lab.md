@@ -341,6 +341,8 @@ as `route_epoch_transitions`) and byte-replayable observations, FIPS observation
 envelopes, route-epoch events, source and collector summaries, both relays' counters, both
 framehash files and their comparison, and an ordering-only timeline that the validator
 recomputes from those files. Missing reparenting, missing recovery, a profile mismatch or an
-incomplete teardown fails the run. A passing run records `G4: not-passed` and makes no
+incomplete teardown fails the run. Under the predeclared `default` SRT peer-idle profile
+(5 s) a session that ends is a recorded outcome instead: the run passes with
+`srt_session_survived: false`, and the timeline carries `srt_session_end`. A passing run records `G4: not-passed` and makes no
 first-divergent-layer or causal claim. See
 [ADR-0009](../decisions/0009-faulted-diamond-media-observation.md).

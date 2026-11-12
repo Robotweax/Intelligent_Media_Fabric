@@ -80,7 +80,10 @@ frames. A [repeat](g4-faulted-diamond-repeat-2026-10-28.md) reproduced it (FIPS 
 500 ms window, 758 missing and 18 concealed frames). A predeclared
 [fast-FIPS-detection variant](g4-faulted-diamond-fast-detection-2026-10-30.md) (link-dead 3 s instead of 30 s)
 cut the downstream gap from 31.2 s to 5.2 s against a same-revision baseline: the outage tracks the FIPS
-link-dead timer. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
+link-dead timer. A predeclared
+[default-SRT-peer-idle variant](g4-faulted-diamond-default-peer-idle-2026-11-12.md) (5 s instead of 60 s, at
+SRT v0.3.2) ended the SRT session under both FIPS timer profiles, including link-dead 3 s; the incident
+peer does not reconnect, so no recovery time is measured. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
 fault-domain, causal or hitless claim exists yet, and G4 stays `in-progress`.
 
 G1 moved to `in-progress` on 2026-10-22 with the

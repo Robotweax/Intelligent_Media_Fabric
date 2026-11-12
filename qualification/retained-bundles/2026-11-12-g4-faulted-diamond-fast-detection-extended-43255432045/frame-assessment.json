@@ -1,0 +1,23 @@
+{
+  "changed_frames": 18,
+  "classification": "observer-component",
+  "evidence_type": "decoded-media-frame-comparison",
+  "expected_frames": 4000,
+  "first_changed_pts": 499,
+  "first_missing_pts": 500,
+  "first_unexpected_pts": null,
+  "gate_conclusion": {
+    "G4": "not-passed",
+    "reason": "observer-only-no-fault-causality"
+  },
+  "max_consecutive_missing_frames": 83,
+  "missing_frames": 83,
+  "observed_frames": 3917,
+  "observed_sha256": "4b1200a98a239d312d21dbe334c07e9acef744034201342dc6c20e1cc461fcd7",
+  "reference_sha256": "21d9e00cdf5bfe323fb5f85a8887d1c140de37a7b44646a267db4a79e1f0d074",
+  "schema_version": 1,
+  "size_changed_frames": 0,
+  "status": "diverged",
+  "time_base": "1/25",
+  "unexpected_frames": 0
+}
