@@ -138,6 +138,7 @@ def _parser() -> argparse.ArgumentParser:
     diamond_run_parser.add_argument("--project-revision", required=True)
     diamond_run_parser.add_argument("--fips-timers", choices=("g2-alternate-route", "fast-detection"),
                                     default="g2-alternate-route")
+    diamond_run_parser.add_argument("--srt-peer-idle", choices=("extended", "default"), default="extended")
 
     diamond_bundle_parser = subparsers.add_parser(
         "validate-g4-faulted-diamond",
@@ -373,6 +374,7 @@ def main(argv: list[str] | None = None) -> int:
                 output_dir=args.output_dir,
                 project_revision=args.project_revision,
                 fips_timers=args.fips_timers,
+                srt_peer_idle=args.srt_peer_idle,
             )
             print(f"G4 faulted diamond: {result['status']} ({args.output_dir})")
         elif args.command == "validate-g4-faulted-diamond":

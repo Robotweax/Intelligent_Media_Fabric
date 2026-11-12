@@ -143,7 +143,13 @@ DATAGRAM_BYTES = 6 * TS_PACKET_BYTES
 INJECT_AFTER_SOURCE_START_NS = 20_000_000_000
 SRT_SAMPLE_INTERVAL_NS = 500_000_000
 FIPS_OBSERVATION_EVERY = 2
-SRT_PEER_IDLE_TIMEOUT_MS = 60_000
+# Predeclared SRT peer-idle profiles. "extended" (60 s) is the frozen profile of every run
+# retained through 2026-11-12; it lets one session span the measured outage. "default"
+# (5 s, SRT's default) was predeclared on 2026-11-12: under it a session that ends during
+# the outage is an observed outcome, not a failed run.
+SRT_PEER_IDLE_PROFILES: dict[str, int] = {"extended": 60_000, "default": 5_000}
+DEFAULT_SRT_PEER_IDLE_PROFILE = "extended"
+SRT_PEER_IDLE_TIMEOUT_MS = SRT_PEER_IDLE_PROFILES[DEFAULT_SRT_PEER_IDLE_PROFILE]
 SRT_RECEIVE_TIMEOUT_MS = 500
 SRT_RECOVERY_BUDGET_NS = 120_000_000_000
 POST_RECOVERY_MINIMUM_NS = 10_000_000_000
@@ -265,6 +271,7 @@ def compute_timeline(
     sender: list[dict],
     receiver: list[dict],
     collector: dict,
+    relay: dict | None = None,
 ) -> dict[str, Any]:
     """Derive the ordering-only timeline from retained files (runner and validator share it).
 
@@ -272,6 +279,11 @@ def compute_timeline(
     the change happened after `lower` (the last observation without it) and was
     observed at `upper`. Downstream media stop and resume are point arrivals at the
     collector. Nothing here identifies a cause.
+
+    `relay` is the retained media-relay record. When it reports an ended SRT session,
+    the timeline gains `srt_session_end`, and a downstream stop that never resumed is
+    taken from the collector's last arrival. A timeline of a surviving session is
+    unchanged by it.
     """
     by_kind = {event["payload"]["event"]: event for event in fault_events if event["source"] == "fabric"}
     injection = by_kind["sigkill-sent"]["monotonic_ns"]
@@ -327,7 +339,14 @@ def compute_timeline(
          if item["end_ns"] > injection),
         None,
     )
-    if gap is None:
+    stopped = (relay or {}).get("stopped", {})
+    ended = {role: stopped.get(role, {}).get("connectionBroken") is True for role in ("sender", "receiver")}
+    if gap is None and any(ended.values()) and isinstance(collector.get("last_arrival_monotonic_ns"), int):
+        stop = round((collector["last_arrival_monotonic_ns"] - injection) / 1_000_000)
+        timeline["media_downstream_stop"] = [stop, stop]
+        timeline["media_downstream_resume"] = None
+        timeline["media_downstream_gap_ms"] = None
+    elif gap is None:
         timeline["media_downstream_stop"] = None
         timeline["media_downstream_resume"] = None
         timeline["media_downstream_gap_ms"] = None
@@ -350,6 +369,17 @@ def compute_timeline(
     timeline["divergence_ordering"] = ordering
     timeline["earliest_observed_change"] = observed[0][0] if observed else None
     timeline["ordering_resolved"] = resolved
+    if any(ended.values()):
+        # The relay stops at the first send or receive that reports the ended session,
+        # so each endpoint's last relayed message bounds its session end from below.
+        def last_message(role: str) -> int | None:
+            moment = stopped.get(role, {}).get("lastMessageMonotonicNano")
+            return round((moment - injection) / 1_000_000) if _positive(moment) else None
+        timeline["srt_session_end"] = {
+            "sender_ended": ended["sender"], "receiver_ended": ended["receiver"],
+            "sender_last_relayed_message": last_message("sender"),
+            "receiver_last_relayed_message": last_message("receiver"),
+        }
     timeline["causal_claim"] = None
     return timeline
 
@@ -402,10 +432,10 @@ def _framehash(ffmpeg: Path, media: Path, output: Path, label: str) -> None:
     )
 
 
-def _peer_arguments(role: str, recording: Path, flow_id: str) -> list[str]:
+def _peer_arguments(role: str, recording: Path, flow_id: str, peer_idle_ms: int) -> list[str]:
     return [
         "--role", role,
-        "--peer-idle-timeout-ms", str(SRT_PEER_IDLE_TIMEOUT_MS),
+        "--peer-idle-timeout-ms", str(peer_idle_ms),
         "--receive-timeout-ms", str(SRT_RECEIVE_TIMEOUT_MS),
         "--message-bytes", str(DATAGRAM_BYTES),
         "--jsonl-output", str(recording),
@@ -477,6 +507,12 @@ def fips_timer_profile(name: str) -> dict[str, Any]:
     return {"name": name, **FIPS_TIMER_PROFILES[name]}
 
 
+def srt_peer_idle_timeout_ms(name: str) -> int:
+    if name not in SRT_PEER_IDLE_PROFILES:
+        raise QualificationError(f"unknown SRT peer-idle profile {name!r}")
+    return SRT_PEER_IDLE_PROFILES[name]
+
+
 def run_g4_faulted_diamond(
     *,
     fips_source: Path,
@@ -491,8 +527,12 @@ def run_g4_faulted_diamond(
     output_dir: Path,
     project_revision: str,
     fips_timers: str = DEFAULT_FIPS_TIMER_PROFILE,
+    srt_peer_idle: str = DEFAULT_SRT_PEER_IDLE_PROFILE,
 ) -> dict[str, Any]:
     timers = fips_timer_profile(fips_timers)
+    peer_idle_ms = srt_peer_idle_timeout_ms(srt_peer_idle)
+    # Only the default profile may end with a session that did not resume delivery.
+    session_end_allowed = srt_peer_idle != DEFAULT_SRT_PEER_IDLE_PROFILE
     run_id = str(uuid.uuid4())
     started_at = utc_now()
     phase = "preflight"
@@ -779,7 +819,7 @@ def run_g4_faulted_diamond(
         _wait_for(collector_up, label="independent media collector", timeout=10)
         listener = _Peer(_peer_command(
             namespaces[3], incident_peer, library_dir,
-            _peer_arguments("listener", receiver_source, flow_id)
+            _peer_arguments("listener", receiver_source, flow_id, peer_idle_ms)
             + ["--bind-address", destination, "--media-udp-output", f"127.0.0.1:{OUTPUT_PORT}"]))
         ready = _parse_prefixed_json(listener.wait_for("READY"), "READY")
         port = ready.get("port")
@@ -787,14 +827,14 @@ def run_g4_faulted_diamond(
             raise QualificationError("SRT listener returned an invalid port")
         caller = _Peer(_peer_command(
             namespaces[0], incident_peer, library_dir,
-            _peer_arguments("caller", sender_source, flow_id)
+            _peer_arguments("caller", sender_source, flow_id, peer_idle_ms)
             + ["--remote-address", destination, "--port", str(port),
                "--media-udp-input", f"127.0.0.1:{SOURCE_PORT}"]))
         profiles = {}
         for name, peer, direction in (("receiver", listener, "srt-to-udp"), ("sender", caller, "udp-to-srt")):
             peer.wait_for("CONNECTED", timeout=30)
             profile = _parse_prefixed_json(peer.wait_for("PROFILE"), "PROFILE")
-            if (profile.get("peerIdleTimeoutMillis") != SRT_PEER_IDLE_TIMEOUT_MS
+            if (profile.get("peerIdleTimeoutMillis") != peer_idle_ms
                     or profile.get("receiveTimeoutMillis") != SRT_RECEIVE_TIMEOUT_MS
                     or profile.get("mediaRelay") != direction
                     or profile.get("tooLatePacketDrop") is not True):
@@ -952,7 +992,8 @@ def run_g4_faulted_diamond(
                     raise QualificationError("faulted transit underlay did not stay up")
             if injected_ns is not None and reparent_ns is None and now - injected_ns > REPARENT_BUDGET_SECS * 1_000_000_000:
                 raise QualificationError("automatic reparenting was not observed within its budget")
-            if injected_ns is not None and recovered_ns is None and now - injected_ns > SRT_RECOVERY_BUDGET_NS:
+            if (injected_ns is not None and recovered_ns is None and not session_end_allowed
+                    and now - injected_ns > SRT_RECOVERY_BUDGET_NS):
                 raise QualificationError("SRT media delivery did not resume within its budget")
             if source.poll() is not None and source_done_ns is None:
                 if source.returncode != 0:
@@ -961,9 +1002,9 @@ def run_g4_faulted_diamond(
             if source_done_ns is not None and now - source_done_ns >= DRAIN_NS:
                 break
             tick += 1
-        if injected_ns is None or reparent_ns is None or recovered_ns is None:
+        if injected_ns is None or reparent_ns is None or (recovered_ns is None and not session_end_allowed):
             raise QualificationError("the fixture ended before injection, reparenting and recovery were observed")
-        if source_done_ns - recovered_ns < POST_RECOVERY_MINIMUM_NS:
+        if recovered_ns is not None and source_done_ns - recovered_ns < POST_RECOVERY_MINIMUM_NS:
             raise QualificationError("too little media followed recovery to observe it")
 
         phase = "media-stop"
@@ -971,6 +1012,9 @@ def run_g4_faulted_diamond(
         for name, peer in (("sender", caller), ("receiver", listener)):
             peer.send("STOP_MEDIA")
             relay[name] = _parse_prefixed_json(peer.wait_for("MEDIA_STOPPED", timeout=10), "MEDIA_STOPPED")
+        session_survived = not relay["sender"]["connectionBroken"] and not relay["receiver"]["connectionBroken"]
+        if recovered_ns is None and session_survived:
+            raise QualificationError("SRT media delivery did not resume although no endpoint reported an ended session")
         final = tick + 1
         sender, receiver = _sample_pair(listener, caller, final)
         sender_samples.append(sender)
@@ -1012,7 +1056,8 @@ def run_g4_faulted_diamond(
         timeline = compute_timeline(
             fault_events=fault_events, fips_observations=fips_observations, route_epochs=route_epochs,
             sender=sender_observations, receiver=receiver_observations,
-            collector=load_json(staging / "media-collector.json"))
+            collector=load_json(staging / "media-collector.json"),
+            relay=load_json(staging / "media-relay.json"))
         source_record = load_json(staging / "media-source.json")
         collector_record = load_json(staging / "media-collector.json")
         result = {
@@ -1044,7 +1089,7 @@ def run_g4_faulted_diamond(
                 "inject_after_source_start_ms": INJECT_AFTER_SOURCE_START_NS // 1_000_000,
                 "srt_sample_interval_ms": SRT_SAMPLE_INTERVAL_NS // 1_000_000,
                 "fips_observation_interval_ms": SRT_SAMPLE_INTERVAL_NS * FIPS_OBSERVATION_EVERY // 1_000_000,
-                "srt_peer_idle_timeout_ms": SRT_PEER_IDLE_TIMEOUT_MS,
+                "srt_peer_idle_timeout_ms": peer_idle_ms,
                 "srt_receive_timeout_ms": SRT_RECEIVE_TIMEOUT_MS,
                 "reparent_budget_ms": REPARENT_BUDGET_SECS * 1000,
                 "srt_recovery_budget_ms": SRT_RECOVERY_BUDGET_NS // 1_000_000,
@@ -1057,7 +1102,8 @@ def run_g4_faulted_diamond(
                 "missed_sample_intervals": missed_intervals,
                 "fips_observations": len(fips_observations),
                 "route_epochs": [item["route_epoch"] for item in route_epochs],
-                "srt_session_survived": not relay["sender"]["connectionBroken"] and not relay["receiver"]["connectionBroken"],
+                "srt_session_survived": session_survived,
+                "srt_delivery_resumed": recovered_ns is not None,
                 "source_datagrams": source_record["datagrams"],
                 "collected_datagrams": collector_record["datagrams"],
                 "frames": {name: assessment[name] for name in (
@@ -1076,7 +1122,10 @@ def run_g4_faulted_diamond(
                 "Each layer is observed at its own resolution (collector per datagram, SRT 500 ms, FIPS about 1 s); "
                 "overlapping intervals are reported as unordered.",
                 "Temporal ordering does not establish a cause or a first divergent layer.",
-                "The SRT profile raises the peer idle timeout to 60 s for this experiment; it is not a product setting.",
+                ("The SRT profile raises the peer idle timeout to 60 s for this experiment; it is not a product setting."
+                 if not session_end_allowed else
+                 "The SRT peer idle timeout is the 5 s default; the incident peer does not reconnect, so an ended "
+                 "session ends media for the rest of the run and no reconnection time is measured."),
                 "The downstream decode runs after the run on the collected stream; it is not a live player.",
             ],
         }
@@ -1220,7 +1269,7 @@ def validate_g4_faulted_diamond_result(
              and isinstance(budget.get("clear_srt_payload_budget_bytes"), int)
              and DATAGRAM_BYTES <= budget["clear_srt_payload_budget_bytes"],
              "faulted-diamond media datagrams do not fit the recorded packet budget")
-    _require(profile.get("srt_peer_idle_timeout_ms") == SRT_PEER_IDLE_TIMEOUT_MS
+    _require(profile.get("srt_peer_idle_timeout_ms") in SRT_PEER_IDLE_PROFILES.values()
              and profile.get("inject_after_source_start_ms") == INJECT_AFTER_SOURCE_START_NS // 1_000_000
              and profile.get("fixture", {}).get("frames") == FIXTURE_FRAMES
              and profile.get("fixture", {}).get("encode") == list(FIXTURE_ENCODE)
@@ -1233,6 +1282,13 @@ def validate_g4_faulted_diamond_result(
              "faulted-diamond FIPS timers are not a predeclared profile")
     capture = result["capture"]
     _require(capture.get("route_epochs") == [1, 2], "faulted-diamond capture must hold two route epochs")
+    # Results written before the field existed all resumed delivery. Delivery that never
+    # resumed is a valid outcome only for an ended session under the default peer-idle profile.
+    resumed = capture.get("srt_delivery_resumed", True)
+    _require(isinstance(resumed, bool) and isinstance(capture.get("srt_session_survived"), bool)
+             and (resumed or (capture["srt_session_survived"] is False
+                              and profile["srt_peer_idle_timeout_ms"] == SRT_PEER_IDLE_PROFILES["default"])),
+             "faulted-diamond delivery outcome does not match the predeclared SRT peer-idle profile")
     _require(capture.get("frames", {}).get("expected_frames") == FIXTURE_FRAMES,
              "faulted-diamond frame comparison is incomplete")
     _require(set(result["files"]) == set(BUNDLE_FILES), "faulted-diamond file inventory is invalid")
@@ -1310,8 +1366,20 @@ def validate_g4_faulted_diamond_bundle(directory: Path) -> None:
         fault_events=faults, fips_observations=fips, route_epochs=route_epochs,
         sender=_read_jsonl(directory / "sender-observations.jsonl"),
         receiver=_read_jsonl(directory / "receiver-observations.jsonl"),
-        collector=load_json(directory / "media-collector.json"))
+        collector=load_json(directory / "media-collector.json"),
+        relay=load_json(directory / "media-relay.json"))
     _require(timeline == result["timeline"], "timeline is not reproducible from the retained files")
+    relay = load_json(directory / "media-relay.json")
+    ended = [relay.get("stopped", {}).get(role, {}).get("connectionBroken") for role in ("sender", "receiver")]
+    _require(all(isinstance(value, bool) for value in ended)
+             and result["capture"]["srt_session_survived"] is (not any(ended)),
+             "srt_session_survived disagrees with the retained media-relay record")
+    _require(all(profile.get("peerIdleTimeoutMillis") == result["profile"]["srt_peer_idle_timeout_ms"]
+                 for profile in relay.get("profiles", {}).values()) and len(relay.get("profiles", {})) == 2,
+             "recorded SRT peer-idle timeout disagrees with the profile")
+    resumed = result["capture"].get("srt_delivery_resumed", True)
+    _require(resumed is (result["timeline"]["srt_receiver_resume"] is not None),
+             "srt_delivery_resumed disagrees with the recomputed timeline")
     source = load_json(directory / "media-source.json")
     _require(source.get("fixture_sha256") == result["profile"]["fixture"]["sha256"]
              and source.get("datagram_bytes") == DATAGRAM_BYTES

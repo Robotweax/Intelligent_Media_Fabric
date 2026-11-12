@@ -37,8 +37,11 @@ jobs:
       matrix:
         # Predeclared FIPS liveness profiles; see the faulted-diamond plan.
         fips_timers: [g2-alternate-route, fast-detection]
+        # Predeclared SRT peer-idle profiles: extended (60 s) and default (5 s).
+        srt_peer_idle: [extended, default]
     env:
       FIPS_TIMERS: ${{ matrix.fips_timers }}
+      SRT_PEER_IDLE: ${{ matrix.srt_peer_idle }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -178,7 +181,8 @@ jobs:
               --ffmpeg /usr/bin/ffmpeg \
               --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
               --project-revision "${{ github.event.pull_request.head.sha || github.sha }}" \
-              --fips-timers "$FIPS_TIMERS"
+              --fips-timers "$FIPS_TIMERS" \
+              --srt-peer-idle "$SRT_PEER_IDLE"
 
       - name: Make the bundle readable and show a failed result
         if: always()
@@ -200,13 +204,16 @@ jobs:
         run: |
           r="$OUTPUT_DIR/result.json"
           {
-            echo "## G4 faulted diamond ($FIPS_TIMERS)"
+            echo "## G4 faulted diamond ($FIPS_TIMERS, SRT peer idle $SRT_PEER_IDLE)"
             echo
             echo "- FIPS timers: $(jq -c '.profile.fips_timers' "$r")"
             echo "- Experiment status: $(jq -r '.status' "$r")"
             echo "- Killed transit / alternate: $(jq -r '.topology.initial_active_transit' "$r") / $(jq -r '.topology.alternate_transit' "$r")"
             echo "- Route epochs: $(jq -c '.capture.route_epochs' "$r")"
+            echo "- SRT peer idle timeout ms: $(jq -r '.profile.srt_peer_idle_timeout_ms' "$r")"
             echo "- SRT session survived: $(jq -r '.capture.srt_session_survived' "$r")"
+            echo "- SRT delivery resumed: $(jq -r '.capture.srt_delivery_resumed' "$r")"
+            echo "- SRT session end: $(jq -c '.timeline.srt_session_end // "not observed"' "$r")"
             echo "- Frames expected / observed / missing / changed: $(jq -r '.capture.frames | "\(.expected_frames) / \(.observed_frames) / \(.missing_frames) / \(.changed_frames)"' "$r")"
             echo "- Downstream media gap ms: $(jq -r '.timeline.media_downstream_gap_ms' "$r")"
             echo "- FIPS reparent interval ms: $(jq -c '.timeline.fips_reparent' "$r")"
@@ -219,7 +226,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: g4-faulted-diamond-${{ matrix.fips_timers }}-${{ github.run_id }}
+          name: g4-faulted-diamond-${{ matrix.fips_timers }}-${{ matrix.srt_peer_idle }}-${{ github.run_id }}
           path: ${{ env.OUTPUT_DIR }}
           if-no-files-found: warn
           retention-days: 14

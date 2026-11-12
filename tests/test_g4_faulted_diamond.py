@@ -16,11 +16,13 @@ from rimf_lab.g4_faulted_diamond import (
     FIXTURE_FRAMES,
     HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES,
     INJECT_AFTER_SOURCE_START_NS,
+    SRT_PEER_IDLE_PROFILES,
     SRT_PEER_IDLE_TIMEOUT_MS,
     DECODE_OPTIONS,
     compute_timeline,
     fips_timer_profile,
     retimed_frame_count,
+    srt_peer_idle_timeout_ms,
     validate_g4_faulted_diamond_bundle,
     validate_g4_faulted_diamond_result,
     validate_route_epoch_event,
@@ -110,7 +112,8 @@ def passed_result() -> dict:
                                       "clear_srt_payload_budget_bytes": 1139},
                     "inject_after_source_start_ms": INJECT_AFTER_SOURCE_START_NS // MS,
                     "fixture": {"frames": FIXTURE_FRAMES, "encode": list(FIXTURE_ENCODE), "sha256": "0" * 64}},
-        "capture": {"route_epochs": [1, 2], "frames": {"expected_frames": FIXTURE_FRAMES}},
+        "capture": {"route_epochs": [1, 2], "srt_session_survived": True,
+                    "frames": {"expected_frames": FIXTURE_FRAMES}},
         "timeline": {"causal_claim": None},
         "files": {name: {"bytes": 1, "sha256": "0" * 64} for name in BUNDLE_FILES},
         "cleanup": {name: True for name in (
@@ -162,6 +165,82 @@ class TimelineTests(unittest.TestCase):
         self.assertIsNone(timeline["media_downstream_gap_ms"])
         self.assertIsNone(timeline["srt_receiver_stall"])
         self.assertIsNone(timeline["srt_receiver_resume"])
+
+
+class EndedSessionTimelineTests(unittest.TestCase):
+    @staticmethod
+    def relay(sender: bool, receiver: bool) -> dict:
+        return {"stopped": {
+            "sender": {"connectionBroken": sender, "lastMessageMonotonicNano": INJECT + 5_300 * MS},
+            "receiver": {"connectionBroken": receiver, "lastMessageMonotonicNano": INJECT + 3 * MS}}}
+
+    def ended(self) -> dict:
+        data = series()
+        # Delivery never resumes: every receiver sample after the stall stays at zero and
+        # the collector records no closing gap, only its last arrival.
+        for item in data["receiver"]:
+            if item["monotonic_ns"] > INJECT:
+                item["payload"]["sample"]["delta"]["unique_received_packet_delta"] = 0
+        data["collector"] = {"gaps": [], "last_arrival_monotonic_ns": INJECT + 4 * MS}
+        return data
+
+    def test_surviving_session_timeline_is_unchanged_by_the_relay_record(self):
+        self.assertEqual(compute_timeline(**series(), relay=self.relay(False, False)),
+                         compute_timeline(**series()))
+
+    def test_ended_session_reports_stop_without_resume_and_the_session_end(self):
+        timeline = compute_timeline(**self.ended(), relay=self.relay(True, True))
+        self.assertEqual(timeline["media_downstream_stop"], [4, 4])
+        self.assertIsNone(timeline["media_downstream_resume"])
+        self.assertIsNone(timeline["media_downstream_gap_ms"])
+        self.assertIsNone(timeline["srt_receiver_resume"])
+        self.assertEqual(timeline["srt_session_end"], {
+            "sender_ended": True, "receiver_ended": True,
+            "sender_last_relayed_message": 5_300, "receiver_last_relayed_message": 3})
+        self.assertIsNone(timeline["causal_claim"])
+
+    def test_one_sided_end_is_reported_per_endpoint(self):
+        timeline = compute_timeline(**self.ended(), relay=self.relay(True, False))
+        self.assertEqual((timeline["srt_session_end"]["sender_ended"],
+                          timeline["srt_session_end"]["receiver_ended"]), (True, False))
+
+    def test_without_an_ended_session_a_missing_gap_stays_absent(self):
+        timeline = compute_timeline(**self.ended(), relay=self.relay(False, False))
+        self.assertIsNone(timeline["media_downstream_stop"])
+        self.assertNotIn("srt_session_end", timeline)
+
+
+class SrtPeerIdleProfileTests(unittest.TestCase):
+    def test_predeclared_profiles(self):
+        self.assertEqual(SRT_PEER_IDLE_PROFILES, {"extended": 60_000, "default": 5_000})
+        self.assertEqual(srt_peer_idle_timeout_ms("extended"), SRT_PEER_IDLE_TIMEOUT_MS)
+        with self.assertRaises(Exception):
+            srt_peer_idle_timeout_ms("tuned")
+
+    def test_result_contract_accepts_only_predeclared_peer_idle_values(self):
+        for value in SRT_PEER_IDLE_PROFILES.values():
+            result = passed_result()
+            result["profile"]["srt_peer_idle_timeout_ms"] = value
+            validate_g4_faulted_diamond_result(result)
+        result = passed_result()
+        result["profile"]["srt_peer_idle_timeout_ms"] = 10_000
+        with self.assertRaisesRegex(ContractError, "predeclared profile"):
+            validate_g4_faulted_diamond_result(result)
+
+    def test_unresumed_delivery_is_valid_only_for_an_ended_default_profile_session(self):
+        def result(idle: int, survived: bool, resumed: bool) -> dict:
+            value = passed_result()
+            value["profile"]["srt_peer_idle_timeout_ms"] = idle
+            value["capture"]["srt_session_survived"] = survived
+            value["capture"]["srt_delivery_resumed"] = resumed
+            return value
+        validate_g4_faulted_diamond_result(result(5_000, False, False))
+        validate_g4_faulted_diamond_result(result(5_000, True, True))
+        validate_g4_faulted_diamond_result(result(5_000, False, True))
+        for idle, survived in ((60_000, False), (60_000, True), (5_000, True)):
+            with self.subTest(idle=idle, survived=survived):
+                with self.assertRaisesRegex(ContractError, "delivery outcome"):
+                    validate_g4_faulted_diamond_result(result(idle, survived, False))
 
 
 class RetimingGuardTests(unittest.TestCase):
@@ -242,7 +321,7 @@ class ResultContractTests(unittest.TestCase):
             (("gate_conclusion", "G4"), "passed", "not-passed"),
             (("cleanup", "faulted_daemon_reaped"), False, "cleanup"),
             (("capture", "route_epochs"), [1], "two route epochs"),
-            (("profile", "srt_peer_idle_timeout_ms"), 5000, "predeclared"),
+            (("profile", "srt_peer_idle_timeout_ms"), 10_000, "predeclared"),
             (("profile", "datagram_bytes"), 1316, "packet budget"),
             (("provenance", "telemetry_commit"), "f" * 40, "telemetry_commit"),
             (("provenance", "ffmpeg_version"), "ffmpeg version 7.0", "ffmpeg_version"),

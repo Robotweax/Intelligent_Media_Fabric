@@ -165,3 +165,63 @@ What will be reported, with no budget or threshold attached: the same ordering-o
 timeline and frame comparison, side by side with the same-revision baseline run. The
 variant cannot pass G4 or set a FIPS product timer. Choosing production FIPS timers stays an
 owner decision outside this experiment.
+
+## Variant: default SRT peer idle (predeclared 2026-11-12)
+
+Set before any run of the variant, after six retained runs of the profiles above. All six
+used `SRTO_PEERIDLETIMEO` 60 000 ms, chosen only so that one session could span the outage.
+With the `fast-detection` timers the downstream gap was 5.2 s at SRT v0.3.1 and 4.2 s at
+v0.3.2 ([record](g4-faulted-diamond-srt-032-2026-11-12.md)), on either side of SRT's 5 s
+default. The variant asks one question: does a session with the default peer-idle timeout
+survive the outage, under each FIPS timer profile?
+
+Exactly one thing changes. `SRTO_PEERIDLETIMEO` on both peers becomes 5 000 ms. This is
+SRT peer-idle profile `default`; the 60 s setting is now named `extended`, and results
+recorded before the name existed are read as `extended` from their recorded value. The
+topology, fixture, source, fault, its timing, the sampling, the downstream decode and both
+FIPS timer profiles are unchanged. Each workflow run executes all four combinations, so every
+`default` run comes with same-revision `extended` runs.
+
+One stop rule changes, for the `default` profile only. A session that ends is an outcome of
+this experiment, so missing SRT recovery no longer fails the run when at least one endpoint
+reports the ended session at media stop. Every other rule stands:
+- reparenting must still be observed within 60 s of the fault;
+- if delivery resumes, at least 10 s of media must follow it;
+- if delivery does not resume and neither endpoint reports an ended session, the run fails;
+- under `extended`, missing recovery within 120 s fails the run as before.
+
+What an ended session looks like in the bundle, fixed here before the first run:
+- `capture.srt_session_survived` is false and `capture.srt_delivery_resumed` says whether
+  delivery came back before the end of the run. The validator checks both against the
+  retained relay record and the recomputed timeline.
+- The timeline gains `srt_session_end`: which endpoint reported the end, and each endpoint's
+  last relayed message in ms from the SIGKILL. The relay stops at the first send or receive
+  that reports the ended session, so the sender's value is a lower bound on when the sender
+  saw the session end. The SRT samples carry no connection state, so no sampled interval
+  for the end exists.
+- When media never resumes, `media_downstream_stop` is the collector's last arrival and
+  `media_downstream_resume` and `media_downstream_gap_ms` are null. No gap length is reported
+  for an interruption that did not end.
+- The frame comparison then shows every frame after the stop as missing. That count is the
+  length of the fixture's remainder, not a recovery measurement.
+
+Known before the run, and not compensated:
+- The Telemetry incident peer does not reconnect. An ended session ends media for the rest
+  of the run. This variant therefore measures survival only; the interruption an operator
+  would see with a reconnecting application is a separate variant that needs a Telemetry
+  change.
+- On 2026-11-12 a local probe at the pinned revisions (Linux aarch64 container, one peer
+  frozen with SIGSTOP) showed that a peer whose session ended can still be sampled, reports
+  `connectionBroken` and writes its recording. That is what makes this variant runnable
+  without a Telemetry change. It is a feasibility check, not evidence.
+- With the 30 s link-dead profile the session is expected to end, because the outage is
+  about six times the timeout. That combination is kept as the control for the new outcome,
+  not as a question.
+- A single `fast-detection` run cannot settle a result this close to the timeout. Whatever
+  it shows is one observation of a boundary case.
+
+What will be reported, with no budget or threshold attached: for each of the four
+combinations, whether the session survived, whether delivery resumed, the ordering-only
+timeline and the frame comparison. The variant cannot pass G4, cannot set an SRT or FIPS
+product timer, and makes no causal claim. Whether the default profile is acceptable for a
+product is an owner decision (OD-01, OD-15).
