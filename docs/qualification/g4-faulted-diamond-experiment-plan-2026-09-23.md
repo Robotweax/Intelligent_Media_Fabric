@@ -121,7 +121,7 @@ timeline is valid but it is superseded and not retained as a result. Nothing els
 | Item | Value |
 | --- | --- |
 | Topology | Retained G2 alternate-route diamond: same FIPS timers (profile `g2-alternate-route`; see the variant below), 20 ms one-way stimulus on r2–b, no a–b underlay, IPv4 forwarding off on both transits |
-| Pins | SRT v0.3.1 `57fcf51a`, SRT Telemetry `1b12f8d7` (media relay), FIPS v0.5.3 `f4a5b4a8`, FFmpeg `6.1.1-3ubuntu5` |
+| Pins | SRT v0.3.2 `e45d0edd`, SRT Telemetry `7a6b8eff`, FIPS v0.5.3 `f4a5b4a8`, FFmpeg `6.1.1-3ubuntu5` ([ADR-0010](../decisions/0010-srt-032-refresh.md), from 2026-11-12; the runs retained through 2026-10-30 used SRT v0.3.1 `57fcf51a` and Telemetry `1b12f8d7`) |
 | Fixture | `testsrc2` 320×180, 25 fps, 160 s, MPEG-2 GOP 25 without B-frames, 600 kbit/s video in a 1 Mbit/s CBR transport stream, bit-exact: 4000 frames |
 | Source | 1128-byte datagrams (six TS packets) on an absolute schedule (9.024 ms), into the caller's relay on `a`; must fit the fips0 clear SRT payload budget (reported inner IPv6 MTU − 64 B), checked before the run |
 | SRT | Live, default 120 ms latency, too-late drop on, peer idle 60 000 ms, receive timeout 500 ms |
