@@ -1,6 +1,6 @@
 # ADR-0009: Observe one SRT media stream through a faulted FIPS diamond
 
-- Status: accepted
+- Status: accepted; superseded by ADR-0010 for the SRT Telemetry selection only
 - Date: 2026-10-28
 - Supersedes ADR-0008 for the SRT Telemetry selection; its SRT v0.3.1 pin, the FIPS and toolchain pins and the evidence policy are retained
 

@@ -1,0 +1,422 @@
+{
+  "classification": "experiment",
+  "cleanup": {
+    "namespaces_removed": true,
+    "srt_peers_stopped": true,
+    "work_directory_removed": true
+  },
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-32192c4649bfd73a2f89e134",
+    "max_error_ns": null,
+    "same_host": true,
+    "synchronization": "local-only"
+  },
+  "evidence_type": "g1-direct-srt-baseline",
+  "files": {
+    "rep-1/media-observation.json": {
+      "bytes": 915,
+      "sha256": "db9b76785c77c8872337b0f7066ba7e302fdd1f070bd2125b074bee37d1a9bb4"
+    },
+    "rep-1/receiver-context.json": {
+      "bytes": 710,
+      "sha256": "02806980e213bb2f7d40247dce091045638ee4d738a6b1af79a70ec9b81c0bdf"
+    },
+    "rep-1/receiver-observations.jsonl": {
+      "bytes": 55218,
+      "sha256": "6e19b5d6b23e920e9b62d5fbe4a92683b3de91753673d58f610e57260beefb56"
+    },
+    "rep-1/receiver-source.jsonl": {
+      "bytes": 27562,
+      "sha256": "5d7bfa073cb5b3d82a0e889a0201c296f21450662557abdbfd6eb1ab184db16b"
+    },
+    "rep-1/selected-srt-observation.json": {
+      "bytes": 4962,
+      "sha256": "85dae35db76d6e01d0b1f0baab7f7cf702a114d5f5612e1616e4a8967c66e0fe"
+    },
+    "rep-1/sender-context.json": {
+      "bytes": 710,
+      "sha256": "da52e80df81248dd237baca51077bdf11e70b0578bf6c380a7ddd78922b71f3c"
+    },
+    "rep-1/sender-observations.jsonl": {
+      "bytes": 55056,
+      "sha256": "c29a34664f46a5e6df58072eeaa8c7092944c7318c517799307dfb675e3000ac"
+    },
+    "rep-1/sender-source.jsonl": {
+      "bytes": 27425,
+      "sha256": "2e0c2eec62c7a5c83bed2ae7cf4689124c08e293fa890b6d8fa9ac21d63753a8"
+    },
+    "rep-1/srt-media-ordering.json": {
+      "bytes": 1599,
+      "sha256": "6cdef8eae224986453160069e05558bfaf9fb5dcc24d251b173ec00452455fe7"
+    },
+    "rep-2/media-observation.json": {
+      "bytes": 915,
+      "sha256": "f04745919735162bb3d2450d30ed962041596f9d286aaed1f868045737cb4af6"
+    },
+    "rep-2/receiver-context.json": {
+      "bytes": 710,
+      "sha256": "89df4f18b663b526760456505c486fdf4ae5e1d0c8ab8d39c8adb8ca0d7f6319"
+    },
+    "rep-2/receiver-observations.jsonl": {
+      "bytes": 55249,
+      "sha256": "b15ed5b04a7f0d254e8259c0565a4d46cde6f09089681b126e787fd5d418cc65"
+    },
+    "rep-2/receiver-source.jsonl": {
+      "bytes": 27523,
+      "sha256": "58e8bec25d3f4e9fd7dbd3468f7cf694ce8bde8c7de975bc2d688ef3c55ea400"
+    },
+    "rep-2/selected-srt-observation.json": {
+      "bytes": 4945,
+      "sha256": "9cfe9cb91682c6f9d439823e2750e9783f4e109f5530ec591d8579b334f313f4"
+    },
+    "rep-2/sender-context.json": {
+      "bytes": 710,
+      "sha256": "fb2573f32888fcad61abb3cf1939ab701c7d79853126bac46bfacd950508e638"
+    },
+    "rep-2/sender-observations.jsonl": {
+      "bytes": 55092,
+      "sha256": "e3a8d5de9eca989452566d6018985d8fb9b558c3afd5689d87ab9e180f6efc86"
+    },
+    "rep-2/sender-source.jsonl": {
+      "bytes": 27420,
+      "sha256": "f43cb7d30ebe39cf080bd644d434c3fc42ed12f74633acc9e3f25bed93750611"
+    },
+    "rep-2/srt-media-ordering.json": {
+      "bytes": 1599,
+      "sha256": "970d3aafc0a3a2d37c8e1822b67983d5383e3281a6fec513ecfb5da91a5d281e"
+    },
+    "rep-3/media-observation.json": {
+      "bytes": 915,
+      "sha256": "9bcf48223c5cd7f6bd2d6a870c198addc527466cda2922940910e038fddf7c5b"
+    },
+    "rep-3/receiver-context.json": {
+      "bytes": 710,
+      "sha256": "b9fffe90f2853eb80817683ce4203ecbe28b820323de18588540538f13f5af74"
+    },
+    "rep-3/receiver-observations.jsonl": {
+      "bytes": 55211,
+      "sha256": "287457101f68b9de0ae07c27feceb60045b160d27238f6fe54f41d754f481f85"
+    },
+    "rep-3/receiver-source.jsonl": {
+      "bytes": 27508,
+      "sha256": "14ef79eb13953ed256f9d061322e5a850c7379604c928f15ad2c596cae9a8a20"
+    },
+    "rep-3/selected-srt-observation.json": {
+      "bytes": 4945,
+      "sha256": "f61d98cfb6ba0265a791f91635e199e244791f5de7d9589d24df8fb903a9b8c7"
+    },
+    "rep-3/sender-context.json": {
+      "bytes": 710,
+      "sha256": "2d00b696ee953e3cfc2f7b72f909b1f8f7a580aa5439a44eef85eba65689a6b3"
+    },
+    "rep-3/sender-observations.jsonl": {
+      "bytes": 55035,
+      "sha256": "10aa301ec50191daa46422424787c1833bfacfdad75401e519ea6d2652590ebd"
+    },
+    "rep-3/sender-source.jsonl": {
+      "bytes": 27389,
+      "sha256": "e7b94dd2df76255e34d431d384ec4c3034bdbef26f86524452885901e55757f6"
+    },
+    "rep-3/srt-media-ordering.json": {
+      "bytes": 1599,
+      "sha256": "7352809741394a1dadd23c1c5aad34bdf8210112116333deca1a0ecab2bdc139"
+    }
+  },
+  "finished_at": "2026-11-12T15:20:39.378623Z",
+  "gate_conclusion": {
+    "G1": "not-passed",
+    "reason": "single-run-direct-control-evidence; gate status changes require owner review of repeated retained runs"
+  },
+  "gate_ids": [
+    "G1"
+  ],
+  "limitations": [
+    "Direct veth path only; no loss, delay, reordering, bandwidth limit, backpressure, outage or route change was injected.",
+    "Retransmission, loss, RTT, completion-time, CPU and RSS values are recorded without thresholds because performance budgets are not frozen.",
+    "The provider-linked receiver validates application message identity but is not an independent media decoder.",
+    "This is the control for the SRT-over-FIPS pilots, not a direct/FIPS comparison or a G3 scorecard."
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "7.0.0-1017-azure",
+    "system": "Linux"
+  },
+  "provenance": {
+    "incident_peer_sha256": "1b46f98c57bba27defe76a0d221b45f3c2a52bda01592b4313eeb6cd51b8664c",
+    "project_revision": "c5052b1e10fc2a40db8a7d74308d7645e3cbedf8",
+    "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+    "srt_library_sha256": "fc72882d6d5822be7329403daf43bf5d5ebcf6f3439828a99d128e6e3e077fda",
+    "srt_repository": "https://github.com/Robotweax/srt.git",
+    "telemetry_commit": "7a6b8eff65c686ccafa36a0adace148a8b87d3ca",
+    "telemetry_repository": "https://github.com/Robotweax/srt_telemetry.git"
+  },
+  "repetitions": [
+    {
+      "application_exact_delivery": true,
+      "endpoints": {
+        "receiver": {
+          "accounting": "procfs-before-exit",
+          "cpu_system_ms": 20,
+          "cpu_user_ms": 0,
+          "peak_rss_kib": 13212,
+          "received_packet_total": 240,
+          "received_wire_byte_total": 261120,
+          "receiver_drop_packet_total": 0,
+          "receiver_loss_packet_total": 0,
+          "retransmitted_packet_total": 0,
+          "rtt_seconds_max": 0.1,
+          "rtt_seconds_min": 0.002077,
+          "sender_drop_packet_total": 0,
+          "sender_loss_packet_total": 0,
+          "sent_packet_total": 0,
+          "sent_wire_byte_total": 0,
+          "unique_received_packet_total": 240,
+          "unique_sent_packet_total": 0
+        },
+        "sender": {
+          "accounting": "procfs-before-exit",
+          "cpu_system_ms": 20,
+          "cpu_user_ms": 0,
+          "peak_rss_kib": 12956,
+          "received_packet_total": 0,
+          "received_wire_byte_total": 0,
+          "receiver_drop_packet_total": 0,
+          "receiver_loss_packet_total": 0,
+          "retransmitted_packet_total": 0,
+          "rtt_seconds_max": 0.1,
+          "rtt_seconds_min": 0.002077,
+          "sender_drop_packet_total": 0,
+          "sender_loss_packet_total": 0,
+          "sent_packet_total": 240,
+          "sent_wire_byte_total": 261120,
+          "unique_received_packet_total": 0,
+          "unique_sent_packet_total": 240
+        }
+      },
+      "flow_id": "g1-84ff4126-5c98-42eb-b459-2b302d6b99c4-1",
+      "index": 1,
+      "receiver_complete_sample_index": 13,
+      "sampling": {
+        "max_abs_schedule_error_ns": 113590,
+        "missed_intervals": 0,
+        "schedule_error_ns": [
+          99686,
+          93539,
+          79931,
+          78671,
+          113590,
+          77869,
+          77175,
+          74353,
+          74345,
+          80972,
+          79712,
+          77431
+        ]
+      },
+      "srt_media_ordering": "srt-before-peer",
+      "srt_samples_per_endpoint": 14,
+      "transfer_confirmed_after_ms": 1335
+    },
+    {
+      "application_exact_delivery": true,
+      "endpoints": {
+        "receiver": {
+          "accounting": "procfs-before-exit",
+          "cpu_system_ms": 10,
+          "cpu_user_ms": 10,
+          "peak_rss_kib": 13324,
+          "received_packet_total": 240,
+          "received_wire_byte_total": 261120,
+          "receiver_drop_packet_total": 0,
+          "receiver_loss_packet_total": 0,
+          "retransmitted_packet_total": 0,
+          "rtt_seconds_max": 0.1,
+          "rtt_seconds_min": 0.002079,
+          "sender_drop_packet_total": 0,
+          "sender_loss_packet_total": 0,
+          "sent_packet_total": 0,
+          "sent_wire_byte_total": 0,
+          "unique_received_packet_total": 240,
+          "unique_sent_packet_total": 0
+        },
+        "sender": {
+          "accounting": "procfs-before-exit",
+          "cpu_system_ms": 20,
+          "cpu_user_ms": 0,
+          "peak_rss_kib": 12968,
+          "received_packet_total": 0,
+          "received_wire_byte_total": 0,
+          "receiver_drop_packet_total": 0,
+          "receiver_loss_packet_total": 0,
+          "retransmitted_packet_total": 0,
+          "rtt_seconds_max": 0.1,
+          "rtt_seconds_min": 0.002079,
+          "sender_drop_packet_total": 0,
+          "sender_loss_packet_total": 0,
+          "sent_packet_total": 240,
+          "sent_wire_byte_total": 261120,
+          "unique_received_packet_total": 0,
+          "unique_sent_packet_total": 240
+        }
+      },
+      "flow_id": "g1-84ff4126-5c98-42eb-b459-2b302d6b99c4-2",
+      "index": 2,
+      "receiver_complete_sample_index": 13,
+      "sampling": {
+        "max_abs_schedule_error_ns": 84953,
+        "missed_intervals": 0,
+        "schedule_error_ns": [
+          77900,
+          78573,
+          78109,
+          75076,
+          84953,
+          81971,
+          79229,
+          82481,
+          81641,
+          79756,
+          77911,
+          80056
+        ]
+      },
+      "srt_media_ordering": "srt-before-peer",
+      "srt_samples_per_endpoint": 14,
+      "transfer_confirmed_after_ms": 1333
+    },
+    {
+      "application_exact_delivery": true,
+      "endpoints": {
+        "receiver": {
+          "accounting": "procfs-before-exit",
+          "cpu_system_ms": 10,
+          "cpu_user_ms": 0,
+          "peak_rss_kib": 13196,
+          "received_packet_total": 240,
+          "received_wire_byte_total": 261120,
+          "receiver_drop_packet_total": 0,
+          "receiver_loss_packet_total": 0,
+          "retransmitted_packet_total": 0,
+          "rtt_seconds_max": 0.1,
+          "rtt_seconds_min": 0.002081,
+          "sender_drop_packet_total": 0,
+          "sender_loss_packet_total": 0,
+          "sent_packet_total": 0,
+          "sent_wire_byte_total": 0,
+          "unique_received_packet_total": 240,
+          "unique_sent_packet_total": 0
+        },
+        "sender": {
+          "accounting": "procfs-before-exit",
+          "cpu_system_ms": 20,
+          "cpu_user_ms": 0,
+          "peak_rss_kib": 12912,
+          "received_packet_total": 0,
+          "received_wire_byte_total": 0,
+          "receiver_drop_packet_total": 0,
+          "receiver_loss_packet_total": 0,
+          "retransmitted_packet_total": 0,
+          "rtt_seconds_max": 0.1,
+          "rtt_seconds_min": 0.002081,
+          "sender_drop_packet_total": 0,
+          "sender_loss_packet_total": 0,
+          "sent_packet_total": 240,
+          "sent_wire_byte_total": 261120,
+          "unique_received_packet_total": 0,
+          "unique_sent_packet_total": 240
+        }
+      },
+      "flow_id": "g1-84ff4126-5c98-42eb-b459-2b302d6b99c4-3",
+      "index": 3,
+      "receiver_complete_sample_index": 13,
+      "sampling": {
+        "max_abs_schedule_error_ns": 88180,
+        "missed_intervals": 0,
+        "schedule_error_ns": [
+          83127,
+          76487,
+          76357,
+          79431,
+          81669,
+          78328,
+          36430,
+          78062,
+          78607,
+          81010,
+          80644,
+          88180
+        ]
+      },
+      "srt_media_ordering": "srt-before-peer",
+      "srt_samples_per_endpoint": 14,
+      "transfer_confirmed_after_ms": 1333
+    }
+  ],
+  "route_epoch": 1,
+  "run_id": "84ff4126-5c98-42eb-b459-2b302d6b99c4",
+  "schema_version": 1,
+  "started_at": "2026-11-12T15:20:34.931593Z",
+  "status": "passed",
+  "summary": {
+    "all_exact_delivery": true,
+    "max_abs_schedule_error_ns_range": [
+      84953,
+      113590
+    ],
+    "receiver_complete_sample_index_range": [
+      13,
+      13
+    ],
+    "receiver_cpu_total_ms_range": [
+      10,
+      20
+    ],
+    "receiver_loss_packet_total_range": [
+      0,
+      0
+    ],
+    "receiver_peak_rss_kib_range": [
+      13196,
+      13324
+    ],
+    "repetition_count": 3,
+    "sender_cpu_total_ms_range": [
+      20,
+      20
+    ],
+    "sender_peak_rss_kib_range": [
+      12912,
+      12968
+    ],
+    "sender_retransmitted_packet_total_range": [
+      0,
+      0
+    ],
+    "sender_rtt_seconds_max_range": [
+      0.1,
+      0.1
+    ],
+    "transfer_confirmed_after_ms_range": [
+      1333,
+      1335
+    ]
+  },
+  "topology": {
+    "isolation": "linux-network-namespaces",
+    "link_mtu": 1500,
+    "node_count": 2,
+    "overlay": "none",
+    "underlay": "direct-veth-ipv6"
+  },
+  "workload": {
+    "active_sample_count": 12,
+    "application_message_bytes": 1024,
+    "application_message_count": 240,
+    "repetitions": 3,
+    "sample_interval_ns": 100000000,
+    "send_pacing_microseconds": 5000
+  }
+}

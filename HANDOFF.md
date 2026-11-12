@@ -1,6 +1,6 @@
 # Agent handoff — Intelligent Media Fabric
 
-Snapshot: 2026-10-30. This is an orientation file, not a substitute for the
+Snapshot: 2026-11-12. This is an orientation file, not a substitute for the
 current `main`, PR checks, ADRs or gate registry. Refresh remote state before
 making a decision. The repository is private, proprietary and pre-alpha; no
 product, security, performance or continuity claim is released.
@@ -48,7 +48,7 @@ Read these before implementation:
 
 1. [README](README.md) and [architecture](docs/architecture/overview.md) for scope and layer boundaries.
 2. [Gate registry](docs/qualification/gate-registry.md) and [open decisions](docs/decisions/open-decisions.md) for current authorization.
-3. [ADR index](docs/decisions/README.md), especially [ADR-0004](docs/decisions/0004-srt-telemetry-adapter-boundary.md), [ADR-0007](docs/decisions/0007-dependency-refresh-2026-10-22.md) and [ADR-0008](docs/decisions/0008-srt-031-refresh.md).
+3. [ADR index](docs/decisions/README.md), especially [ADR-0004](docs/decisions/0004-srt-telemetry-adapter-boundary.md), [ADR-0009](docs/decisions/0009-faulted-diamond-media-observation.md) and [ADR-0010](docs/decisions/0010-srt-032-refresh.md).
 4. [Strategy pointer](docs/strategy/README.md) to the authoritative private Knowledge Base document. Do not maintain a divergent strategy copy here.
 5. [Evidence lab](docs/qualification/evidence-lab.md) and [contribution rules](CONTRIBUTING.md) before changing schemas or experiments.
 
@@ -60,8 +60,8 @@ workflows must agree with it. Do not substitute a moving `main` or a local build
 
 | Component | Selected revision | Role |
 | --- | --- | --- |
-| Robotweax SRT v0.3.1 | `57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1` | Public C API and `librobotweax-srt` media transport |
-| Robotweax SRT Telemetry | `1b12f8d7d75658cb7b7e00a0575fc77d965dbbec` | Public SRT adapter and source measurements |
+| Robotweax SRT v0.3.2 | `e45d0edd346e5c427d85e4c3b1ac605c81a23397` | Public C API and `librobotweax-srt` media transport |
+| Robotweax SRT Telemetry | `7a6b8eff65c686ccafa36a0adace148a8b87d3ca` | Public SRT adapter and source measurements |
 | FIPS v0.5.3 | `f4a5b4a8e61e340e6be7551608109a5c399f8353` | External daemon and `fips0` overlay |
 
 The historical FIPS development candidate in the manifest is research-only.
@@ -73,6 +73,16 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 ## Evidence and its limits
 
+- [2026-11-12 SRT 0.3.2 refresh](docs/qualification/dependency-refresh-2026-11-12.md):
+  ADR-0010 moved SRT to v0.3.2 and Telemetry to `7a6b8eff` (same ABI line 0.3, FIPS unchanged).
+  Retained at the new pins, all first attempts at `c5052b1e`: the
+  [G1 run](docs/qualification/g1-direct-srt-baseline-2026-11-12.md) (run 43244304465, 3/3 exact), the
+  [healthy pilot](docs/qualification/g4-live-capture-srt-032-2026-11-12.md) (run 43244297357, 240/240) and
+  [both faulted-diamond profiles](docs/qualification/g4-faulted-diamond-srt-032-2026-11-12.md)
+  (run 43244304348: gap 32.2 s with link-dead 30 s, 4.2 s with link-dead 3 s). They reproduce the
+  0.3.1 behaviour within the run-to-run spread of about 1 s; no difference is attributed to the
+  pin change. Everything below is digest-locked history for its own revisions, including the four
+  earlier faulted-diamond bundles.
 - [2026-10-28 faulted diamond](docs/qualification/g4-faulted-diamond-2026-10-28.md):
   ADR-0009 moved Telemetry to `1b12f8d7` (incident-peer media relay). Run 40743995191
   killed the active transit; FIPS reparented after about 31 s, one SRT session (peer idle
@@ -131,7 +141,7 @@ clock domains, route epochs and downstream identity checks.
 
 1. Repeat the direct-SRT control (G1) — the
    [first run](docs/qualification/g1-direct-srt-baseline-2026-10-22.md) is retained — then
-   compare direct SRT with SRT-over-FIPS at the same 0.3.1 pin for G3. Freeze the workload and budgets
+   compare direct SRT with SRT-over-FIPS at the same 0.3.2 pin for G3. Freeze the workload and budgets
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
 2. Build on the [first faulted-diamond run](docs/qualification/g4-faulted-diamond-2026-10-28.md):

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import shutil
 import tempfile
 import unittest
 from copy import deepcopy
@@ -12,12 +14,14 @@ from rimf_lab.g4_faulted_diamond import (
     EXPECTED_FFMPEG_VERSION,
     FIXTURE_ENCODE,
     FIXTURE_FRAMES,
+    HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES,
     INJECT_AFTER_SOURCE_START_NS,
     SRT_PEER_IDLE_TIMEOUT_MS,
     DECODE_OPTIONS,
     compute_timeline,
     fips_timer_profile,
     retimed_frame_count,
+    validate_g4_faulted_diamond_bundle,
     validate_g4_faulted_diamond_result,
     validate_route_epoch_event,
 )
@@ -29,6 +33,7 @@ from rimf_lab.g4_srt_over_fips import (
     TELEMETRY_REPOSITORY,
 )
 
+RETAINED = Path(__file__).resolve().parents[1] / "qualification/retained-bundles"
 MS = 1_000_000
 INJECT = 100_000 * MS
 
@@ -204,6 +209,33 @@ class RouteEpochEventTests(unittest.TestCase):
 class ResultContractTests(unittest.TestCase):
     def test_accepts_passed_result_without_gate_passage(self):
         validate_g4_faulted_diamond_result(passed_result())
+
+    def test_rejects_historical_pin_sets_as_a_new_run(self):
+        for historical in HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES.values():
+            result = passed_result()
+            for field in ("srt_commit", "telemetry_commit", "fips_commit"):
+                result["provenance"][field] = historical[field]
+            with self.assertRaisesRegex(ContractError, "provenance (fips|srt|telemetry)_commit"):
+                validate_g4_faulted_diamond_result(result)
+
+    def test_retained_bundles_at_old_pins_validate_only_through_their_digest(self):
+        bundles = [path for path in sorted(RETAINED.iterdir())
+                   if json.loads((path / "result.json").read_text())["evidence_type"] == "g4-faulted-diamond"
+                   and json.loads((path / "result.json").read_text())["provenance"]["srt_commit"]
+                   != EXPECTED_SRT_COMMIT]
+        self.assertEqual(len(bundles), len(HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES))
+        for bundle in bundles:
+            with self.subTest(bundle=bundle.name):
+                validate_g4_faulted_diamond_bundle(bundle)
+        # The same bundle with a re-serialized manifest no longer matches its digest
+        # and is judged against the active pins.
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / "bundle"
+            shutil.copytree(bundles[0], copy)
+            manifest = json.loads((copy / "result.json").read_text())
+            (copy / "result.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "provenance srt_commit"):
+                validate_g4_faulted_diamond_bundle(copy)
 
     def test_rejects_invalid_results(self):
         cases = (

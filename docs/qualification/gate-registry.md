@@ -37,6 +37,13 @@ passed and are retained; neither changes a gate.
 history. The [healthy pilot](g4-live-capture-telemetry-1b12f8d7-2026-10-28.md) and
 [G1 run](g1-direct-srt-baseline-2026-10-28.md) at the new pin passed and are retained; neither
 changes a gate.
+[ADR-0010](../decisions/0010-srt-032-refresh.md) moves SRT to v0.3.2 and Telemetry to `7a6b8eff` on
+2026-11-12; the 2026-10-28 G4 and G1 bundles and the four faulted-diamond bundles become digest-locked
+history for SRT v0.3.1 and Telemetry `1b12f8d7`. The [G1 run](g1-direct-srt-baseline-2026-11-12.md), the
+[healthy pilot](g4-live-capture-srt-032-2026-11-12.md) and
+[both faulted-diamond profiles](g4-faulted-diamond-srt-032-2026-11-12.md) at the new pins passed and are
+retained; they reproduce the earlier behaviour and remain ordering-only. See the
+[refresh assessment](dependency-refresh-2026-11-12.md). No gate status changes.
 [ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selected SRT v0.3.0,
 SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
 Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.

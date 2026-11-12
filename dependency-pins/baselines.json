@@ -1,25 +1,25 @@
 {
   "schema_version": 1,
-  "as_of": "2026-10-28",
+  "as_of": "2026-11-12",
   "dependencies": [
     {
       "id": "robotweax-srt",
       "repository": "https://github.com/Robotweax/srt.git",
-      "version": "v0.3.1",
-      "commit": "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1",
+      "version": "v0.3.2",
+      "commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
       "role": "media-transport",
       "integration": "external-public-api",
       "evidence_class": "requalification-candidate",
-      "selection_adr": "ADR-0008"
+      "selection_adr": "ADR-0010"
     },
     {
       "id": "robotweax-srt-telemetry",
       "repository": "https://github.com/Robotweax/srt_telemetry.git",
-      "commit": "1b12f8d7d75658cb7b7e00a0575fc77d965dbbec",
+      "commit": "7a6b8eff65c686ccafa36a0adace148a8b87d3ca",
       "role": "srt-observation",
       "integration": "external-versioned-c-abi",
       "evidence_class": "pre-alpha-candidate",
-      "selection_adr": "ADR-0009"
+      "selection_adr": "ADR-0010"
     },
     {
       "id": "fips-release-candidate",

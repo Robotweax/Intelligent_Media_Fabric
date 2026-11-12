@@ -1,0 +1,40 @@
+{
+  "analysis_id": "d6486722-0235-5c5d-a74f-6e95e8247fb9",
+  "analysis_scope": "ordering-only",
+  "clock_assessment": {
+    "basis": "shared-monotonic-domain",
+    "combined_max_error_ns": null,
+    "ordering_authorized": true,
+    "same_domain": true
+  },
+  "inputs": {
+    "peer": {
+      "clock_domain": "linux-host-monotonic-5f15378da1d6e79bb9db4194",
+      "event_id": "00a79a63-77b6-53b9-abc0-84342db75b12",
+      "route_epoch": 1,
+      "sha256": "6b001caf5932df54a2ec0e3e82ddadbb63125af5accb009aa761f79a6175b0ab",
+      "source": "fips"
+    },
+    "srt": {
+      "clock_domain": "linux-host-monotonic-5f15378da1d6e79bb9db4194",
+      "event_id": "988fd0d7-a6e9-5bad-a6f2-0f5654671806",
+      "route_epoch": 1,
+      "sha256": "bda64ad1bed5466ddfb36f7f4af49483e23e9596779f5dca22e89a2ce3a7834c"
+    }
+  },
+  "metric_semantics_separate": true,
+  "non_claims": [
+    "Temporal ordering alone does not identify the first divergent layer or a root cause.",
+    "FIPS loss_rate is not an SRT loss, drop, or retransmission counter.",
+    "This assessment does not authorize route, SRT, encoder, or relay mutation."
+  ],
+  "ordering": "srt-before-peer",
+  "outcome": "ordered",
+  "reason": "shared-monotonic-order",
+  "schema_version": 1,
+  "supported_claims": [
+    "The declared route epochs and clock domains were evaluated without changing source data.",
+    "FIPS link-estimator metrics remain semantically separate from SRT sender and receiver counters.",
+    "The two event timestamps have the reported order under the declared clock contract."
+  ]
+}

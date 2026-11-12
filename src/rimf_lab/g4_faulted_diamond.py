@@ -101,6 +101,27 @@ EVENT_NAMESPACE = uuid.UUID("2d6c1f0e-8a4b-5f3e-9c7d-1b0a2e3f4c5d")
 SENDER_EVENT_NAMESPACE = "a1e2d3c4-b5a6-5978-8b9a-0c1d2e3f4a5b"
 RECEIVER_EVENT_NAMESPACE = "b2f3e4d5-c6b7-5a89-9cab-1d2e3f4a5b6c"
 
+# Retained faulted-diamond bundles are evidence only for their own recorded revisions.
+# A bundle whose result manifest matches a digest recorded here is validated against
+# that entry's pins; every other result must carry the active pins, so a new run
+# cannot present an old pin as current. See ADR-0010.
+_PINS_2026_10_28 = {
+    "srt_commit": "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1",
+    "srt_version": "0.3.1",
+    "telemetry_commit": "1b12f8d7d75658cb7b7e00a0575fc77d965dbbec",
+    "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+}
+HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES = {
+    # 2026-10-28, run 40743995191: first faulted-diamond run (SRT v0.3.1, Telemetry 1b12f8d7, FIPS v0.5.3).
+    "dfc3d7b69bdc3adb6db219ffca7a7a47e8aaead5861e242676b22c1ac36abdf1": _PINS_2026_10_28,
+    # 2026-10-28, run 40748574042: repeat (SRT v0.3.1, Telemetry 1b12f8d7, FIPS v0.5.3).
+    "0b290b2462f0ef2634304b07a590c9ee0fb3363e80005b292b11186329786019": _PINS_2026_10_28,
+    # 2026-10-30, run 41022516133: fast-FIPS-detection variant (SRT v0.3.1, Telemetry 1b12f8d7, FIPS v0.5.3).
+    "80474d3cc8456e8a0a8572b2b9227da4c944d7310ec10b30877c18f1b5ab7c13": _PINS_2026_10_28,
+    # 2026-10-30, run 41022516133: same-revision baseline of the variant (SRT v0.3.1, Telemetry 1b12f8d7, FIPS v0.5.3).
+    "e51fbf6733cb27b618436a319e41f710e6da6b6f62c23f4ea30f0c352d3bcb43": _PINS_2026_10_28,
+}
+
 # Predeclared experiment profile (docs/qualification/g4-faulted-diamond-experiment-plan).
 EXPECTED_FFMPEG_VERSION = "ffmpeg version 6.1.1-3ubuntu5"
 FIXTURE_SECONDS = 160
@@ -1131,7 +1152,13 @@ def _require(condition: bool, message: str) -> None:
         raise ContractError(message)
 
 
-def validate_g4_faulted_diamond_result(result: Any) -> None:
+def validate_g4_faulted_diamond_result(
+    result: Any,
+    *,
+    expected_srt_commit: str = EXPECTED_SRT_COMMIT,
+    expected_telemetry_commit: str = EXPECTED_TELEMETRY_COMMIT,
+    expected_fips_commit: str = EXPECTED_FIPS_COMMIT,
+) -> None:
     _require(isinstance(result, dict), "faulted-diamond result must be an object")
     _require(result.get("schema_version") == 1 and result.get("evidence_type") == EVIDENCE_TYPE,
              "faulted-diamond result schema/evidence_type is invalid")
@@ -1165,10 +1192,10 @@ def validate_g4_faulted_diamond_result(result: Any) -> None:
              "passed faulted-diamond result fields are invalid")
     _require(all(cleanup.values()), "passed faulted-diamond result requires complete cleanup")
     provenance = result["provenance"]
-    for field, expected in (("fips_repository", FIPS_REPOSITORY), ("fips_commit", EXPECTED_FIPS_COMMIT),
+    for field, expected in (("fips_repository", FIPS_REPOSITORY), ("fips_commit", expected_fips_commit),
                             ("fips_source_tree_state", "clean"), ("srt_repository", SRT_REPOSITORY),
-                            ("srt_commit", EXPECTED_SRT_COMMIT), ("telemetry_repository", TELEMETRY_REPOSITORY),
-                            ("telemetry_commit", EXPECTED_TELEMETRY_COMMIT)):
+                            ("srt_commit", expected_srt_commit), ("telemetry_repository", TELEMETRY_REPOSITORY),
+                            ("telemetry_commit", expected_telemetry_commit)):
         _require(provenance.get(field) == expected, f"faulted-diamond provenance {field} is invalid")
     _require(str(provenance.get("ffmpeg_version", "")).startswith(EXPECTED_FFMPEG_VERSION + " "),
              "faulted-diamond provenance ffmpeg_version is invalid")
@@ -1218,8 +1245,20 @@ def validate_g4_faulted_diamond_result(result: Any) -> None:
 
 def validate_g4_faulted_diamond_bundle(directory: Path) -> None:
     directory = directory.resolve()
-    result = load_json(directory / "result.json")
-    validate_g4_faulted_diamond_result(result)
+    result_path = directory / "result.json"
+    result = load_json(result_path)
+    pins = HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES.get(sha256_file(result_path), {
+        "srt_commit": EXPECTED_SRT_COMMIT,
+        "srt_version": EXPECTED_SRT_VERSION,
+        "telemetry_commit": EXPECTED_TELEMETRY_COMMIT,
+        "fips_commit": EXPECTED_FIPS_COMMIT,
+    })
+    validate_g4_faulted_diamond_result(
+        result,
+        expected_srt_commit=pins["srt_commit"],
+        expected_telemetry_commit=pins["telemetry_commit"],
+        expected_fips_commit=pins["fips_commit"],
+    )
     if result["status"] == "failed":
         return
     for name, record in result["files"].items():
@@ -1251,8 +1290,8 @@ def validate_g4_faulted_diamond_bundle(directory: Path) -> None:
                      {"route_epoch": 2, "from_monotonic_ns": marker["monotonic_ns"]}],
                  f"{role} adapter context does not carry the observed route epoch marker")
         records = _read_jsonl(directory / f"{role}-source.jsonl")
-        _require(bool(records) and records[0].get("providerVersion") == EXPECTED_SRT_VERSION
-                 and records[0].get("providerRevision") == EXPECTED_SRT_COMMIT,
+        _require(bool(records) and records[0].get("providerVersion") == pins["srt_version"]
+                 and records[0].get("providerRevision") == pins["srt_commit"],
                  f"{role} provider identity does not match provenance")
         with tempfile.TemporaryDirectory() as scratch:
             replay = Path(scratch) / "replay.jsonl"
