@@ -51,6 +51,9 @@
 - [Healthy live capture at Telemetry 1b12f8d7](qualification/g4-live-capture-telemetry-1b12f8d7-2026-10-28.md)
 - [G1 direct-SRT baseline, third retained run (Telemetry 1b12f8d7)](qualification/g1-direct-srt-baseline-2026-10-28.md)
 - [Dependency refresh assessment 2026-11-12 (SRT 0.3.2)](qualification/dependency-refresh-2026-11-12.md)
+- [G1 direct-SRT baseline, fourth retained run (SRT v0.3.2)](qualification/g1-direct-srt-baseline-2026-11-12.md)
+- [Healthy SRT v0.3.2 over FIPS v0.5.3 live capture](qualification/g4-live-capture-srt-032-2026-11-12.md)
+- [G4 faulted diamond at SRT v0.3.2, both timer profiles](qualification/g4-faulted-diamond-srt-032-2026-11-12.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

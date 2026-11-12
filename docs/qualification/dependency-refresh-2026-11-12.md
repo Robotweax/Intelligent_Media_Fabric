@@ -1,8 +1,8 @@
 # Dependency refresh assessment — 2026-11-12 (SRT 0.3.2)
 
-Status: candidates selected by [ADR-0010](../decisions/0010-srt-032-refresh.md); local build
-and Telemetry suite passed; the Linux G1 and G4 runs at the new pins are **pending**. No gate
-status changed.
+Status: candidates selected by [ADR-0010](../decisions/0010-srt-032-refresh.md); the G1 baseline,
+the healthy G4 pilot and both faulted-diamond profiles passed on the new pins and are retained;
+no gate status changed.
 
 ## Selected sources
 
@@ -49,23 +49,32 @@ options: GCC 13.3.0, CMake 3.28.3, OpenSSL 3.0.13. This is not the CI architectu
 | Incident peer `--help` sentinels at `7a6b8eff` | `--bind-address IP`, `--message-bytes 1..1316`, `--media-udp-input`, `--media-udp-output`, `--peer-idle-timeout-ms` present |
 
 The four skipped tests are the same in both revisions (`standby_schema_test`, `peer_schema_test`,
-`recording_schema_test`, `remote_draft_schema`); the reason was not investigated. The workflows
-install the same packages, so the same skips are expected there.
+`recording_schema_test`, `remote_draft_schema`); the reason was not investigated. On the hosted
+runners nothing was skipped: all three workflows ran 81 Telemetry tests with none failed.
 
 ## Linux qualification
 
 | Scenario | Run | Outcome |
 | --- | --- | --- |
-| G1 direct-SRT baseline | pending | — |
-| Healthy SRT over FIPS (G4 live capture) | pending | — |
-| Faulted diamond, unchanged ADR-0009 profile at the new pins | pending | — |
+All runs are first attempts at Fabric revision `c5052b1e`; none was rerun.
 
-FIPS-only G2 scenarios are not rerun: FIPS is unchanged.
+| Scenario | Run | Outcome |
+| --- | --- | --- |
+| G1 direct-SRT baseline | [43244304465](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/43244304465) | passed, 3/3 exact, zero loss; [bundle retained](g1-direct-srt-baseline-2026-11-12.md) |
+| Healthy SRT over FIPS (G4 live capture) | [43244297357](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/43244297357) | passed, 240/240; [bundle retained](g4-live-capture-srt-032-2026-11-12.md) |
+| Faulted diamond, `g2-alternate-route` | [43244304348](https://github.com/Robotweax/Intelligent_Media_Fabric/actions/runs/43244304348) | passed; downstream gap 32.2 s, 783 frames missing; [bundle retained](g4-faulted-diamond-srt-032-2026-11-12.md) |
+| Faulted diamond, `fast-detection` | same run | passed; downstream gap 4.2 s, 84 frames missing; [bundle retained](g4-faulted-diamond-srt-032-2026-11-12.md) |
+
+FIPS-only G2 scenarios are not rerun: FIPS is unchanged. Against the runs at the old pins, the
+G1 indicators and the healthy pilot are unchanged within their recorded spread, and the
+faulted-diamond gaps differ by about 1 s in opposite directions, which is the spread already
+seen between runs at one revision. The records tabulate the numbers without grading them.
 
 ## Limits
 
-Local builds establish compile and Telemetry-suite compatibility on aarch64 only. No Fabric
-experiment has run at the new pins, so there is no retained evidence for them yet. The bundles
+Local builds establish compile and Telemetry-suite compatibility on aarch64 only. The retained
+runs are one run per scenario on hosted runners. The bundles
 at SRT v0.3.1 and Telemetry `1b12f8d7` remain evidence only for those revisions. The TSBPD
 drift change and the delta-engine refactor are candidate explanations for any difference
-between a 0.3.1 run and a 0.3.2 run and must be observed, not assumed. No gate status changes.
+between a 0.3.1 run and a 0.3.2 run and must be observed, not assumed; these runs neither
+show such a difference nor rule one out. No gate status changes.

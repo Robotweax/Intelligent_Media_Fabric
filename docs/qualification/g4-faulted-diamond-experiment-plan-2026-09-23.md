@@ -9,7 +9,8 @@ The [first retained run](g4-faulted-diamond-2026-10-28.md) (40743995191) passed 
 experiment on 2026-10-28 and a [repeat](g4-faulted-diamond-repeat-2026-10-28.md) (40748574042)
 reproduced it; both are ordering-only and do not pass G4. The
 [fast-detection variant](g4-faulted-diamond-fast-detection-2026-10-30.md) (41022516133) ran on
-2026-10-30 alongside a same-revision baseline.
+2026-10-30 alongside a same-revision baseline. Both profiles were
+[repeated at SRT v0.3.2](g4-faulted-diamond-srt-032-2026-11-12.md) (43244304348) on 2026-11-12.
 
 ## Question and fixed setup
 

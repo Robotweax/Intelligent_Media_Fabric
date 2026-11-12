@@ -1,0 +1,20 @@
+{
+  "bytes": 16084152,
+  "component": "media-collector",
+  "datagrams": 14259,
+  "first_arrival_monotonic_ns": 1305417940823,
+  "gap_threshold_ns": 250000000,
+  "gaps": [
+    {
+      "after_datagram": 2210,
+      "end_ns": 1357557739323,
+      "start_ns": 1325351232694
+    }
+  ],
+  "gaps_truncated": 0,
+  "last_arrival_monotonic_ns": 1465384941387,
+  "longest_gap_ns": 32206506629,
+  "oversize_datagrams": 0,
+  "schema_version": 1,
+  "stream_sha256": "3d33e1e7cd4b25410bf6d163165168478fcb10c726b10995e26ad22d445c5ab8"
+}

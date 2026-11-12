@@ -58,6 +58,12 @@ healthy pilot and the G1 baseline are repeated before any further faulted run is
    delta-engine changes above sit between them.
 4. FIPS-only G2 evidence is unaffected and is not rerun. No gate status changes.
 
+## Requalification outcome (2026-11-12)
+
+Items 1 to 3 completed the same day, each on its first attempt; see the
+[refresh assessment](../qualification/dependency-refresh-2026-11-12.md). The G1 run, the healthy
+pilot and both faulted-diamond profiles passed and are retained. No gate status changed.
+
 ## Sources
 
 - [Robotweax SRT v0.3.2 release](https://github.com/Robotweax/srt/releases/tag/v0.3.2)

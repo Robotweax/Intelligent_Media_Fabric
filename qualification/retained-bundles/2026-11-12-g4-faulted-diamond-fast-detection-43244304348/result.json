@@ -1,0 +1,289 @@
+{
+  "capture": {
+    "collected_datagrams": 17359,
+    "fips_observations": 169,
+    "frames": {
+      "changed_frames": 17,
+      "expected_frames": 4000,
+      "max_consecutive_missing_frames": 84,
+      "missing_frames": 84,
+      "observed_frames": 3916,
+      "status": "diverged",
+      "unexpected_frames": 0
+    },
+    "missed_sample_intervals": 0,
+    "route_epochs": [
+      1,
+      2
+    ],
+    "source_datagrams": 17729,
+    "srt_samples_per_endpoint": 328,
+    "srt_session_survived": true
+  },
+  "classification": "experiment",
+  "cleanup": {
+    "faulted_daemon_reaped": true,
+    "fips_daemons_stopped": true,
+    "media_processes_stopped": true,
+    "namespaces_removed": true,
+    "srt_peers_stopped": true,
+    "work_directory_removed": true
+  },
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-b13a015ef5330c953ec27c28",
+    "max_error_ns": null,
+    "same_host": true,
+    "synchronization": "local-only"
+  },
+  "evidence_type": "g4-faulted-diamond",
+  "files": {
+    "fault-events.jsonl": {
+      "bytes": 2002,
+      "sha256": "be396380c96429d19b4eac261c0bbe00eedcc8b856748f9cabd6f72ddf9b639e"
+    },
+    "fips-observations.jsonl": {
+      "bytes": 141950,
+      "sha256": "1fc00b8e9282bbc81247af38820175d38b43a70aac8e9564a5597764a7b07c66"
+    },
+    "frame-assessment.json": {
+      "bytes": 732,
+      "sha256": "5ef3c0419ad47f8171d4aae301bf8dc6642f9ff713b9eeb3391cf591561e4f3c"
+    },
+    "media-collector.json": {
+      "bytes": 520,
+      "sha256": "c9ab9815d7bc52939bdc185585c1bf0c11003567937aca36e8e4cbbd99ed91a4"
+    },
+    "media-relay.json": {
+      "bytes": 1546,
+      "sha256": "e8a39457918d1873e05203df29edf34dd69cee6ea128469ea7df982c3f142368"
+    },
+    "media-source.json": {
+      "bytes": 380,
+      "sha256": "32e37be1e18f0d2d32c95ce173b41207e6639be5c81a20bf6f84927aa1a31d08"
+    },
+    "observed.framehash": {
+      "bytes": 438810,
+      "sha256": "0e5ea1a28eb43f659ec824f9dba97cce6de796fe070af96a673f071df0e4623c"
+    },
+    "receiver-context.json": {
+      "bytes": 820,
+      "sha256": "760a387107438d94cbdcbcdeda109a1986e2b0ca51adbb43dd6d4a6188c99478"
+    },
+    "receiver-observations.jsonl": {
+      "bytes": 1296598,
+      "sha256": "63885a21885d09cbc4c823ae868b991c106b188e52fce88739ab45f5a7ee02a2"
+    },
+    "receiver-source.jsonl": {
+      "bytes": 637966,
+      "sha256": "22b9b42388d6b2cdec3ac816a8a327bd0baacda128c827a7a9c41c249578070b"
+    },
+    "reference.framehash": {
+      "bytes": 448218,
+      "sha256": "21d9e00cdf5bfe323fb5f85a8887d1c140de37a7b44646a267db4a79e1f0d074"
+    },
+    "route-epochs.jsonl": {
+      "bytes": 522,
+      "sha256": "2c34b62a9ab47681b5edf27a1a097313a1da06dc886adcaab8a0e9f645c95ab2"
+    },
+    "sender-context.json": {
+      "bytes": 820,
+      "sha256": "e2a6d9595857ccafa2ac642c4889d423703d84d026cdda3415f430b31f884e12"
+    },
+    "sender-observations.jsonl": {
+      "bytes": 1294587,
+      "sha256": "c18cf918119c08268bbff997ad9b572a40e98468f6609e326a4c6da828740d58"
+    },
+    "sender-source.jsonl": {
+      "bytes": 636338,
+      "sha256": "20ca7a6cd5decc0ca9afeca0fc3168dbccf269ce4b51126df80d9b3a8e37e6f0"
+    }
+  },
+  "finished_at": "2026-11-12T15:28:38.922840Z",
+  "gate_conclusion": {
+    "G4": "not-passed",
+    "reason": "single faulted run; ordering-only; no first-divergent-layer or causal claim"
+  },
+  "gate_ids": [
+    "G4"
+  ],
+  "limitations": [
+    "One run of one topology and one fault class (SIGKILL of the observed active transit).",
+    "Each layer is observed at its own resolution (collector per datagram, SRT 500 ms, FIPS about 1 s); overlapping intervals are reported as unordered.",
+    "Temporal ordering does not establish a cause or a first divergent layer.",
+    "The SRT profile raises the peer idle timeout to 60 s for this experiment; it is not a product setting.",
+    "The downstream decode runs after the run on the collected stream; it is not a live player."
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "7.0.0-1014-aws",
+    "system": "Linux"
+  },
+  "profile": {
+    "collector_gap_threshold_ms": 250,
+    "datagram_bytes": 1128,
+    "decode_options": [
+      "-dts_delta_threshold",
+      "1000000"
+    ],
+    "fips_observation_interval_ms": 1000,
+    "fips_timers": {
+      "heartbeat_interval_secs": 1,
+      "link_dead_timeout_secs": 3,
+      "name": "fast-detection",
+      "tick_interval_secs": 1
+    },
+    "fixture": {
+      "encode": [
+        "-c:v",
+        "mpeg2video",
+        "-g",
+        "25",
+        "-bf",
+        "0",
+        "-b:v",
+        "600k",
+        "-maxrate",
+        "600k",
+        "-minrate",
+        "600k",
+        "-bufsize",
+        "600k",
+        "-flags",
+        "+bitexact",
+        "-fflags",
+        "+bitexact",
+        "-threads",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-f",
+        "mpegts",
+        "-muxrate",
+        "1000000",
+        "-pcr_period",
+        "20"
+      ],
+      "frames": 4000,
+      "generator": "testsrc2=size=320x180:rate=25:duration=160",
+      "sha256": "3b5ad5679da8d3396a3919ca962832a778d20dd8e3ca64c9807100b12b715f8d"
+    },
+    "inject_after_source_start_ms": 20000,
+    "packet_budget": {
+      "clear_srt_payload_budget_bytes": 1139,
+      "endpoint_effective_ipv6_mtu": [
+        1203,
+        1203
+      ],
+      "media_datagram_bytes": 1128,
+      "srt_ipv6_udp_header_bytes": 64,
+      "ts_packets_per_datagram": 6
+    },
+    "reparent_budget_ms": 60000,
+    "source_rate_bps": 1000000,
+    "srt_peer_idle_timeout_ms": 60000,
+    "srt_receive_timeout_ms": 500,
+    "srt_recovery_budget_ms": 120000,
+    "srt_sample_interval_ms": 500
+  },
+  "provenance": {
+    "cargo_lock_sha256": "70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a",
+    "ffmpeg_binary_sha256": "ed16af623947494a72e284b6eb8ff225f2da22b38b5d5069c2fd4b4ba3384e41",
+    "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "fips_binary_sha256": "97624ca8ccb1840507eeaef1b97fd163e0f0a1dc197e1392e214e39082e6f6d1",
+    "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "354b6a46548762dcdce5acd2b3829fdf51d55b81fc5e945cb14938385453d2d8",
+    "incident_peer_sha256": "78b6645f53abaa4988b2e7e7459bd3e7e8502b0db9e52fa6eadedc230b0f2859",
+    "project_revision": "c5052b1e10fc2a40db8a7d74308d7645e3cbedf8",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3",
+    "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+    "srt_library_sha256": "fc72882d6d5822be7329403daf43bf5d5ebcf6f3439828a99d128e6e3e077fda",
+    "srt_repository": "https://github.com/Robotweax/srt.git",
+    "telemetry_commit": "7a6b8eff65c686ccafa36a0adace148a8b87d3ca",
+    "telemetry_repository": "https://github.com/Robotweax/srt_telemetry.git"
+  },
+  "run_id": "12d44b40-fd97-4f9d-b663-082b94725724",
+  "schema_version": 1,
+  "started_at": "2026-11-12T15:25:46.777690Z",
+  "status": "passed",
+  "timeline": {
+    "causal_claim": null,
+    "divergence_ordering": [
+      {
+        "event": "media_downstream_stop",
+        "interval": [
+          134,
+          134
+        ]
+      },
+      {
+        "event": "srt_receiver_stall",
+        "interval": [
+          495,
+          995
+        ]
+      },
+      {
+        "event": "srt_sender_loss_or_drop",
+        "interval": [
+          995,
+          1495
+        ]
+      },
+      {
+        "event": "fips_link_loss",
+        "interval": [
+          3995,
+          4495
+        ]
+      }
+    ],
+    "earliest_observed_change": "media_downstream_stop",
+    "fips_link_loss": [
+      3995,
+      4495
+    ],
+    "fips_reparent": [
+      3995,
+      4495
+    ],
+    "media_downstream_gap_ms": 4229,
+    "media_downstream_resume": [
+      4363,
+      4363
+    ],
+    "media_downstream_stop": [
+      134,
+      134
+    ],
+    "ordering_resolved": true,
+    "origin": "sigkill-sent",
+    "process_exit_observed": 16,
+    "srt_receiver_resume": [
+      3995,
+      4495
+    ],
+    "srt_receiver_stall": [
+      495,
+      995
+    ],
+    "srt_sender_loss_or_drop": [
+      995,
+      1495
+    ],
+    "units": "ms"
+  },
+  "topology": {
+    "alternate_path_one_way_delay_ms": 20,
+    "alternate_transit": "r1",
+    "direct_endpoint_underlay": false,
+    "initial_active_transit": "r2",
+    "isolation": "linux-network-namespaces",
+    "node_count": 4,
+    "overlay": "srt-ipv6-over-fips0",
+    "underlay": "diamond-veth-ipv4-udp"
+  }
+}

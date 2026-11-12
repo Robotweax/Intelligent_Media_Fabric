@@ -75,9 +75,14 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 - [2026-11-12 SRT 0.3.2 refresh](docs/qualification/dependency-refresh-2026-11-12.md):
   ADR-0010 moved SRT to v0.3.2 and Telemetry to `7a6b8eff` (same ABI line 0.3, FIPS unchanged).
-  The Linux G1 and healthy G4 runs at the new pins are **not yet retained**; until they are, no
-  retained evidence exists for the active pins. Everything below is digest-locked history for
-  its own revisions, including all four faulted-diamond bundles.
+  Retained at the new pins, all first attempts at `c5052b1e`: the
+  [G1 run](docs/qualification/g1-direct-srt-baseline-2026-11-12.md) (run 43244304465, 3/3 exact), the
+  [healthy pilot](docs/qualification/g4-live-capture-srt-032-2026-11-12.md) (run 43244297357, 240/240) and
+  [both faulted-diamond profiles](docs/qualification/g4-faulted-diamond-srt-032-2026-11-12.md)
+  (run 43244304348: gap 32.2 s with link-dead 30 s, 4.2 s with link-dead 3 s). They reproduce the
+  0.3.1 behaviour within the run-to-run spread of about 1 s; no difference is attributed to the
+  pin change. Everything below is digest-locked history for its own revisions, including the four
+  earlier faulted-diamond bundles.
 - [2026-10-28 faulted diamond](docs/qualification/g4-faulted-diamond-2026-10-28.md):
   ADR-0009 moved Telemetry to `1b12f8d7` (incident-peer media relay). Run 40743995191
   killed the active transit; FIPS reparented after about 31 s, one SRT session (peer idle
