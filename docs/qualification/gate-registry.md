@@ -83,7 +83,10 @@ cut the downstream gap from 31.2 s to 5.2 s against a same-revision baseline: th
 link-dead timer. A predeclared
 [default-SRT-peer-idle variant](g4-faulted-diamond-default-peer-idle-2026-11-12.md) (5 s instead of 60 s, at
 SRT v0.3.2) ended the SRT session under both FIPS timer profiles, including link-dead 3 s; the incident
-peer does not reconnect, so no recovery time is measured. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
+peer does not reconnect. In a predeclared
+[coordinator-driven reconnect variant](g4-faulted-diamond-reconnect-2026-11-12.md) the test coordinator
+restarted the ended session: the downstream gap closed at 6.4 s (link-dead 3 s) and 32.5 s (link-dead 30 s),
+including about 1 s of harness detection delay; this is not an SRT or application reconnect. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
 fault-domain, causal or hitless claim exists yet, and G4 stays `in-progress`.
 
 G1 moved to `in-progress` on 2026-10-22 with the

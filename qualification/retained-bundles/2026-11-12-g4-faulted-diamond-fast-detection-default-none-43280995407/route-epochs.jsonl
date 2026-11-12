@@ -1,0 +1,2 @@
+{"confidence":1.0,"current_path_id":"transit-r1","monotonic_ns":1149087652048,"observed_at":"2026-11-12T18:51:58.338976798Z","previous_path_id":null,"reason":"initial","route_epoch":1,"schema_version":1}
+{"confidence":1.0,"current_path_id":"transit-r2","evidence_event_ids":["16a2c50e-8e64-5a6c-8cf0-5983eb4179b6","204caf2b-f8fc-5359-828d-3214fef5cbb1"],"monotonic_ns":1173588081294,"observed_at":"2026-11-12T18:52:22.839403890Z","previous_path_id":"transit-r1","reason":"relay-change","route_epoch":2,"schema_version":1}

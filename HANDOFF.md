@@ -148,8 +148,12 @@ clock domains, route epochs and downstream identity checks.
    it is repeated, has a fast-FIPS-detection variant and a
    [default-peer-idle variant](docs/qualification/g4-faulted-diamond-default-peer-idle-2026-11-12.md)
    (run 43255432045: with SRT's 5 s default the session ended under both FIPS timer profiles; the incident
-   peer does not reconnect, so recovery time is unmeasured). Next predeclare variants (a reconnecting caller,
-   which needs a Telemetry change; other fault types; the SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
+   peer does not reconnect) and a
+   [coordinator-driven reconnect variant](docs/qualification/g4-faulted-diamond-reconnect-2026-11-12.md)
+   (run 43280995407: restarting the session from the test coordinator closed the gap at 6.4 s with
+   link-dead 3 s and 32.5 s with link-dead 30 s; about 1 s of that is the coordinator's own detection
+   delay). Next predeclare variants (a peer that reconnects by itself, which needs a Telemetry change;
+   other fault types; the SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable

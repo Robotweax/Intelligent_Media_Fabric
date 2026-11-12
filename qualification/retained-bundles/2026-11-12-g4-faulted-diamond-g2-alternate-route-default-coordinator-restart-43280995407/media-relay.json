@@ -1,0 +1,57 @@
+{
+  "profiles": {
+    "receiver": {
+      "configuredMessageTtlMillis": -1,
+      "mediaRelay": "srt-to-udp",
+      "messageApi": true,
+      "peerIdleTimeoutMillis": 5000,
+      "provider": "robotweax-srt",
+      "publicApiVersionHex": 66823,
+      "receiveTimeoutMillis": 500,
+      "recordBytes": 472,
+      "sequenceVerification": false,
+      "tooLatePacketDrop": true,
+      "transport": "live"
+    },
+    "sender": {
+      "configuredMessageTtlMillis": -1,
+      "mediaRelay": "udp-to-srt",
+      "messageApi": true,
+      "peerIdleTimeoutMillis": 5000,
+      "provider": "robotweax-srt",
+      "publicApiVersionHex": 66823,
+      "receiveTimeoutMillis": 500,
+      "recordBytes": 472,
+      "sequenceVerification": false,
+      "tooLatePacketDrop": true,
+      "transport": "live"
+    }
+  },
+  "schema_version": 1,
+  "stopped": {
+    "receiver": {
+      "bytes": 2494008,
+      "connectionBroken": true,
+      "firstMessageMonotonicNano": 1245829545087,
+      "lastMessageMonotonicNano": 1265771846589,
+      "longestGapNano": 15783773,
+      "messages": 2211,
+      "outputFailures": 0,
+      "oversizeDatagrams": 0,
+      "receiveTimeouts": 9,
+      "sendFailures": 0
+    },
+    "sender": {
+      "bytes": 3121176,
+      "connectionBroken": true,
+      "firstMessageMonotonicNano": 1245688382392,
+      "lastMessageMonotonicNano": 1270648709358,
+      "longestGapNano": 14296357,
+      "messages": 2767,
+      "outputFailures": 0,
+      "oversizeDatagrams": 0,
+      "receiveTimeouts": 0,
+      "sendFailures": 0
+    }
+  }
+}
