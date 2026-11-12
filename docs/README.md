@@ -19,6 +19,7 @@
 
 - [Threat model](security/threat-model.md)
 - [Device authorization draft](security/device-authorization-draft.md)
+- [Review: SRT session authentication and ACP1 against the device-authorization draft](security/acp1-device-authorization-review-2026-11-12.md)
 - [SRT-over-FIPS profile v0](protocols/srt-over-fips-profile-v0.md)
 
 ## Qualification
