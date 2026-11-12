@@ -257,7 +257,8 @@ pinned incident peer is unchanged.
    at the pinned revision); when it exits, the next starts on the following 500 ms tick. At
    most 12 attempts.
 4. **Media.** When the caller connects, both relays start and the source, which never
-   stopped, flows again. Datagrams sent while no session existed are lost by design.
+   stopped, flows again. Datagrams sent while no session existed are lost by design. The
+   coordinator looks for the caller's connect every 10 ms.
 
 Stop rules: reparenting within 60 s of the fault; delivery over the second session within
 120 s of the fault and at least 10 s of media after it; the second session must be the one
@@ -290,6 +291,14 @@ Known before the run, and not compensated:
   separate; nothing is summed across the two sessions.
 - With link-dead 30 s the first attempt is expected to time out before the path returns, so
   at least two attempts are expected there. That is a prediction, not a requirement.
+- **A local shakedown preceded the first run.** The runner cannot execute on the development
+  machine, so on 2026-11-12 it was exercised in a privileged Linux aarch64 container at the
+  pinned revisions, to find runner defects before the hosted run: four runs in two rounds
+  (three with this policy, covering both timer profiles, and one without it). The first
+  round showed the coordinator noticing the connect only at the next 500 ms tick; the 10 ms
+  check in step 4 was added because of it, before any hosted run. All four produced bundles
+  that validate. Shakedown outputs are not retained and are not evidence; the hosted run is
+  the first run of record, and its outcome is reported whatever the shakedown showed.
 - A second session may connect between two FIPS observations. Its first samples then carry
   route epoch 1 until the reparent is observed, by the existing marker rule.
 

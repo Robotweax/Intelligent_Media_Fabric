@@ -159,6 +159,7 @@ SRT_PEER_IDLE_TIMEOUT_MS = SRT_PEER_IDLE_PROFILES[DEFAULT_SRT_PEER_IDLE_PROFILE]
 SRT_RECONNECT_POLICIES = ("none", "coordinator-restart")
 DEFAULT_SRT_RECONNECT_POLICY = "none"
 SRT_RECONNECT_MAX_ATTEMPTS = 12
+RECONNECT_POLL_NS = 10_000_000
 SENDER_EVENT_NAMESPACE_2 = "c3a4f5e6-d7c8-5b9a-8dbc-2e3f4a5b6c7d"
 RECEIVER_EVENT_NAMESPACE_2 = "d4b5a6f7-e8d9-5cab-9ecd-3f4a5b6c7d8e"
 SRT_RECEIVE_TIMEOUT_MS = 500
@@ -1000,11 +1001,42 @@ def run_g4_faulted_diamond(
                     and p["a_peer_count"] == 1 and p["a_link_count"] == 1
                     and p["alternate_peer_count"] == 2 and p["alternate_link_count"] == 2)
 
+        def complete_reconnect() -> None:
+            """The pending caller printed CONNECTED: start both relays of the second session."""
+            nonlocal session, second_caller, pending_caller, second_profiles
+            moment = time.monotonic_ns()
+            reconnect["attempts"][-1].update(outcome="connected", ended_monotonic_ns=moment)
+            reconnect["connected_monotonic_ns"] = moment
+            second_caller, pending_caller = pending_caller, None
+            second_listener.wait_for("CONNECTED", timeout=10)
+            second_profiles = {}
+            for name, peer, direction in (("receiver", second_listener, "srt-to-udp"),
+                                          ("sender", second_caller, "udp-to-srt")):
+                profile = _parse_prefixed_json(peer.wait_for("PROFILE"), "PROFILE")
+                if (profile.get("peerIdleTimeoutMillis") != peer_idle_ms
+                        or profile.get("receiveTimeoutMillis") != SRT_RECEIVE_TIMEOUT_MS
+                        or profile.get("mediaRelay") != direction
+                        or profile.get("tooLatePacketDrop") is not True):
+                    raise QualificationError(f"second {name} SRT profile does not match the predeclared profile")
+                second_profiles[name] = profile
+            for peer, direction in ((second_listener, "srt-to-udp"), (second_caller, "udp-to-srt")):
+                peer.send("START_MEDIA")
+                if _parse_prefixed_json(peer.wait_for("MEDIA_STARTED"), "MEDIA_STARTED") != {"direction": direction}:
+                    raise QualificationError("second media relay did not start in the expected direction")
+            reconnect["media_restarted_monotonic_ns"] = time.monotonic_ns()
+            session = 2
+
         while True:
             target = source_started + tick * SRT_SAMPLE_INTERVAL_NS
-            remaining = target - time.monotonic_ns()
-            if remaining > 0:
-                time.sleep(remaining / 1_000_000_000)
+            while (remaining := target - time.monotonic_ns()) > 0:
+                if session == 0 and pending_caller is not None:
+                    # Notice the connect within about 10 ms instead of at the next sample tick.
+                    if _take_line(pending_caller, "CONNECTED") is not None:
+                        complete_reconnect()
+                        continue
+                    time.sleep(min(remaining, RECONNECT_POLL_NS) / 1_000_000_000)
+                else:
+                    time.sleep(remaining / 1_000_000_000)
             if time.monotonic_ns() - target >= SRT_SAMPLE_INTERVAL_NS:
                 missed_intervals += 1
             if len(sender_samples) + len(second_sender_samples) >= MAX_SAMPLES:
@@ -1057,27 +1089,7 @@ def run_g4_faulted_diamond(
             if session == 0:
                 # One caller attempt at a time; a failed attempt is followed by the next at once.
                 if pending_caller is not None and _take_line(pending_caller, "CONNECTED") is not None:
-                    moment = time.monotonic_ns()
-                    reconnect["attempts"][-1].update(outcome="connected", ended_monotonic_ns=moment)
-                    reconnect["connected_monotonic_ns"] = moment
-                    second_caller, pending_caller = pending_caller, None
-                    second_listener.wait_for("CONNECTED", timeout=10)
-                    second_profiles = {}
-                    for name, peer, direction in (("receiver", second_listener, "srt-to-udp"),
-                                                  ("sender", second_caller, "udp-to-srt")):
-                        profile = _parse_prefixed_json(peer.wait_for("PROFILE"), "PROFILE")
-                        if (profile.get("peerIdleTimeoutMillis") != peer_idle_ms
-                                or profile.get("receiveTimeoutMillis") != SRT_RECEIVE_TIMEOUT_MS
-                                or profile.get("mediaRelay") != direction
-                                or profile.get("tooLatePacketDrop") is not True):
-                            raise QualificationError(f"second {name} SRT profile does not match the predeclared profile")
-                        second_profiles[name] = profile
-                    for peer, direction in ((second_listener, "srt-to-udp"), (second_caller, "udp-to-srt")):
-                        peer.send("START_MEDIA")
-                        if _parse_prefixed_json(peer.wait_for("MEDIA_STARTED"), "MEDIA_STARTED") != {"direction": direction}:
-                            raise QualificationError("second media relay did not start in the expected direction")
-                    reconnect["media_restarted_monotonic_ns"] = time.monotonic_ns()
-                    session = 2
+                    complete_reconnect()
                 elif pending_caller is None or pending_caller.process.poll() is not None:
                     if pending_caller is not None:
                         reconnect["attempts"][-1].update(outcome="failed", ended_monotonic_ns=time.monotonic_ns())
