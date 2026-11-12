@@ -145,8 +145,11 @@ clock domains, route epochs and downstream identity checks.
    before claiming throughput, CPU, RSS, wire or timing effects. OD-01, OD-03,
    OD-04 and OD-14 remain prerequisites for a G3 decision.
 2. Build on the [first faulted-diamond run](docs/qualification/g4-faulted-diamond-2026-10-28.md):
-   it is repeated once and has a fast-FIPS-detection variant; next predeclare variants (default 5 s peer idle, other fault types, the
-   SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
+   it is repeated, has a fast-FIPS-detection variant and a
+   [default-peer-idle variant](docs/qualification/g4-faulted-diamond-default-peer-idle-2026-11-12.md)
+   (run 43255432045: with SRT's 5 s default the session ended under both FIPS timer profiles; the incident
+   peer does not reconnect, so recovery time is unmeasured). Next predeclare variants (a reconnecting caller,
+   which needs a Telemetry change; other fault types; the SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable
