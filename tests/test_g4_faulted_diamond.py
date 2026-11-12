@@ -8,6 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from rimf_lab.contracts import ContractError
+from rimf_lab.fips_g2_linux import QualificationError
 from rimf_lab.g4_faulted_diamond import (
     BUNDLE_FILES,
     DATAGRAM_BYTES,
@@ -23,6 +24,7 @@ from rimf_lab.g4_faulted_diamond import (
     compute_timeline,
     fips_timer_profile,
     retimed_frame_count,
+    run_g4_faulted_diamond,
     srt_peer_idle_timeout_ms,
     validate_g4_faulted_diamond_bundle,
     validate_g4_faulted_diamond_result,
@@ -324,6 +326,52 @@ class ReconnectTests(unittest.TestCase):
         for value in (missing, extra):
             with self.assertRaisesRegex(ContractError, "file inventory"):
                 validate_g4_faulted_diamond_result(value)
+
+
+class BlackholeFaultTests(unittest.TestCase):
+    def test_timeline_takes_its_origin_from_the_blackhole_start(self):
+        data = series()
+        kill = compute_timeline(**data)
+        data["fault_events"] = [fault("blackhole-start", INJECT), fault("blackhole-applied", INJECT + 3 * MS)]
+        timeline = compute_timeline(**data)
+        self.assertEqual(timeline["origin"], "blackhole-start")
+        self.assertEqual(timeline["fault_applied"], 3)
+        self.assertNotIn("process_exit_observed", timeline)
+        # Everything else is measured the same way from the same origin.
+        for key in ("origin", "process_exit_observed"):
+            kill.pop(key)
+        for key in ("origin", "fault_applied"):
+            timeline.pop(key)
+        self.assertEqual(timeline, kill)
+
+    def test_kill_timeline_keeps_its_fields(self):
+        timeline = compute_timeline(**series())
+        self.assertEqual(timeline["origin"], "sigkill-sent")
+        self.assertEqual(timeline["process_exit_observed"], 3)
+        self.assertNotIn("fault_applied", timeline)
+
+    def test_result_accepts_the_blackhole_only_in_its_predeclared_combination(self):
+        result = passed_result()
+        validate_g4_faulted_diamond_result(result)  # no field: a kill run
+        result["profile"]["fault"] = "transit-blackhole"
+        validate_g4_faulted_diamond_result(result)
+        result["profile"]["fault"] = "link-flap"
+        with self.assertRaisesRegex(ContractError, "predeclared fault"):
+            validate_g4_faulted_diamond_result(result)
+        result["profile"]["fault"] = "transit-blackhole"
+        result["profile"]["srt_peer_idle_timeout_ms"] = SRT_PEER_IDLE_PROFILES["default"]
+        with self.assertRaisesRegex(ContractError, "predeclared fault"):
+            validate_g4_faulted_diamond_result(result)
+
+    def test_runner_refuses_the_blackhole_outside_its_predeclared_combination(self):
+        arguments = {name: Path("/nonexistent") for name in (
+            "fips_source", "fips_binary", "fipsctl_binary", "srt_source", "srt_library",
+            "telemetry_source", "incident_peer", "library_dir", "ffmpeg", "output_dir")}
+        with self.assertRaisesRegex(QualificationError, "unknown fault type"):
+            run_g4_faulted_diamond(**arguments, project_revision="0" * 40, fault="link-flap")
+        with self.assertRaisesRegex(QualificationError, "blackhole fault is predeclared only"):
+            run_g4_faulted_diamond(**arguments, project_revision="0" * 40, fault="transit-blackhole",
+                                   srt_peer_idle="default")
 
 
 class SrtPeerIdleProfileTests(unittest.TestCase):

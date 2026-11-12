@@ -364,6 +364,12 @@ Known before the run, and not compensated:
   `fault_applied` is recorded; during it the transit can still receive.
 - The blackholed transit keeps trying to reach `a`, and `b` keeps trying to reach the
   transit, for the rest of the run. Neither can succeed.
+- **A local shakedown preceded the first run.** After this section was committed, the
+  runner was exercised on 2026-11-12 in a privileged Linux aarch64 container at the pinned
+  revisions: the blackhole under both timer profiles and one kill run. All three passed and
+  produced bundles that validate; no runner change followed. Shakedown outputs are not
+  retained and are not evidence; the hosted run is the first run of record, and its outcome
+  is reported whatever the shakedown showed.
 - A blackhole made with `netem` on veth pairs is one kind of silent failure. It says nothing
   about partial loss, one-way loss, or a transit that forwards but corrupts.
 

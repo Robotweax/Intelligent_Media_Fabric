@@ -6,7 +6,8 @@ Telemetry incident peer on `a`, carried over `fips0` to the peer on `b`, and han
 an independent collector process; the collected stream is decoded afterwards by a
 separate FFmpeg process and compared frame by frame with the fixture. The coordinator
 samples SRT on both endpoints and FIPS control state on one shared monotonic clock,
-kills the observed active transit with SIGKILL, and marks route epoch 2 only when a
+kills the observed active transit with SIGKILL (or, as a predeclared variant, blackholes
+both of its links while its daemon keeps running), and marks route epoch 2 only when a
 FIPS observation proves that `b` reparented to the other authenticated transit.
 
 The result is ordering-only. It records when each layer's observed state changed, as
@@ -300,7 +301,8 @@ def compute_timeline(
 ) -> dict[str, Any]:
     """Derive the ordering-only timeline from retained files (runner and validator share it).
 
-    Each change is an interval [lower, upper] in milliseconds relative to the SIGKILL:
+    Each change is an interval [lower, upper] in milliseconds relative to the fault
+    (the SIGKILL, or the start of the blackhole):
     the change happened after `lower` (the last observation without it) and was
     observed at `upper`. Downstream media stop and resume are point arrivals at the
     collector. Nothing here identifies a cause.
@@ -315,8 +317,10 @@ def compute_timeline(
     `sender` and `receiver` are always the first session's observations.
     """
     by_kind = {event["payload"]["event"]: event for event in fault_events if event["source"] == "fabric"}
-    injection = by_kind["sigkill-sent"]["monotonic_ns"]
-    exit_observed = by_kind["process-exit-observed"]["monotonic_ns"]
+    origin, completed, completed_key = next(
+        names for names in FAULT_EVENTS.values() if names[0] in by_kind)
+    injection = by_kind[origin]["monotonic_ns"]
+    exit_observed = by_kind[completed]["monotonic_ns"]
     marker = next(item for item in route_epochs if item["route_epoch"] == 2)
     evidence = {item["event_id"]: item for item in fips_observations}
     proving = [evidence[event_id] for event_id in marker["evidence_event_ids"] if event_id in evidence]
@@ -332,9 +336,9 @@ def compute_timeline(
         return None, None
 
     timeline: dict[str, Any] = {
-        "origin": "sigkill-sent",
+        "origin": origin,
         "units": "ms",
-        "process_exit_observed": round((exit_observed - injection) / 1_000_000),
+        completed_key: round((exit_observed - injection) / 1_000_000),
         "fips_reparent": _bracket(proving[0]["monotonic_ns"] if len(proving) == 2 else None,
                                   marker["monotonic_ns"], injection),
     }
@@ -559,6 +563,19 @@ def fips_timer_profile(name: str) -> dict[str, Any]:
     return {"name": name, **FIPS_TIMER_PROFILES[name]}
 
 
+# Fault types. "transit-sigkill" is the fault of every run retained through 2026-11-12:
+# SIGKILL of the active transit's FIPS daemon. "transit-blackhole" was predeclared on
+# 2026-11-12: netem loss 100% on the four veth ends of the active transit's two links,
+# with the daemon left running and every interface up.
+FAULT_TYPES = ("transit-sigkill", "transit-blackhole")
+DEFAULT_FAULT = "transit-sigkill"
+# Fabric fault events that open and close each fault, and the timeline key of the second.
+FAULT_EVENTS = {
+    "transit-sigkill": ("sigkill-sent", "process-exit-observed", "process_exit_observed"),
+    "transit-blackhole": ("blackhole-start", "blackhole-applied", "fault_applied"),
+}
+
+
 def _take_line(peer: _Peer, prefix: str) -> str | None:
     """Return the peer's next `prefix` line if it has already printed one, without waiting."""
     while True:
@@ -592,6 +609,7 @@ def run_g4_faulted_diamond(
     fips_timers: str = DEFAULT_FIPS_TIMER_PROFILE,
     srt_peer_idle: str = DEFAULT_SRT_PEER_IDLE_PROFILE,
     srt_reconnect: str = DEFAULT_SRT_RECONNECT_POLICY,
+    fault: str = DEFAULT_FAULT,
 ) -> dict[str, Any]:
     timers = fips_timer_profile(fips_timers)
     peer_idle_ms = srt_peer_idle_timeout_ms(srt_peer_idle)
@@ -602,6 +620,12 @@ def run_g4_faulted_diamond(
     reconnecting = srt_reconnect != DEFAULT_SRT_RECONNECT_POLICY
     if reconnecting and not session_end_allowed:
         raise QualificationError("the reconnect policy is predeclared only for the default SRT peer-idle profile")
+    if fault not in FAULT_TYPES:
+        raise QualificationError(f"unknown fault type {fault!r}")
+    blackhole = fault != DEFAULT_FAULT
+    if blackhole and (session_end_allowed or reconnecting):
+        raise QualificationError(
+            "the blackhole fault is predeclared only for the extended SRT peer-idle profile without reconnect")
     # Delivery must come back unless an ended session without reconnect is the outcome.
     recovery_required = not session_end_allowed or reconnecting
     run_id = str(uuid.uuid4())
@@ -761,6 +785,13 @@ def run_g4_faulted_diamond(
             (interfaces[6], interfaces[7], 2, 3, NODE_ADDRESSES[2][1], NODE_ADDRESSES[3][1]),
         )
         transit_interfaces = {1: (interfaces[1], interfaces[2]), 2: (interfaces[5], interfaces[6])}
+        # The four veth ends of a transit's two links as (node, interface, node at the other end):
+        # the transit's own two first, then a's end and b's end.
+        blackhole_ends = {
+            1: ((1, interfaces[1], 0), (1, interfaces[2], 3), (0, interfaces[0], 1), (3, interfaces[3], 1)),
+            2: ((2, interfaces[5], 0), (2, interfaces[6], 3), (0, interfaces[4], 2), (3, interfaces[7], 2)),
+        }
+        delayed_interfaces = {interfaces[6], interfaces[7]}
         for left, right, left_node, right_node, left_address, right_address in links:
             _run(["ip", "link", "add", left, "type", "veth", "peer", "name", right], label="create diamond veth")
             for interface, node, address in ((left, left_node, left_address), (right, right_node, right_address)):
@@ -1131,25 +1162,53 @@ def run_g4_faulted_diamond(
                 if not _positive(delta):
                     raise QualificationError("no SRT media delivery was observed before fault injection")
                 injected_ns = time.monotonic_ns()
-                fault_events.append(_envelope(
-                    source="fabric", name="fault:sigkill-sent", run_id=run_id, domain_id=domain_id,
-                    route_epoch=1, monotonic_ns=injected_ns, unix_ns=time.time_ns(),
-                    payload={"metric_namespace": "fabric.fault", "metric_semantics": "fault-injection",
-                             "event": "sigkill-sent", "target_role": ROLE_NAMES[active_index],
-                             "signal": "SIGKILL"}))
-                if not _hard_kill_process(daemons[active_index]):
-                    raise QualificationError("active transit did not terminate from SIGKILL")
-                exited = time.monotonic_ns()
-                cleanup["faulted_daemon_reaped"] = True
-                daemons[active_index] = None
-                streams[active_index].close()
-                streams[active_index] = None
-                fault_events.append(_envelope(
-                    source="fabric", name="fault:process-exit-observed", run_id=run_id, domain_id=domain_id,
-                    route_epoch=1, monotonic_ns=exited, unix_ns=time.time_ns(),
-                    payload={"metric_namespace": "fabric.fault", "metric_semantics": "fault-injection",
-                             "event": "process-exit-observed", "target_role": ROLE_NAMES[active_index],
-                             "exit_signal": "SIGKILL"}))
+                if blackhole:
+                    fault_events.append(_envelope(
+                        source="fabric", name="fault:blackhole-start", run_id=run_id, domain_id=domain_id,
+                        route_epoch=1, monotonic_ns=injected_ns, unix_ns=time.time_ns(),
+                        payload={"metric_namespace": "fabric.fault", "metric_semantics": "fault-injection",
+                                 "event": "blackhole-start", "target_role": ROLE_NAMES[active_index],
+                                 "mechanism": "netem-loss-100-percent",
+                                 "interfaces": len(blackhole_ends[active_index])}))
+                    for node, interface, _ in blackhole_ends[active_index]:
+                        stimulus = (["delay", f"{ALTERNATE_PATH_ONE_WAY_DELAY_MS}ms"]
+                                    if interface in delayed_interfaces else [])
+                        _run(["ip", "netns", "exec", namespaces[node], "tc", "qdisc", "replace", "dev", interface,
+                              "root", "netem", *stimulus, "loss", "100%"], label="apply transit blackhole")
+                    fault_events.append(_envelope(
+                        source="fabric", name="fault:blackhole-applied", run_id=run_id, domain_id=domain_id,
+                        route_epoch=1, monotonic_ns=time.monotonic_ns(), unix_ns=time.time_ns(),
+                        payload={"metric_namespace": "fabric.fault", "metric_semantics": "fault-injection",
+                                 "event": "blackhole-applied", "target_role": ROLE_NAMES[active_index],
+                                 "interfaces": len(blackhole_ends[active_index])}))
+                    running = daemons[active_index].poll() is None
+                    fault_events.append(_envelope(
+                        source="os", name="os:faulted-transit-process-state", run_id=run_id, domain_id=domain_id,
+                        route_epoch=1, monotonic_ns=time.monotonic_ns(), unix_ns=time.time_ns(),
+                        payload={"metric_namespace": "os.process", "metric_semantics": "daemon-process-state",
+                                 "target_role": ROLE_NAMES[active_index], "running": running}))
+                    if not running:
+                        raise QualificationError("the blackholed transit's daemon is not running")
+                else:
+                    fault_events.append(_envelope(
+                        source="fabric", name="fault:sigkill-sent", run_id=run_id, domain_id=domain_id,
+                        route_epoch=1, monotonic_ns=injected_ns, unix_ns=time.time_ns(),
+                        payload={"metric_namespace": "fabric.fault", "metric_semantics": "fault-injection",
+                                 "event": "sigkill-sent", "target_role": ROLE_NAMES[active_index],
+                                 "signal": "SIGKILL"}))
+                    if not _hard_kill_process(daemons[active_index]):
+                        raise QualificationError("active transit did not terminate from SIGKILL")
+                    exited = time.monotonic_ns()
+                    cleanup["faulted_daemon_reaped"] = True
+                    daemons[active_index] = None
+                    streams[active_index].close()
+                    streams[active_index] = None
+                    fault_events.append(_envelope(
+                        source="fabric", name="fault:process-exit-observed", run_id=run_id, domain_id=domain_id,
+                        route_epoch=1, monotonic_ns=exited, unix_ns=time.time_ns(),
+                        payload={"metric_namespace": "fabric.fault", "metric_semantics": "fault-injection",
+                                 "event": "process-exit-observed", "target_role": ROLE_NAMES[active_index],
+                                 "exit_signal": "SIGKILL"}))
                 states = []
                 for interface in transit_interfaces[active_index]:
                     info = _json_value_command(["ip", "-n", namespaces[active_index], "-j", "link", "show",
@@ -1178,6 +1237,37 @@ def run_g4_faulted_diamond(
             raise QualificationError("the fixture ended before injection, reparenting and recovery were observed")
         if recovered_ns is not None and source_done_ns - recovered_ns < POST_RECOVERY_MINIMUM_NS:
             raise QualificationError("too little media followed recovery to observe it")
+
+        if blackhole:
+            # The blackhole must have been silent: daemon still running, packets dropped.
+            running = daemons[active_index] is not None and daemons[active_index].poll() is None
+            drops = []
+            for node, interface, far in blackhole_ends[active_index]:
+                qdiscs = _json_value_command(
+                    ["ip", "netns", "exec", namespaces[node], "tc", "-s", "-j", "qdisc", "show", "dev", interface],
+                    label="blackhole drop counters")
+                netem = [item for item in qdiscs if isinstance(item, dict) and item.get("kind") == "netem"] \
+                    if isinstance(qdiscs, list) else []
+                if len(netem) != 1 or not isinstance(netem[0].get("drops"), int):
+                    raise QualificationError("the blackhole qdisc is missing when the fixture ended")
+                drops.append({"node_role": ROLE_NAMES[node], "toward_role": ROLE_NAMES[far],
+                              "dropped_packets": netem[0]["drops"]})
+            fault_events.append(_envelope(
+                source="os", name="os:blackhole-drop-counters", run_id=run_id, domain_id=domain_id,
+                route_epoch=epoch, monotonic_ns=time.monotonic_ns(), unix_ns=time.time_ns(),
+                payload={"metric_namespace": "os.qdisc", "metric_semantics": "netem-drop-counters",
+                         "target_role": ROLE_NAMES[active_index], "transit_running": running,
+                         "drops": drops, "dropped_packets": sum(item["dropped_packets"] for item in drops)}))
+            if not running:
+                raise QualificationError("the blackholed transit's daemon exited during the run")
+            if sum(item["dropped_packets"] for item in drops) < 1:
+                raise QualificationError("the blackhole dropped no packet")
+            if not _stop_process(daemons[active_index]):
+                raise QualificationError("the blackholed transit's daemon did not stop")
+            cleanup["faulted_daemon_reaped"] = True
+            daemons[active_index] = None
+            streams[active_index].close()
+            streams[active_index] = None
 
         phase = "media-stop"
         final = tick + 1
@@ -1296,6 +1386,7 @@ def run_g4_faulted_diamond(
                 "decode_options": list(DECODE_OPTIONS),
                 "fips_timers": timers,
                 "srt_reconnect_policy": srt_reconnect,
+                "fault": fault,
             },
             "capture": {
                 "srt_samples_per_endpoint": len(sender_samples),
@@ -1320,7 +1411,10 @@ def run_g4_faulted_diamond(
                 "reason": "single faulted run; ordering-only; no first-divergent-layer or causal claim",
             },
             "limitations": [
-                "One run of one topology and one fault class (SIGKILL of the observed active transit).",
+                ("One run of one topology and one fault class (SIGKILL of the observed active transit)."
+                 if not blackhole else
+                 "One run of one topology and one fault class (netem loss 100% on both links of the observed "
+                 "active transit, daemon left running). It says nothing about partial or one-way loss."),
                 "Each layer is observed at its own resolution (collector per datagram, SRT 500 ms, FIPS about 1 s); "
                 "overlapping intervals are reported as unordered.",
                 "Temporal ordering does not establish a cause or a first divergent layer.",
@@ -1504,6 +1598,13 @@ def validate_g4_faulted_diamond_result(
              and (not reconnected or (policy != DEFAULT_SRT_RECONNECT_POLICY and not resumed
                                       and capture["srt_session_survived"] is False)),
              "faulted-diamond reconnect outcome does not match the predeclared reconnect policy")
+    # Results written before the field existed killed the transit.
+    fault = profile.get("fault", DEFAULT_FAULT)
+    _require(fault in FAULT_TYPES
+             and (fault == DEFAULT_FAULT
+                  or (profile["srt_peer_idle_timeout_ms"] == SRT_PEER_IDLE_PROFILES[DEFAULT_SRT_PEER_IDLE_PROFILE]
+                      and policy == DEFAULT_SRT_RECONNECT_POLICY)),
+             "faulted-diamond fault is not a predeclared fault")
     _require(capture.get("frames", {}).get("expected_frames") == FIXTURE_FRAMES,
              "faulted-diamond frame comparison is incomplete")
     _require(set(result["files"]) == set(BUNDLE_FILES + (RECONNECT_FILES if reconnected else ())),
@@ -1635,6 +1736,20 @@ def validate_g4_faulted_diamond_bundle(directory: Path) -> None:
         relay=load_json(directory / "media-relay.json"),
         reconnect=reconnect, receiver_second=receiver_second)
     _require(timeline == result["timeline"], "timeline is not reproducible from the retained files")
+    fault = result["profile"].get("fault", DEFAULT_FAULT)
+    _require(timeline["origin"] == FAULT_EVENTS[fault][0], "fault events disagree with the profile's fault")
+    if fault != DEFAULT_FAULT:
+        by_name = {item["payload"].get("metric_semantics"): item["payload"] for item in faults
+                   if item["source"] == "os"}
+        counters = by_name.get("netem-drop-counters", {})
+        entries = counters.get("drops")
+        _require(by_name.get("daemon-process-state", {}).get("running") is True
+                 and by_name.get("underlay-interface-state", {}).get("interfaces_up") is True
+                 and counters.get("transit_running") is True
+                 and isinstance(entries, list) and len(entries) == 4
+                 and all(isinstance(item.get("dropped_packets"), int) for item in entries)
+                 and counters.get("dropped_packets") == sum(item["dropped_packets"] for item in entries) >= 1,
+                 "blackhole fault events do not show a silent, dropping transit")
     _require(not reconnected or timeline["srt_reconnect"]["second_session_first_delivery"] is not None,
              "a reconnected run must show delivery over the second session")
     relay = load_json(directory / "media-relay.json")
