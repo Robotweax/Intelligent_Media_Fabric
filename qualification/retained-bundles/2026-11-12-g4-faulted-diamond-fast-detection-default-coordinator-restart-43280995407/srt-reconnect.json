@@ -1,0 +1,73 @@
+{
+  "attempts": [
+    {
+      "ended_monotonic_ns": 1297721360803,
+      "outcome": "connected",
+      "started_monotonic_ns": 1297369415349
+    }
+  ],
+  "connected_monotonic_ns": 1297721360803,
+  "end_confirmed_monotonic_ns": 1297362082153,
+  "end_inferred": {
+    "previous_sample_monotonic_ns": 1296861606714,
+    "sample_monotonic_ns": 1297361599299
+  },
+  "listener_ready_monotonic_ns": 1297368698113,
+  "media_restarted_monotonic_ns": 1297721718936,
+  "policy": "coordinator-restart",
+  "profiles": {
+    "receiver": {
+      "configuredMessageTtlMillis": -1,
+      "mediaRelay": "srt-to-udp",
+      "messageApi": true,
+      "peerIdleTimeoutMillis": 5000,
+      "provider": "robotweax-srt",
+      "publicApiVersionHex": 66823,
+      "receiveTimeoutMillis": 500,
+      "recordBytes": 472,
+      "sequenceVerification": false,
+      "tooLatePacketDrop": true,
+      "transport": "live"
+    },
+    "sender": {
+      "configuredMessageTtlMillis": -1,
+      "mediaRelay": "udp-to-srt",
+      "messageApi": true,
+      "peerIdleTimeoutMillis": 5000,
+      "provider": "robotweax-srt",
+      "publicApiVersionHex": 66823,
+      "receiveTimeoutMillis": 500,
+      "recordBytes": 472,
+      "sequenceVerification": false,
+      "tooLatePacketDrop": true,
+      "transport": "live"
+    }
+  },
+  "schema_version": 1,
+  "stopped": {
+    "receiver": {
+      "bytes": 16710192,
+      "connectionBroken": false,
+      "firstMessageMonotonicNano": 1297869108580,
+      "lastMessageMonotonicNano": 1431541254315,
+      "longestGapNano": 10638354,
+      "messages": 14814,
+      "outputFailures": 0,
+      "oversizeDatagrams": 0,
+      "receiveTimeouts": 5,
+      "sendFailures": 0
+    },
+    "sender": {
+      "bytes": 16710192,
+      "connectionBroken": false,
+      "firstMessageMonotonicNano": 1297727962322,
+      "lastMessageMonotonicNano": 1431400446964,
+      "longestGapNano": 10327910,
+      "messages": 14814,
+      "outputFailures": 0,
+      "oversizeDatagrams": 0,
+      "receiveTimeouts": 0,
+      "sendFailures": 0
+    }
+  }
+}

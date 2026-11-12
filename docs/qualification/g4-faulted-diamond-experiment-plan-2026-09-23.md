@@ -12,7 +12,9 @@ reproduced it; both are ordering-only and do not pass G4. The
 2026-10-30 alongside a same-revision baseline. Both profiles were
 [repeated at SRT v0.3.2](g4-faulted-diamond-srt-032-2026-11-12.md) (43244304348) on 2026-11-12. The
 [default-peer-idle variant](g4-faulted-diamond-default-peer-idle-2026-11-12.md) (43255432045) ran the
-same day: the session ended under both FIPS timer profiles.
+same day: the session ended under both FIPS timer profiles. The
+[coordinator-driven reconnect variant](g4-faulted-diamond-reconnect-2026-11-12.md) (43280995407) followed:
+a restarted session closed the gap under both.
 
 ## Question and fixed setup
 
