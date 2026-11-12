@@ -16,6 +16,7 @@ from rimf_lab.g4_faulted_diamond import (
     FIXTURE_FRAMES,
     HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES,
     INJECT_AFTER_SOURCE_START_NS,
+    RECONNECT_FILES,
     SRT_PEER_IDLE_PROFILES,
     SRT_PEER_IDLE_TIMEOUT_MS,
     DECODE_OPTIONS,
@@ -25,6 +26,7 @@ from rimf_lab.g4_faulted_diamond import (
     srt_peer_idle_timeout_ms,
     validate_g4_faulted_diamond_bundle,
     validate_g4_faulted_diamond_result,
+    validate_reconnect_record,
     validate_route_epoch_event,
 )
 from rimf_lab.g4_srt_over_fips import (
@@ -208,6 +210,120 @@ class EndedSessionTimelineTests(unittest.TestCase):
         timeline = compute_timeline(**self.ended(), relay=self.relay(False, False))
         self.assertIsNone(timeline["media_downstream_stop"])
         self.assertNotIn("srt_session_end", timeline)
+
+
+def reconnect_record() -> dict:
+    at = lambda ms: INJECT + ms * MS
+    return {
+        "schema_version": 1, "policy": "coordinator-restart",
+        "end_inferred": {"previous_sample_monotonic_ns": at(5_500), "sample_monotonic_ns": at(6_000)},
+        "end_confirmed_monotonic_ns": at(6_010), "listener_ready_monotonic_ns": at(6_080),
+        "attempts": [
+            {"started_monotonic_ns": at(6_081), "ended_monotonic_ns": at(21_100), "outcome": "failed"},
+            {"started_monotonic_ns": at(21_101), "ended_monotonic_ns": at(32_400), "outcome": "connected"},
+        ],
+        "connected_monotonic_ns": at(32_400), "media_restarted_monotonic_ns": at(32_420),
+        "profiles": {"sender": {"peerIdleTimeoutMillis": 5_000}, "receiver": {"peerIdleTimeoutMillis": 5_000}},
+        "stopped": {"sender": {"connectionBroken": False}, "receiver": {"connectionBroken": False}},
+    }
+
+
+RECONNECT_PROFILE = {"srt_reconnect_policy": "coordinator-restart", "srt_peer_idle_timeout_ms": 5_000}
+
+
+class ReconnectTests(unittest.TestCase):
+    def series(self) -> dict:
+        data = series()
+        for item in data["receiver"]:
+            if item["monotonic_ns"] > INJECT:
+                item["payload"]["sample"]["delta"]["unique_received_packet_delta"] = 0
+        # Media comes back over the second session: one collector gap that closes.
+        data["collector"] = {"gaps": [{"after_datagram": 1900, "start_ns": INJECT + 4 * MS,
+                                       "end_ns": INJECT + 32_450 * MS}],
+                             "last_arrival_monotonic_ns": INJECT + 140_000 * MS}
+        return data
+
+    def second_receiver(self) -> list:
+        return [srt(INJECT + offset * MS, unique_received_packet_delta=value)
+                for offset, value in ((32_500, None), (33_000, 40), (33_500, 55))]
+
+    def test_timeline_reports_the_reconnect_relative_to_the_sigkill(self):
+        relay = EndedSessionTimelineTests.relay(True, True)
+        timeline = compute_timeline(**self.series(), relay=relay, reconnect=reconnect_record(),
+                                    receiver_second=self.second_receiver())
+        self.assertEqual(timeline["srt_reconnect"], {
+            "end_inferred": [5_500, 6_000], "end_confirmed": 6_010,
+            "detection_delay_ms": 6_010 - 5_300,
+            "attempts": [{"started": 6_081, "ended": 21_100, "outcome": "failed"},
+                         {"started": 21_101, "ended": 32_400, "outcome": "connected"}],
+            "connected": 32_400, "media_restarted": 32_420,
+            "second_session_first_delivery": [32_500, 33_000]})
+        # The first session never resumes; the downstream gap closes over the second.
+        self.assertIsNone(timeline["srt_receiver_resume"])
+        self.assertEqual(timeline["media_downstream_gap_ms"], 32_446)
+        self.assertTrue(timeline["srt_session_end"]["sender_ended"])
+        self.assertIsNone(timeline["causal_claim"])
+
+    def test_timeline_without_a_reconnect_record_has_no_reconnect_section(self):
+        timeline = compute_timeline(**self.series(), relay=EndedSessionTimelineTests.relay(True, True))
+        self.assertNotIn("srt_reconnect", timeline)
+
+    def test_reconnect_record_contract(self):
+        validate_reconnect_record(reconnect_record(), RECONNECT_PROFILE)
+        single = reconnect_record()
+        single["attempts"] = single["attempts"][1:]
+        single["attempts"][0]["started_monotonic_ns"] = INJECT + 6_081 * MS
+        validate_reconnect_record(single, RECONNECT_PROFILE)
+
+        def broken(change) -> dict:
+            record = reconnect_record()
+            change(record)
+            return record
+        cases = {
+            "unconnected last attempt": lambda r: r["attempts"][-1].update(outcome="failed"),
+            "connected attempt before the last": lambda r: r["attempts"][0].update(outcome="connected"),
+            "no attempts": lambda r: r.update(attempts=[]),
+            "confirmation before inference": lambda r: r.update(end_confirmed_monotonic_ns=INJECT + 5_900 * MS),
+            "media restart before connect": lambda r: r.update(media_restarted_monotonic_ns=INJECT + 32_000 * MS),
+            "connected time differs from the attempt": lambda r: r.update(connected_monotonic_ns=INJECT + 32_401 * MS),
+            "other peer-idle value": lambda r: r["profiles"]["sender"].update(peerIdleTimeoutMillis=60_000),
+            "unknown field": lambda r: r.update(note="x"),
+            "policy none": lambda r: r.update(policy="none"),
+        }
+        for name, change in cases.items():
+            with self.subTest(case=name):
+                with self.assertRaises(ContractError):
+                    validate_reconnect_record(broken(change), RECONNECT_PROFILE)
+
+    def test_result_contract_ties_reconnect_to_policy_profile_and_files(self):
+        def result(policy="coordinator-restart", idle=5_000, reconnected=True, survived=False, resumed=False):
+            value = passed_result()
+            value["profile"]["srt_peer_idle_timeout_ms"] = idle
+            value["profile"]["srt_reconnect_policy"] = policy
+            value["capture"].update(srt_session_survived=survived, srt_delivery_resumed=resumed,
+                                    srt_reconnected=reconnected)
+            if reconnected:
+                value["files"].update({name: {"bytes": 1, "sha256": "0" * 64} for name in RECONNECT_FILES})
+            return value
+        validate_g4_faulted_diamond_result(result())
+        # The policy was on but the first session survived: no reconnect, no extra files.
+        validate_g4_faulted_diamond_result(result(reconnected=False, survived=True, resumed=True))
+        for name, value in {
+            "policy with the extended profile": result(idle=60_000, reconnected=False, survived=True, resumed=True),
+            "reconnect without the policy": result(policy="none"),
+            "reconnect although the first session survived": result(survived=True, resumed=True),
+            "unknown policy": result(policy="application"),
+        }.items():
+            with self.subTest(case=name):
+                with self.assertRaisesRegex(ContractError, "reconnect|delivery outcome"):
+                    validate_g4_faulted_diamond_result(value)
+        missing = result()
+        del missing["files"]["srt-reconnect.json"]
+        extra = result(reconnected=False, survived=False, resumed=False)
+        extra["files"]["srt-reconnect.json"] = {"bytes": 1, "sha256": "0" * 64}
+        for value in (missing, extra):
+            with self.assertRaisesRegex(ContractError, "file inventory"):
+                validate_g4_faulted_diamond_result(value)
 
 
 class SrtPeerIdleProfileTests(unittest.TestCase):

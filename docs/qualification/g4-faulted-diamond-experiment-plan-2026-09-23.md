@@ -227,3 +227,73 @@ combinations, whether the session survived, whether delivery resumed, the orderi
 timeline and the frame comparison. The variant cannot pass G4, cannot set an SRT or FIPS
 product timer, and makes no causal claim. Whether the default profile is acceptable for a
 product is an owner decision (OD-01, OD-15).
+
+## Variant: coordinator-driven reconnect (predeclared 2026-11-12)
+
+Set before any run of the variant, after the
+[default-peer-idle run](g4-faulted-diamond-default-peer-idle-2026-11-12.md), in which the
+session ended under both FIPS timer profiles and media stayed down because the incident peer
+does not reconnect. The variant asks one question: with the default 5 s peer-idle timeout, how
+long is downstream media interrupted when the session is restarted as soon as its end is seen?
+
+Exactly one thing changes against the `default` peer-idle profile. SRT reconnect policy
+`coordinator-restart` replaces `none` (every earlier run). Topology, fixture, source, fault,
+its timing, the sampling, the downstream decode, both FIPS timer profiles and the 5 s
+peer-idle timeout are unchanged. Each workflow run executes the four earlier combinations and
+the two `coordinator-restart` ones, so every reconnect run has same-revision runs without it.
+
+The policy, fixed here. The Fabric coordinator stands in for a reconnecting application; the
+pinned incident peer is unchanged.
+1. **Inference.** After the fault, while the source is still running and delivery has not
+   resumed, a 500 ms sender sample with `unique_sent_packet_delta` 0 means the sender's
+   relay has stopped. In the retained default-profile runs that counter went 56, 3, 0 across
+   the session end.
+2. **Confirmation.** The coordinator stops both relays. The sender must report
+   `connectionBroken`; otherwise the run fails, because a live session was interrupted by
+   the harness. Stopping the sender's relay also frees the media input port.
+3. **Restart.** The coordinator starts a second listener on `b` and then a second caller on
+   `a`, with the same options and fresh recordings. One caller attempt runs at a time. An
+   attempt keeps trying for the incident peer's own connect timeout (15 s in a local probe
+   at the pinned revision); when it exits, the next starts on the following 500 ms tick. At
+   most 12 attempts.
+4. **Media.** When the caller connects, both relays start and the source, which never
+   stopped, flows again. Datagrams sent while no session existed are lost by design.
+
+Stop rules: reparenting within 60 s of the fault; delivery over the second session within
+120 s of the fault and at least 10 s of media after it; the second session must be the one
+carrying media at the end of the fixture. If the first session survives, no reconnect
+happens and the run is a survival outcome with no additional files.
+
+What a reconnect looks like in the bundle, fixed before the first run:
+- Seven additional files: the second session's two recordings, adapter contexts and
+  byte-replayable observations, and `srt-reconnect.json`, the coordinator's record of the
+  inferred end, its confirmation, every caller attempt, the connect and the media restart.
+  The validator checks the record's structure and time order and replays the second
+  session's adapters.
+- `capture.srt_reconnected` is true; `srt_session_survived` and `srt_delivery_resumed` stay
+  false, because they describe the first session.
+- The timeline gains `srt_reconnect` in ms from the SIGKILL, including
+  `second_session_first_delivery` and `detection_delay_ms`: the time between the sender's
+  last relayed message and the coordinator's confirmation.
+- `media_downstream_gap_ms` is again a closed gap at the collector. That is the reported
+  interruption.
+
+Known before the run, and not compensated:
+- **The interruption includes harness time an application would not spend.** Inference
+  waits for a full sample interval without sends, so `detection_delay_ms` is expected
+  between about 0.5 s and 1.0 s. It is recorded so it can be subtracted; it is not removed.
+  Process start-up of the second pair adds a few tens of milliseconds more.
+- **The reconnect policy is not a product policy.** One attempt at a time with a 15 s
+  connect timeout is what the pinned peer offers. A different retry cadence would give a
+  different interruption.
+- **Session 2 is a new SRT session.** Its counters start at zero and its recordings are
+  separate; nothing is summed across the two sessions.
+- With link-dead 30 s the first attempt is expected to time out before the path returns, so
+  at least two attempts are expected there. That is a prediction, not a requirement.
+- A second session may connect between two FIPS observations. Its first samples then carry
+  route epoch 1 until the reparent is observed, by the existing marker rule.
+
+What will be reported, with no budget or threshold attached: for both timer profiles, the
+closed downstream gap, the reconnect timeline with its detection delay and attempts, and the
+frame comparison, beside the same-revision runs without reconnect. The variant cannot pass
+G4, sets no product timer or retry policy, and makes no causal claim (OD-01, OD-15).
