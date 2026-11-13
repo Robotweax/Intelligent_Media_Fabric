@@ -60,6 +60,7 @@
 - [G4 faulted diamond, coordinator-driven reconnect variant](qualification/g4-faulted-diamond-reconnect-2026-11-12.md)
 - [G4 faulted diamond, silent transit blackhole variant](qualification/g4-faulted-diamond-blackhole-2026-11-13.md)
 - [SRT-group comparison, design draft](qualification/srt-group-comparison-design-2026-11-13.md)
+- [Requalification at SRT Telemetry d03ca452: G1, healthy pilot and eight faulted-diamond combinations](qualification/telemetry-d03ca452-requalification-2026-11-13.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

@@ -50,12 +50,19 @@ from .srt_adapter import adapt_srt_telemetry_jsonl
 
 EXPECTED_SRT_COMMIT = "e45d0edd346e5c427d85e4c3b1ac605c81a23397"
 EXPECTED_SRT_VERSION = "0.3.2"
-EXPECTED_TELEMETRY_COMMIT = "7a6b8eff65c686ccafa36a0adace148a8b87d3ca"
+EXPECTED_TELEMETRY_COMMIT = "d03ca4527b005be0cfbe542ddaac6c0ede5e7955"
 # Retained healthy pilots are evidence only for their own recorded revisions.
 # Each historical bundle is accepted solely when its original result manifest
 # matches the digest recorded here; a new run cannot present an old pin as the
-# active candidate. See ADR-0006 to ADR-0010.
+# active candidate. See ADR-0006 to ADR-0013.
 HISTORICAL_G4_BUNDLES = {
+    # 2026-11-12, run 43244297357: SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3.
+    "90b1e2eb992d3878d73e96a7fa0ebd257290cc8225f925009a11e42adbbf1a6b": {
+        "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+        "srt_version": "0.3.2",
+        "telemetry_commit": "7a6b8eff65c686ccafa36a0adace148a8b87d3ca",
+        "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+    },
     # 2026-09-23, run 35857439840: SRT main snapshot 0.2.4, FIPS v0.5.1.
     "ba417e4869910940939308203602a5643c24dc7ba834bea96e49ac5d9ba8092b": {
         "srt_commit": "def14a7b6d8a2ba1860677414e415fd86bbc953a",

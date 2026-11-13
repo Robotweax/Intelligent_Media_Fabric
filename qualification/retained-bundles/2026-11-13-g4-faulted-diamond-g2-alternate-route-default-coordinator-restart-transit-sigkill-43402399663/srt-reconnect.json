@@ -1,0 +1,78 @@
+{
+  "attempts": [
+    {
+      "ended_monotonic_ns": 922182537175,
+      "outcome": "failed",
+      "started_monotonic_ns": 906690767553
+    },
+    {
+      "ended_monotonic_ns": 933222871884,
+      "outcome": "connected",
+      "started_monotonic_ns": 922183388182
+    }
+  ],
+  "connected_monotonic_ns": 933222871884,
+  "end_confirmed_monotonic_ns": 906683164095,
+  "end_inferred": {
+    "previous_sample_monotonic_ns": 906182464930,
+    "sample_monotonic_ns": 906682455924
+  },
+  "listener_ready_monotonic_ns": 906690118569,
+  "media_restarted_monotonic_ns": 933223323980,
+  "policy": "coordinator-restart",
+  "profiles": {
+    "receiver": {
+      "configuredMessageTtlMillis": -1,
+      "mediaRelay": "srt-to-udp",
+      "messageApi": true,
+      "peerIdleTimeoutMillis": 5000,
+      "provider": "robotweax-srt",
+      "publicApiVersionHex": 66823,
+      "receiveTimeoutMillis": 500,
+      "recordBytes": 472,
+      "sequenceVerification": false,
+      "tooLatePacketDrop": true,
+      "transport": "live"
+    },
+    "sender": {
+      "configuredMessageTtlMillis": -1,
+      "mediaRelay": "udp-to-srt",
+      "messageApi": true,
+      "peerIdleTimeoutMillis": 5000,
+      "provider": "robotweax-srt",
+      "publicApiVersionHex": 66823,
+      "receiveTimeoutMillis": 500,
+      "recordBytes": 472,
+      "sequenceVerification": false,
+      "tooLatePacketDrop": true,
+      "transport": "live"
+    }
+  },
+  "schema_version": 1,
+  "stopped": {
+    "receiver": {
+      "bytes": 13436736,
+      "connectionBroken": false,
+      "firstMessageMonotonicNano": 933351454953,
+      "lastMessageMonotonicNano": 1040836666226,
+      "longestGapNano": 11386756,
+      "messages": 11912,
+      "outputFailures": 0,
+      "oversizeDatagrams": 0,
+      "receiveTimeouts": 5,
+      "sendFailures": 0
+    },
+    "sender": {
+      "bytes": 13436736,
+      "connectionBroken": false,
+      "firstMessageMonotonicNano": 933230444993,
+      "lastMessageMonotonicNano": 1040715283361,
+      "longestGapNano": 11393466,
+      "messages": 11912,
+      "outputFailures": 0,
+      "oversizeDatagrams": 0,
+      "receiveTimeouts": 0,
+      "sendFailures": 0
+    }
+  }
+}

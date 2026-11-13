@@ -14,9 +14,10 @@ the current engineering decision, not a public product promise.
 | [0007](0007-dependency-refresh-2026-10-22.md) | superseded | Historical SRT v0.3.0 and Telemetry `24475483` selection; FIPS v0.5.3, Actions pins and evidence policy retained |
 | [0008](0008-srt-031-refresh.md) | superseded | Historical SRT v0.3.1 and Telemetry `1a018dfd` selection |
 | [0009](0009-faulted-diamond-media-observation.md) | accepted | Incident-peer media relay, epoch transitions in adapter context, faulted-diamond profile; its Telemetry `1b12f8d7` pin is historical |
-| [0010](0010-srt-032-refresh.md) | accepted | SRT v0.3.2 and Telemetry `7a6b8eff`; faulted-diamond bundles at the old pins digest-locked |
+| [0010](0010-srt-032-refresh.md) | accepted | SRT v0.3.2; faulted-diamond bundles at the old pins digest-locked; its Telemetry `7a6b8eff` pin is historical |
 | [0011](0011-mit-license-and-public-repository.md) | accepted | MIT license; repository made public |
 | [0012](0012-interruption-budget.md) | accepted | Interruption budget for one transit failure: hitless target, 6 s single-path floor |
+| [0013](0013-telemetry-group-mode-pin.md) | accepted | SRT Telemetry `d03ca452` (incident-peer group mode and its test fix); bundles at `7a6b8eff` digest-locked |
 
 The next required ADRs cover the pilot workflow and budget, Robotweax SRT crypto profile,
 conservative MTU/payload profile, device credentials, contribution signing, CODEOWNERS, and the

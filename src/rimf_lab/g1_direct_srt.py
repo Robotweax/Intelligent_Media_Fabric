@@ -69,6 +69,12 @@ EVIDENCE_TYPE = "g1-direct-srt-baseline"
 # Each historical bundle is accepted solely when its result manifest matches
 # the digest recorded here; a new run cannot present an old pin as current.
 HISTORICAL_G1_BUNDLES = {
+    # 2026-11-12, run 43244304465: SRT v0.3.2, Telemetry 7a6b8eff.
+    "788587d1ef902e6dd75748398fefc0429bbb9eba24a820452cd3575743dc3816": {
+        "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+        "srt_version": "0.3.2",
+        "telemetry_commit": "7a6b8eff65c686ccafa36a0adace148a8b87d3ca",
+    },
     # 2026-10-28, run 40743995008: SRT v0.3.1, Telemetry 1b12f8d7.
     "c27be270ebbd3b25946644e2f2d6338dc0676e679c557ab546e1c78b71632a75": {
         "srt_commit": "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1",

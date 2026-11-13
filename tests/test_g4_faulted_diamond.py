@@ -462,10 +462,14 @@ class ResultContractTests(unittest.TestCase):
                 validate_g4_faulted_diamond_result(result)
 
     def test_retained_bundles_at_old_pins_validate_only_through_their_digest(self):
-        bundles = [path for path in sorted(RETAINED.iterdir())
-                   if json.loads((path / "result.json").read_text())["evidence_type"] == "g4-faulted-diamond"
-                   and json.loads((path / "result.json").read_text())["provenance"]["srt_commit"]
-                   != EXPECTED_SRT_COMMIT]
+        def at_old_pins(path: Path) -> bool:
+            manifest = json.loads((path / "result.json").read_text())
+            provenance = manifest.get("provenance", {})
+            return (manifest["evidence_type"] == "g4-faulted-diamond"
+                    and (provenance["srt_commit"], provenance["telemetry_commit"])
+                    != (EXPECTED_SRT_COMMIT, EXPECTED_TELEMETRY_COMMIT))
+
+        bundles = [path for path in sorted(RETAINED.iterdir()) if at_old_pins(path)]
         self.assertEqual(len(bundles), len(HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES))
         for bundle in bundles:
             with self.subTest(bundle=bundle.name):
@@ -478,6 +482,19 @@ class ResultContractTests(unittest.TestCase):
             manifest = json.loads((copy / "result.json").read_text())
             (copy / "result.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ContractError, "provenance srt_commit"):
+                validate_g4_faulted_diamond_bundle(copy)
+        # A bundle that differs from the active pins only in its Telemetry revision is
+        # historical too.
+        telemetry_only = [path for path in bundles
+                          if json.loads((path / "result.json").read_text())["provenance"]["srt_commit"]
+                          == EXPECTED_SRT_COMMIT]
+        self.assertTrue(telemetry_only)
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / "bundle"
+            shutil.copytree(telemetry_only[0], copy)
+            manifest = json.loads((copy / "result.json").read_text())
+            (copy / "result.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "provenance telemetry_commit"):
                 validate_g4_faulted_diamond_bundle(copy)
 
     def test_rejects_invalid_results(self):

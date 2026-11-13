@@ -106,11 +106,19 @@ RECEIVER_EVENT_NAMESPACE = "b2f3e4d5-c6b7-5a89-9cab-1d2e3f4a5b6c"
 # Retained faulted-diamond bundles are evidence only for their own recorded revisions.
 # A bundle whose result manifest matches a digest recorded here is validated against
 # that entry's pins; every other result must carry the active pins, so a new run
-# cannot present an old pin as current. See ADR-0010.
+# cannot present an old pin as current. See ADR-0010 and ADR-0013.
 _PINS_2026_10_28 = {
     "srt_commit": "57fcf51a31ec2eecf4189d63c2f998ff1e8daaa1",
     "srt_version": "0.3.1",
     "telemetry_commit": "1b12f8d7d75658cb7b7e00a0575fc77d965dbbec",
+    "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+}
+# Every faulted-diamond bundle retained on 2026-11-12 and 2026-11-13, before ADR-0013 moved
+# Telemetry to the revision with the incident peer's group mode.
+_PINS_2026_11_12 = {
+    "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+    "srt_version": "0.3.2",
+    "telemetry_commit": "7a6b8eff65c686ccafa36a0adace148a8b87d3ca",
     "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
 }
 HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES = {
@@ -122,6 +130,46 @@ HISTORICAL_G4_FAULTED_DIAMOND_BUNDLES = {
     "80474d3cc8456e8a0a8572b2b9227da4c944d7310ec10b30877c18f1b5ab7c13": _PINS_2026_10_28,
     # 2026-10-30, run 41022516133: same-revision baseline of the variant (SRT v0.3.1, Telemetry 1b12f8d7, FIPS v0.5.3).
     "e51fbf6733cb27b618436a319e41f710e6da6b6f62c23f4ea30f0c352d3bcb43": _PINS_2026_10_28,
+    # 2026-11-12, run 43244304348: fast-detection (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "f680d61bf1ed382dcf362b5863c3340c030ee491847320881ba59cd270260d58": _PINS_2026_11_12,
+    # 2026-11-12, run 43255432045: fast-detection-default (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "f867810526e3cfd35defa7022639c28facf68ce73b6c59ea2f4d7215e36e45fd": _PINS_2026_11_12,
+    # 2026-11-12, run 43280995407: fast-detection-default-coordinator-restart (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "b5250bc3c8052ed309be779f1b31ead6f327fd166e242489965bd25849e439e0": _PINS_2026_11_12,
+    # 2026-11-12, run 43280995407: fast-detection-default-none (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "5a660ba80a7e04c376b3d3844460e35bd6dc007393b97c12594529ef6ad58d9b": _PINS_2026_11_12,
+    # 2026-11-12, run 43255432045: fast-detection-extended (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "4892dc9b441fae3bad0ff59df7974bf72cecf53c01471d2d1c03d6ce87552975": _PINS_2026_11_12,
+    # 2026-11-12, run 43280995407: fast-detection-extended-none (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "bb70b3781d829810e44548363962cb2625c85434350e2a4ddc7993799e1ff92c": _PINS_2026_11_12,
+    # 2026-11-12, run 43244304348: g2-alternate-route (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "574e7f6ab94fe6a1564c039029f68399f2ad4677aee490ee10c336076464fef7": _PINS_2026_11_12,
+    # 2026-11-12, run 43255432045: g2-alternate-route-default (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "14870bff776f6ffd7460e5760a9b16512f64f20366503131b2c483e3042acb80": _PINS_2026_11_12,
+    # 2026-11-12, run 43280995407: g2-alternate-route-default-coordinator-restart (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "a8666b99c388928ac29a5b4800c6e774330e740bf45d758b9a7c325afbd76c23": _PINS_2026_11_12,
+    # 2026-11-12, run 43280995407: g2-alternate-route-default-none (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "56fe8fa5d159cb4fe05709ddbb4a29f8205bddabc4d766f58f40402ddcefd258": _PINS_2026_11_12,
+    # 2026-11-12, run 43255432045: g2-alternate-route-extended (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "84a559ac6bcd6cec5e075bfdfb944940e4a5e121fa5212ca7ab8035b8b041ab4": _PINS_2026_11_12,
+    # 2026-11-12, run 43280995407: g2-alternate-route-extended-none (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "44fe146bc4d9545f888fc77cdeaa71a5ae3f7e620f41042a7ad99f6d508faeab": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: fast-detection-default-coordinator-restart-transit-sigkill (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "2c322f614e0570e458d427fc917305f27197f72fe720c7edc408d18470e572db": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: fast-detection-default-none-transit-sigkill (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "9fca4fbd19388ec8de70515f386ac44b6d69a7d54956aed7f2c88ed3be5d4b36": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: fast-detection-extended-none-transit-blackhole (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "f656bfcb7f9e73d5d94c4d92df94bce05c2adfcaf51fd5b425f2d5f7f5186001": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: fast-detection-extended-none-transit-sigkill (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "3579c97822c0b72d6d17c63ba2d65aa0f5da42704daf377fb1123205587abbf9": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: g2-alternate-route-default-coordinator-restart-transit-sigkill (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "4b573cbc7791e3ecc33ff2fe404b656dbe3f66181e029bdc8e4ddde004049ee3": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: g2-alternate-route-default-none-transit-sigkill (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "97a70e6b571abb72b298a1c2280164f93ae7d62dd1bba6029b5d690dc64fe9f0": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: g2-alternate-route-extended-none-transit-blackhole (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "5d04a264917538d739f4ae52db0e7db250ab80f1c9357bedd3d08e2f7b4a119a": _PINS_2026_11_12,
+    # 2026-11-13, run 43381166414: g2-alternate-route-extended-none-transit-sigkill (SRT v0.3.2, Telemetry 7a6b8eff, FIPS v0.5.3).
+    "a99ad4917216973b0c9faf8d09c34c9d4669252abd94ac0e79f2981d3a38c8b9": _PINS_2026_11_12,
 }
 
 # Predeclared experiment profile (docs/qualification/g4-faulted-diamond-experiment-plan).
