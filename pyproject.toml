@@ -7,7 +7,7 @@ name = "robotweax-intelligent-media-fabric-lab"
 version = "0.0.0"
 description = "Evidence harness for Robotweax Intelligent Media Fabric"
 requires-python = ">=3.11"
-license = {text = "Proprietary"}
+license = {text = "MIT"}
 dependencies = []
 
 [project.scripts]

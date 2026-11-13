@@ -2,7 +2,7 @@
 
 ## Project status
 
-Robotweax Intelligent Media Fabric is private, pre-alpha research software. No release is currently
+Robotweax Intelligent Media Fabric is public, pre-alpha research software. No release is currently
 supported for production, broadcast-critical, safety-critical, or compliance-regulated use.
 
 ## Reporting a vulnerability

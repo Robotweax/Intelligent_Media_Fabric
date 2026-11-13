@@ -2,7 +2,8 @@
 
 Snapshot: 2026-11-12. This is an orientation file, not a substitute for the
 current `main`, PR checks, ADRs or gate registry. Refresh remote state before
-making a decision. The repository is private, proprietary and pre-alpha; no
+making a decision. The repository is public under the MIT license
+([ADR-0011](docs/decisions/0011-mit-license-and-public-repository.md)) and pre-alpha; no
 product, security, performance or continuity claim is released.
 
 ## Start on a new machine
