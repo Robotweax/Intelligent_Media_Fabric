@@ -15,7 +15,7 @@ replaced with an implicit implementation default.
 | OD-09 | Missing FIPS route/path events for a qualified advisor | G7 | WP1 inventory and upstream proposal |
 | OD-10 | Generic capabilities proposed upstream | G8 | Upstream issue/design record |
 | OD-11 | SRT-group topologies with proven independent fault domains | G5 | Topology experiment |
-| OD-12 | Repository licensing, OEM, contribution signing, and CODEOWNERS | First external contribution | Owner decision and ADR |
+| OD-12 | OEM model, contribution signing, and CODEOWNERS (repository licensing closed by [ADR-0011](0011-mit-license-and-public-repository.md)) | First external contribution | Owner decision and ADR |
 | OD-13 | Software-only, appliance-near, or OEM-embedded pilot | Product pilot | Product/deployment ADR |
 | OD-14 | Design partners and frozen goodput, CPU, failover, and operations gates | G3/product pilot | Product decision and gate update |
 | OD-15 | Response to non-hitless FIPS alternate-route recovery | G6 | FIPS/SRT resilience comparison and ADR selecting improvement, bounded workaround, or pivot |

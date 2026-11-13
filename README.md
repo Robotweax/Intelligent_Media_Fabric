@@ -5,7 +5,7 @@ professional contribution-media networking. It investigates how Robotweax SRT ca
 (Free Internetworking Peering System) for identity, discovery, NAT traversal, secure mesh
 connectivity, and network telemetry without weakening SRT's reliability and timing contracts.
 
-This repository is private and pre-alpha. It does not define a released product, API, ABI, wire
+This repository is public, MIT-licensed and pre-alpha. It does not define a released product, API, ABI, wire
 protocol, security property, performance target, SLA, or delivery commitment.
 
 ## Current authorization
@@ -91,6 +91,11 @@ must consume public, installed, versioned interfaces rather than private SRT imp
 
 ## Licensing and contributions
 
-No public or open-source license has been granted for this repository. See
+This repository is licensed under the [MIT License](LICENSE). The external components it builds
+and runs are not included and keep their own licenses. See
 [LICENSE_POLICY.md](LICENSE_POLICY.md), [THIRD_PARTY.md](THIRD_PARTY.md), and
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The G1 and G4 experiment workflows build Robotweax SRT Telemetry, which is a private repository.
+They run only with this repository's read token, so they do not run for pull requests from forks.
+`make check` needs nothing but Python.

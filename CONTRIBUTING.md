@@ -1,7 +1,7 @@
 # Contributing
 
-This is a private Robotweax repository. Contribution rights are limited to explicitly authorized
-contributors.
+This is a public Robotweax repository under the [MIT License](LICENSE). Contributions are accepted
+under the same license. Repository owners approve every merge.
 
 ## Before changing code
 
