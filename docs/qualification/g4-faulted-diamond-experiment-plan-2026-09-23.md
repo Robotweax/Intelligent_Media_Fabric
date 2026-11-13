@@ -14,7 +14,9 @@ reproduced it; both are ordering-only and do not pass G4. The
 [default-peer-idle variant](g4-faulted-diamond-default-peer-idle-2026-11-12.md) (43255432045) ran the
 same day: the session ended under both FIPS timer profiles. The
 [coordinator-driven reconnect variant](g4-faulted-diamond-reconnect-2026-11-12.md) (43280995407) followed:
-a restarted session closed the gap under both.
+a restarted session closed the gap under both. The
+[silent transit blackhole variant](g4-faulted-diamond-blackhole-2026-11-13.md) (43381166414) ran on
+2026-11-13 and matched the kill.
 
 ## Question and fixed setup
 
@@ -308,3 +310,72 @@ What will be reported, with no budget or threshold attached: for both timer prof
 closed downstream gap, the reconnect timeline with its detection delay and attempts, and the
 frame comparison, beside the same-revision runs without reconnect. The variant cannot pass
 G4, sets no product timer or retry policy, and makes no causal claim (OD-01, OD-15).
+
+## Variant: silent transit blackhole (predeclared 2026-11-12)
+
+Set before any run of the variant. Every retained run so far used one fault: SIGKILL of the
+active transit's FIPS daemon. The variant asks one question: when the active transit stops
+passing packets while its daemon keeps running and every interface stays up, do FIPS, SRT
+and the downstream media behave as they did for the kill?
+
+Exactly one thing changes against the frozen profile. Fault `transit-blackhole` replaces
+`transit-sigkill`. Topology, fixture, source, fault timing (20 s after the source starts),
+sampling, downstream decode, the 60 s `extended` SRT peer-idle timeout and reconnect policy
+`none` are unchanged. The runner refuses the blackhole with any other peer-idle profile or
+reconnect policy. Each workflow run executes the six earlier combinations and the blackhole
+under both FIPS timer profiles, so every blackhole run has a same-revision kill run beside it.
+
+The fault, fixed here:
+- At injection the coordinator sets `netem loss 100%` as the root qdisc on the four veth
+  ends of the two links that touch the active transit: the transit's own two interfaces
+  first, then `a`'s end and `b`'s end. Interfaces that carry the 20 ms alternate-path
+  stimulus keep it. Nothing is restored for the rest of the run.
+- The four `tc` commands run one after another. The timeline origin is `blackhole-start`,
+  taken immediately before the first command; `fault_applied` is the time the fourth
+  returned. After the first two commands the transit sends nothing; after all four it also
+  receives nothing.
+- No process is signalled. The transit's daemon keeps running, its sockets stay open and
+  its interfaces stay up.
+
+Stop rules, in addition to the frozen ones (reparenting within 60 s, delivery resumed
+within 120 s, at least 10 s of media after it): all four interfaces are up after the fault;
+the transit's daemon is running after the fault and when the fixture ends; and the four
+qdiscs together report at least one dropped packet when the fixture ends. A run that fails
+one of them fails.
+
+What changes in the bundle, fixed before the first run:
+- `profile.fault` names the fault in every new result. Results without the field are
+  `transit-sigkill`.
+- `fault-events.jsonl` holds `blackhole-start` and `blackhole-applied` instead of
+  `sigkill-sent` and `process-exit-observed`, an OS observation that the transit's daemon is
+  running, the unchanged underlay-state observation, and at the end the per-interface drop
+  counters with the daemon's state. The file inventory is unchanged at 16 files.
+- The timeline's `origin` is `blackhole-start` and it carries `fault_applied` where a kill
+  run carries `process_exit_observed`.
+- `cleanup.faulted_daemon_reaped` keeps its meaning: the coordinator stops the blackholed
+  transit's daemon itself after the last sample and before the namespaces are removed.
+
+Known before the run, and not compensated:
+- **Prediction, not a requirement:** the outcome is expected to match the kill at this
+  sampling resolution, about 4 to 5.5 s downstream gap with link-dead 3 s and about 31 to
+  32.5 s with 30 s. In the kill runs the outage tracked the FIPS link-dead timer, which is
+  consistent with FIPS not acting on the ICMP port-unreachable replies a killed daemon's
+  host returns. A blackhole returns nothing. If FIPS did use such replies, the blackhole
+  would be slower than the kill; that is the difference this variant can show.
+- The blackhole is not instantaneous. The spread between `blackhole-start` and
+  `fault_applied` is recorded; during it the transit can still receive.
+- The blackholed transit keeps trying to reach `a`, and `b` keeps trying to reach the
+  transit, for the rest of the run. Neither can succeed.
+- **A local shakedown preceded the first run.** After this section was committed, the
+  runner was exercised on 2026-11-12 in a privileged Linux aarch64 container at the pinned
+  revisions: the blackhole under both timer profiles and one kill run. All three passed and
+  produced bundles that validate; no runner change followed. Shakedown outputs are not
+  retained and are not evidence; the hosted run is the first run of record, and its outcome
+  is reported whatever the shakedown showed.
+- A blackhole made with `netem` on veth pairs is one kind of silent failure. It says nothing
+  about partial loss, one-way loss, or a transit that forwards but corrupts.
+
+What will be reported, with no budget or threshold attached: for both timer profiles, the
+same timeline, gap and frame comparison as for the kill, beside the same-revision kill
+runs, with the fault spread and the drop counters. The variant cannot pass G4 and makes no
+causal claim.

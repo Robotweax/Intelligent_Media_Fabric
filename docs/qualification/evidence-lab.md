@@ -347,6 +347,8 @@ incomplete teardown fails the run. Under the predeclared `default` SRT peer-idle
 predeclared `coordinator-restart` reconnect policy the coordinator then starts a second
 listener and caller; such a bundle holds seven more files (the second session's recordings,
 contexts and observations, and `srt-reconnect.json`) and its timeline carries
-`srt_reconnect`. A passing run records `G4: not-passed` and makes no
+`srt_reconnect`. The predeclared `transit-blackhole` fault replaces the SIGKILL with
+`netem loss 100%` on both links of the active transit while its daemon keeps running; the
+timeline origin is then `blackhole-start`. A passing run records `G4: not-passed` and makes no
 first-divergent-layer or causal claim. See
 [ADR-0009](../decisions/0009-faulted-diamond-media-observation.md).

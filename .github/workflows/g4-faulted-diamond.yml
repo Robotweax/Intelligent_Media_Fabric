@@ -40,18 +40,31 @@ jobs:
         # Predeclared SRT peer-idle profiles: extended (60 s) and default (5 s).
         srt_peer_idle: [extended, default]
         srt_reconnect: [none]
-        # Predeclared reconnect policy, only with the default peer-idle profile.
+        fault: [transit-sigkill]
         include:
+          # Predeclared reconnect policy, only with the default peer-idle profile.
           - fips_timers: g2-alternate-route
             srt_peer_idle: default
             srt_reconnect: coordinator-restart
+            fault: transit-sigkill
           - fips_timers: fast-detection
             srt_peer_idle: default
             srt_reconnect: coordinator-restart
+            fault: transit-sigkill
+          # Predeclared silent blackhole, only with the extended peer-idle profile and no reconnect.
+          - fips_timers: g2-alternate-route
+            srt_peer_idle: extended
+            srt_reconnect: none
+            fault: transit-blackhole
+          - fips_timers: fast-detection
+            srt_peer_idle: extended
+            srt_reconnect: none
+            fault: transit-blackhole
     env:
       FIPS_TIMERS: ${{ matrix.fips_timers }}
       SRT_PEER_IDLE: ${{ matrix.srt_peer_idle }}
       SRT_RECONNECT: ${{ matrix.srt_reconnect }}
+      FAULT: ${{ matrix.fault }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -193,7 +206,8 @@ jobs:
               --project-revision "${{ github.event.pull_request.head.sha || github.sha }}" \
               --fips-timers "$FIPS_TIMERS" \
               --srt-peer-idle "$SRT_PEER_IDLE" \
-              --srt-reconnect "$SRT_RECONNECT"
+              --srt-reconnect "$SRT_RECONNECT" \
+              --fault "$FAULT"
 
       - name: Make the bundle readable and show a failed result
         if: always()
@@ -215,11 +229,12 @@ jobs:
         run: |
           r="$OUTPUT_DIR/result.json"
           {
-            echo "## G4 faulted diamond ($FIPS_TIMERS, SRT peer idle $SRT_PEER_IDLE, reconnect $SRT_RECONNECT)"
+            echo "## G4 faulted diamond ($FIPS_TIMERS, SRT peer idle $SRT_PEER_IDLE, reconnect $SRT_RECONNECT, fault $FAULT)"
             echo
             echo "- FIPS timers: $(jq -c '.profile.fips_timers' "$r")"
             echo "- Experiment status: $(jq -r '.status' "$r")"
-            echo "- Killed transit / alternate: $(jq -r '.topology.initial_active_transit' "$r") / $(jq -r '.topology.alternate_transit' "$r")"
+            echo "- Fault: $(jq -r '.profile.fault' "$r")"
+            echo "- Faulted transit / alternate: $(jq -r '.topology.initial_active_transit' "$r") / $(jq -r '.topology.alternate_transit' "$r")"
             echo "- Route epochs: $(jq -c '.capture.route_epochs' "$r")"
             echo "- SRT peer idle timeout ms: $(jq -r '.profile.srt_peer_idle_timeout_ms' "$r")"
             echo "- SRT session survived: $(jq -r '.capture.srt_session_survived' "$r")"
@@ -239,7 +254,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: g4-faulted-diamond-${{ matrix.fips_timers }}-${{ matrix.srt_peer_idle }}-${{ matrix.srt_reconnect }}-${{ github.run_id }}
+          name: g4-faulted-diamond-${{ matrix.fips_timers }}-${{ matrix.srt_peer_idle }}-${{ matrix.srt_reconnect }}-${{ matrix.fault }}-${{ github.run_id }}
           path: ${{ env.OUTPUT_DIR }}
           if-no-files-found: warn
           retention-days: 14

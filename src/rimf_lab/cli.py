@@ -140,6 +140,8 @@ def _parser() -> argparse.ArgumentParser:
                                     default="g2-alternate-route")
     diamond_run_parser.add_argument("--srt-peer-idle", choices=("extended", "default"), default="extended")
     diamond_run_parser.add_argument("--srt-reconnect", choices=("none", "coordinator-restart"), default="none")
+    diamond_run_parser.add_argument("--fault", choices=("transit-sigkill", "transit-blackhole"),
+                                    default="transit-sigkill")
 
     diamond_bundle_parser = subparsers.add_parser(
         "validate-g4-faulted-diamond",
@@ -377,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
                 fips_timers=args.fips_timers,
                 srt_peer_idle=args.srt_peer_idle,
                 srt_reconnect=args.srt_reconnect,
+                fault=args.fault,
             )
             print(f"G4 faulted diamond: {result['status']} ({args.output_dir})")
         elif args.command == "validate-g4-faulted-diamond":
