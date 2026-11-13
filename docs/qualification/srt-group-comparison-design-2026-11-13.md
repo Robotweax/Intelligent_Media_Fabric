@@ -78,7 +78,8 @@ peer opened one socket when this draft was written. It needs a group mode, propo
 The proposed change keeps the recording format: each member is recorded to its own `1alpha1`
 file, so Fabric's adapter reads member recordings as it reads single-socket ones
 ([ADR-0004](../decisions/0004-srt-telemetry-adapter-boundary.md) is untouched). Using it still
-needs a Telemetry pin change and an ADR here once it is merged.
+needed a Telemetry pin change, made by
+[ADR-0013](../decisions/0013-telemetry-group-mode-pin.md).
 
 **Fabric:** a new runner beside the faulted diamond that reuses its source, collector, decode,
 frame comparison and blackhole; a result contract for group runs; a workflow.

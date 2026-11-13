@@ -63,7 +63,7 @@ workflows must agree with it. Do not substitute a moving `main` or a local build
 | Component | Selected revision | Role |
 | --- | --- | --- |
 | Robotweax SRT v0.3.2 | `e45d0edd346e5c427d85e4c3b1ac605c81a23397` | Public C API and `librobotweax-srt` media transport |
-| Robotweax SRT Telemetry | `7a6b8eff65c686ccafa36a0adace148a8b87d3ca` | Public SRT adapter and source measurements |
+| Robotweax SRT Telemetry | `21dc05b957855ddda270ee7fca7ab28c0d0781fe` | Public SRT adapter and source measurements; incident peer with group mode ([ADR-0013](docs/decisions/0013-telemetry-group-mode-pin.md)) |
 | FIPS v0.5.3 | `f4a5b4a8e61e340e6be7551608109a5c399f8353` | External daemon and `fips0` overlay |
 
 The historical FIPS development candidate in the manifest is research-only.

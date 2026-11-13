@@ -20,7 +20,7 @@ env:
   FIPS_CARGO_LOCK_SHA256: 70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a
   FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
   SRT_COMMIT: e45d0edd346e5c427d85e4c3b1ac605c81a23397
-  TELEMETRY_COMMIT: 7a6b8eff65c686ccafa36a0adace148a8b87d3ca
+  TELEMETRY_COMMIT: 21dc05b957855ddda270ee7fca7ab28c0d0781fe
   FIPS_SOURCE: /tmp/rimf-g4-fips
   SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
   SRT_BUILD: /tmp/rimf-g4-srt-build
