@@ -44,6 +44,7 @@ from .g1_direct_srt import (
     validate_g1_direct_srt_bundle,
 )
 from .g4_faulted_diamond import run_g4_faulted_diamond, validate_g4_faulted_diamond_bundle
+from .g5_srt_group import run_g5_srt_group, validate_g5_srt_group_bundle
 from .media_frames import write_media_frame_assessment
 from .runner import run_scenario
 from .srt_adapter import adapt_srt_telemetry_jsonl
@@ -142,6 +143,22 @@ def _parser() -> argparse.ArgumentParser:
     diamond_run_parser.add_argument("--srt-reconnect", choices=("none", "coordinator-restart"), default="none")
     diamond_run_parser.add_argument("--fault", choices=("transit-sigkill", "transit-blackhole"),
                                     default="transit-sigkill")
+
+    group_run_parser = subparsers.add_parser(
+        "run-g5-srt-group",
+        help="run the privileged Linux four-node SRT connection-group experiment",
+    )
+    for option in ("--srt-source", "--srt-library", "--telemetry-source", "--incident-peer",
+                   "--library-dir", "--ffmpeg", "--output-dir"):
+        group_run_parser.add_argument(option, type=Path, required=True)
+    group_run_parser.add_argument("--project-revision", required=True)
+    group_run_parser.add_argument("--group-type", choices=("broadcast", "backup"), required=True)
+
+    group_bundle_parser = subparsers.add_parser(
+        "validate-g5-srt-group",
+        help="validate a retained G5 SRT-group bundle directory",
+    )
+    group_bundle_parser.add_argument("directory", type=Path)
 
     diamond_bundle_parser = subparsers.add_parser(
         "validate-g4-faulted-diamond",
@@ -382,6 +399,22 @@ def main(argv: list[str] | None = None) -> int:
                 fault=args.fault,
             )
             print(f"G4 faulted diamond: {result['status']} ({args.output_dir})")
+        elif args.command == "run-g5-srt-group":
+            result = run_g5_srt_group(
+                srt_source=args.srt_source,
+                srt_library=args.srt_library,
+                telemetry_source=args.telemetry_source,
+                incident_peer=args.incident_peer,
+                library_dir=args.library_dir,
+                ffmpeg=args.ffmpeg,
+                output_dir=args.output_dir,
+                project_revision=args.project_revision,
+                group_type=args.group_type,
+            )
+            print(f"G5 SRT group: {result['status']} ({args.output_dir})")
+        elif args.command == "validate-g5-srt-group":
+            validate_g5_srt_group_bundle(args.directory)
+            print(f"G5 SRT-group bundle validation: OK ({args.directory})")
         elif args.command == "validate-g4-faulted-diamond":
             validate_g4_faulted_diamond_bundle(args.directory)
             print(f"G4 faulted-diamond bundle validation: OK ({args.directory})")

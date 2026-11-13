@@ -20,7 +20,7 @@ any gap?
 | --- | --- |
 | Pins | Robotweax SRT v0.3.2 `e45d0edd`, SRT Telemetry `21dc05b9` ([ADR-0013](../decisions/0013-telemetry-group-mode-pin.md)), FFmpeg `6.1.1-3ubuntu5`. No FIPS. |
 | Topology | Four Linux namespaces `a`, `r1`, `r2`, `b` and the diamond's four veth links, link MTU 1500. No FIPS daemon runs. `r1` and `r2` forward IPv6 in the kernel. |
-| Addresses | One IPv6 /64 per link. Static routes on `a` and `b` send each far-side link prefix through the transit on that side, so `a`–`r1`–`b` and `a`–`r2`–`b` are separate paths with no route between them. |
+| Addresses | One IPv6 /64 per link. Static routes on `a` and `b` send each far-side link prefix through the transit on that side. Member 0 uses the two `r1`-side addresses and member 1 the two `r2`-side addresses, so each member's packets cross only its own transit in both directions. Mixed address pairs are routable but no member uses one. |
 | Path stimulus | 20 ms one-way delay on both ends of `r2`–`b`, as in the faulted diamond. The `r1` path is the faster one. |
 | SRT | One group from `a` (caller) to `b` (listener), live mode, message API. Member 0 runs over `r1` with weight 20, member 1 over `r2` with weight 10. SRT's defaults otherwise: peer idle 5 s, group stability timeout unset. The listener binds the wildcard address. |
 | Group mode | `broadcast` or `backup`, one per job. In Backup, the higher weight makes the `r1` member the active one. |
@@ -36,7 +36,8 @@ A run fails when one of these does not hold:
    Backup member 0 carries it and member 1 is idle.
 3. All four blackholed interfaces are up after the fault, and their qdiscs together report at
    least one dropped packet when the fixture ends.
-4. Within 2 s of the fault the listener's member 0 receives nothing more.
+4. Within 2 s of the fault the listener's member 0 receives nothing more, as seen in the first
+   500 ms sample after that time.
 5. The group stays connected to the end of the fixture on both endpoints.
 6. No complete sampling interval is missed; teardown is complete.
 
@@ -82,6 +83,14 @@ recomputes the frame assessment and the timeline from these files and replays th
   switch time is not known for the pinned SRT; a short gap or none is expected, since a
   loopback check of the incident peer showed the standby carrying media within one 500 ms
   sample. That check used a different fault mechanism and is not evidence.
+- **A local shakedown preceded the first run.** After this contract was committed, the
+  runner was exercised on 2026-11-13 in a privileged Linux aarch64 container at the pinned
+  revisions, once per group mode. Both runs passed and produced bundles that validate.
+  Before those runs, and before any hosted run, two things in this contract were corrected:
+  the address row no longer claims that mixed address pairs are unroutable, and stop rule 4
+  names the sample in which it is checked. Shakedown outputs are not retained and are not
+  evidence; the hosted run is the first run of record, and its outcome is reported whatever
+  the shakedown showed.
 - The endpoints are single points of failure and are not faulted. One fault class, full and
   two-way; partial or one-way loss on a member is a different experiment.
 

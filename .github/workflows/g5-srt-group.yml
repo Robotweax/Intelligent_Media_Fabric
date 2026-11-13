@@ -1,0 +1,171 @@
+name: G5 SRT Group
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/g5-srt-group.yml
+      - src/rimf_lab/g5_srt_group.py
+      - src/rimf_lab/media_stream.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g5-srt-group
+  cancel-in-progress: false
+
+env:
+  SRT_COMMIT: e45d0edd346e5c427d85e4c3b1ac605c81a23397
+  TELEMETRY_COMMIT: 21dc05b957855ddda270ee7fca7ab28c0d0781fe
+  SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
+  SRT_BUILD: /tmp/rimf-g5-srt-build
+  TELEMETRY_SOURCE: ${{ github.workspace }}/dependencies/srt_telemetry
+  TELEMETRY_BUILD: /tmp/rimf-g5-telemetry-build
+  OUTPUT_DIR: artifacts/g5-srt-group
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # Predeclared group modes; see the SRT-group comparison plan.
+        group_type: [broadcast, backup]
+    env:
+      GROUP_TYPE: ${{ matrix.group_type }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Require bounded dependency read token
+        env:
+          ROBOTWEAX_REPO_TOKEN: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+        run: |
+          test -n "$ROBOTWEAX_REPO_TOKEN" || {
+            echo "ROBOTWEAX_REPO_TOKEN must read Contents for Robotweax/srt and Robotweax/srt_telemetry" >&2
+            exit 1
+          }
+
+      - name: Checkout pinned Robotweax SRT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt
+          ref: ${{ env.SRT_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt
+          persist-credentials: false
+
+      - name: Checkout pinned SRT Telemetry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt_telemetry
+          ref: ${{ env.TELEMETRY_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt_telemetry
+          persist-credentials: false
+
+      - name: Install bounded Linux build and network dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake \
+            ffmpeg \
+            g++ \
+            iproute2 \
+            iputils-ping \
+            libssl-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Verify dependency revisions
+        run: |
+          test "$(git -C "$SRT_SOURCE" rev-parse HEAD)" = "$SRT_COMMIT"
+          test "$(git -C "$TELEMETRY_SOURCE" rev-parse HEAD)" = "$TELEMETRY_COMMIT"
+
+      - name: Build pinned shared Robotweax SRT
+        run: |
+          cmake -S "$SRT_SOURCE" -B "$SRT_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DROBOTWEAX_SRT_BUILD_TESTS=OFF \
+            -DROBOTWEAX_SRT_BUILD_BENCHMARKS=OFF \
+            -DROBOTWEAX_SRT_BUILD_TOOLS=OFF
+          cmake --build "$SRT_BUILD" --parallel --target robotweax_srt
+          test -f "$SRT_BUILD/librobotweax-srt.so"
+
+      - name: Build pinned Telemetry incident peer and run its suite
+        run: |
+          cmake -S "$TELEMETRY_SOURCE" -B "$TELEMETRY_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_TESTS=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_PUBLIC_SRT_ADAPTER=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_INCLUDE_DIR="$SRT_SOURCE/include" \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/librobotweax-srt.so" \
+            -DROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt
+          cmake --build "$TELEMETRY_BUILD" --parallel
+          ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure
+          PEER_HELP="$(env LD_LIBRARY_PATH="$SRT_BUILD" \
+            "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" --help 2>&1 || true)"
+          grep --fixed-strings -- '--group broadcast|backup' <<< "$PEER_HELP"
+
+      - name: Run privileged four-node SRT-group experiment
+        run: |
+          sudo env \
+            "PATH=$PATH" \
+            "PYTHONPATH=$GITHUB_WORKSPACE/src" \
+            python3 -m rimf_lab run-g5-srt-group \
+              --srt-source "$SRT_SOURCE" \
+              --srt-library "$SRT_BUILD/librobotweax-srt.so" \
+              --telemetry-source "$TELEMETRY_SOURCE" \
+              --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
+              --library-dir "$SRT_BUILD" \
+              --ffmpeg /usr/bin/ffmpeg \
+              --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
+              --project-revision "${{ github.event.pull_request.head.sha || github.sha }}" \
+              --group-type "$GROUP_TYPE"
+
+      - name: Make the bundle readable and show a failed result
+        if: always()
+        run: |
+          if [ -d "$OUTPUT_DIR" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+            if [ "$(jq -r '.status' "$OUTPUT_DIR/result.json")" = failed ]; then
+              jq '{failure_phase, failure_class, failure_detail, cleanup}' "$OUTPUT_DIR/result.json"
+              test -f "$OUTPUT_DIR/diagnostics.json" && jq -c '{fault_events, last_samples: [.group_samples[-8:][] | {role, sample_index, members}]}' "$OUTPUT_DIR/diagnostics.json" || true
+            fi
+          fi
+
+      - name: Validate fail-closed SRT-group bundle
+        run: |
+          PYTHONPATH=src python3 -m rimf_lab validate-g5-srt-group "$OUTPUT_DIR"
+
+      - name: Publish bounded job summary
+        if: success()
+        run: |
+          r="$OUTPUT_DIR/result.json"
+          {
+            echo "## G5 SRT group ($GROUP_TYPE)"
+            echo
+            echo "- Experiment status: $(jq -r '.status' "$r")"
+            echo "- Faulted transit: $(jq -r '.topology.faulted_transit' "$r")"
+            echo "- Hitless (no missing and no changed frame): $(jq -r '.capture.hitless' "$r")"
+            echo "- Frames expected / observed / missing / changed: $(jq -r '.capture.frames | "\(.expected_frames) / \(.observed_frames) / \(.missing_frames) / \(.changed_frames)"' "$r")"
+            echo "- Downstream gaps after the fault ms: $(jq -c '.timeline.media_downstream_gaps' "$r") (longest $(jq -r '.timeline.longest_media_downstream_gap_ms' "$r"))"
+            echo "- Faulted member receiver stall ms: $(jq -c '.timeline.faulted_member_receiver_stall' "$r")"
+            echo "- Faulted member unusable ms: $(jq -c '.timeline.faulted_member_unusable' "$r")"
+            echo "- Standby activation ms: $(jq -c '.timeline.standby_activation // "not applicable"' "$r")"
+            echo "- Member wire totals: $(jq -c '.capture.member_wire' "$r")"
+            echo "- G5 conclusion: $(jq -r '.gate_conclusion.G5' "$r")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bounded SRT-group bundle
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: g5-srt-group-${{ matrix.group_type }}-${{ github.run_id }}
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14

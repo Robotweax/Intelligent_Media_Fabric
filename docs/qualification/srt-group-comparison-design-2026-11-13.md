@@ -1,7 +1,7 @@
 # SRT-group comparison: design draft — 2026-11-13
 
-- Status: design draft. It is not a predeclaration: no runner exists and nothing has run.
-  The experiment contract will be predeclared in its own plan before the first run.
+- Status: design draft, not a predeclaration. Stage 1 is predeclared in its own
+  [plan](g5-srt-group-comparison-plan-2026-11-13.md); where the two differ, the plan holds.
 - Serves OD-15 (response to non-hitless FIPS recovery), OD-11 (group topologies with
   independent fault domains) and G5. It changes no gate.
 
