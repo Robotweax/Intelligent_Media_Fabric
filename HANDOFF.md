@@ -155,9 +155,13 @@ clock domains, route epochs and downstream identity checks.
    link-dead 3 s and 32.5 s with link-dead 30 s; about 1 s of that is the coordinator's own detection
    delay) and a
    [silent transit blackhole variant](docs/qualification/g4-faulted-diamond-blackhole-2026-11-13.md)
-   (run 43381166414: indistinguishable from the kill under both timer profiles). Next predeclare variants
-   (the SRT-group comparison OD-15 asks for and a peer that reconnects by itself, both of which need a
-   Telemetry change; partial or one-way loss). Each variant is a new predeclaration. Do not
+   (run 43381166414: indistinguishable from the kill under both timer profiles). [ADR-0012](docs/decisions/0012-interruption-budget.md)
+   now sets the budget for one transit failure: hitless as the target, 6 s with the session kept as the
+   single-path floor. No retained single-session run meets the target, so the next experiment is the
+   SRT-group comparison OD-15 asks for; its
+   [design draft](docs/qualification/srt-group-comparison-design-2026-11-13.md) needs a group mode in the
+   Telemetry incident peer first. Other open variants: a peer that reconnects by itself (also a Telemetry
+   change), partial or one-way loss. Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable
