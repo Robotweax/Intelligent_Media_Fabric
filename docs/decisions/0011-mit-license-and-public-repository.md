@@ -41,3 +41,17 @@ It does not cover the components the harness builds and runs. None of them is ve
   makes no product, security, performance or continuity claim.
 - The MIT license on this repository does not select a product, OEM or contribution-signing
   model. Those remain OD-12.
+
+## Update, 2026-11-13
+
+The owner made Robotweax SRT Telemetry public later the same day. The table row and the first
+two consequences above describe the state when this ADR was accepted and are kept as written.
+What holds now:
+
+- Every component the experiments build is public. An outside reader can build the pinned
+  incident peer and reproduce a retained run on their own Linux host.
+- The experiment workflows still require `ROBOTWEAX_REPO_TOKEN` and fail without it, so they
+  still do not run for pull requests from forks. Removing that requirement would let fork pull
+  requests start privileged experiment jobs and is a separate decision.
+- The SRT Knowledge Base stays private; the strategy link still does not resolve for outside
+  readers.

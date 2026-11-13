@@ -298,8 +298,9 @@ validates the separate `srt`, `fips.mmp`, and `media.application` namespaces, an
 ordering assessments cite the exact selected input artifacts. A successful experiment still
 records both G3 and G4 as `not-passed`; it qualifies the capture path, not diagnosis or control.
 
-Because Robotweax SRT and SRT Telemetry are private repositories, the workflow requires the
-repository secret `ROBOTWEAX_REPO_TOKEN`. It must be a fine-grained token or GitHub App token with
+The workflow was written when Robotweax SRT and SRT Telemetry were private repositories and still
+requires the repository secret `ROBOTWEAX_REPO_TOKEN`, although both are public now (Telemetry since
+2026-11-13). It must be a fine-grained token or GitHub App token with
 read-only Contents access to exactly `Robotweax/srt` and `Robotweax/srt_telemetry`; the workflow
 does not persist checkout credentials and its own repository permission remains `contents: read`.
 
