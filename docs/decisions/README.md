@@ -16,6 +16,7 @@ the current engineering decision, not a public product promise.
 | [0009](0009-faulted-diamond-media-observation.md) | accepted | Incident-peer media relay, epoch transitions in adapter context, faulted-diamond profile; its Telemetry `1b12f8d7` pin is historical |
 | [0010](0010-srt-032-refresh.md) | accepted | SRT v0.3.2 and Telemetry `7a6b8eff`; faulted-diamond bundles at the old pins digest-locked |
 | [0011](0011-mit-license-and-public-repository.md) | accepted | MIT license; repository made public |
+| [0012](0012-interruption-budget.md) | accepted | Interruption budget for one transit failure: hitless target, 6 s single-path floor |
 
 The next required ADRs cover the pilot workflow and budget, Robotweax SRT crypto profile,
 conservative MTU/payload profile, device credentials, contribution signing, CODEOWNERS, and the

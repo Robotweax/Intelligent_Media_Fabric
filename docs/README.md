@@ -8,6 +8,7 @@
 - [Architecture overview](architecture/overview.md)
 - [ADR index](decisions/README.md)
 - [Open decisions](decisions/open-decisions.md)
+- [Proposal: pilot workflow and budgets (OD-01, OD-14)](decisions/proposal-pilot-budgets-2026-11-13.md)
 - [ADR-0001: Evidence-first project scope](decisions/0001-evidence-first-project-scope.md)
 - [ADR-0002: External pinned dependencies](decisions/0002-external-pinned-dependencies.md)
 - [ADR-0003: FIPS Phase 1 baseline](decisions/0003-fips-phase1-baseline.md)
@@ -58,6 +59,7 @@
 - [G4 faulted diamond, default SRT peer-idle variant](qualification/g4-faulted-diamond-default-peer-idle-2026-11-12.md)
 - [G4 faulted diamond, coordinator-driven reconnect variant](qualification/g4-faulted-diamond-reconnect-2026-11-12.md)
 - [G4 faulted diamond, silent transit blackhole variant](qualification/g4-faulted-diamond-blackhole-2026-11-13.md)
+- [SRT-group comparison, design draft](qualification/srt-group-comparison-design-2026-11-13.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

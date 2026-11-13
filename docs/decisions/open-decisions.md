@@ -6,7 +6,7 @@ replaced with an implicit implementation default.
 
 | ID | Decision | Blocks | Closure |
 | --- | --- | --- | --- |
-| OD-01 | Pilot contribution workflow and downstream interruption budget | G3 | Product input plus calibrated direct baseline |
+| OD-01 | Pilot contribution workflow (the interruption budget is set by [ADR-0012](0012-interruption-budget.md): hitless target, 6 s single-path floor) | G3 | Product input plus calibrated direct baseline |
 | OD-03 | First Robotweax SRT crypto profile | G3 | Security/performance experiment and ADR |
 | OD-04 | Conservative MTU and media-payload profile | G3 | Packet-budget qualification |
 | OD-05 | Simpler secure-network comparison baseline | Go/Pivot | Architecture ADR |
