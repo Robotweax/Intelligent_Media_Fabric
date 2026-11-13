@@ -57,6 +57,7 @@
 - [G4 faulted diamond at SRT v0.3.2, both timer profiles](qualification/g4-faulted-diamond-srt-032-2026-11-12.md)
 - [G4 faulted diamond, default SRT peer-idle variant](qualification/g4-faulted-diamond-default-peer-idle-2026-11-12.md)
 - [G4 faulted diamond, coordinator-driven reconnect variant](qualification/g4-faulted-diamond-reconnect-2026-11-12.md)
+- [G4 faulted diamond, silent transit blackhole variant](qualification/g4-faulted-diamond-blackhole-2026-11-13.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

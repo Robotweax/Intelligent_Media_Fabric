@@ -1,0 +1,13 @@
+{
+  "component": "media-source",
+  "datagram_bytes": 1128,
+  "datagrams": 17729,
+  "finish_monotonic_ns": 1416523008912,
+  "fixture_bytes": 19998312,
+  "fixture_sha256": "3b5ad5679da8d3396a3919ca962832a778d20dd8e3ca64c9807100b12b715f8d",
+  "interval_ns": 9024000,
+  "max_lateness_ns": 1587036,
+  "rate_bps": 1000000,
+  "schema_version": 1,
+  "start_monotonic_ns": 1256545446433
+}

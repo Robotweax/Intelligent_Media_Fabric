@@ -86,7 +86,9 @@ SRT v0.3.2) ended the SRT session under both FIPS timer profiles, including link
 peer does not reconnect. In a predeclared
 [coordinator-driven reconnect variant](g4-faulted-diamond-reconnect-2026-11-12.md) the test coordinator
 restarted the ended session: the downstream gap closed at 6.4 s (link-dead 3 s) and 32.5 s (link-dead 30 s),
-including about 1 s of harness detection delay; this is not an SRT or application reconnect. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
+including about 1 s of harness detection delay; this is not an SRT or application reconnect. A predeclared
+[silent transit blackhole](g4-faulted-diamond-blackhole-2026-11-13.md) (all packets dropped on both links of
+the active transit, daemon left running) gave the same detection times and gaps as the kill. All are ordering-only evidence on one local clock domain: no first-divergent-layer,
 fault-domain, causal or hitless claim exists yet, and G4 stays `in-progress`.
 
 G1 moved to `in-progress` on 2026-10-22 with the

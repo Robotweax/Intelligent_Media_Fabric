@@ -152,8 +152,11 @@ clock domains, route epochs and downstream identity checks.
    [coordinator-driven reconnect variant](docs/qualification/g4-faulted-diamond-reconnect-2026-11-12.md)
    (run 43280995407: restarting the session from the test coordinator closed the gap at 6.4 s with
    link-dead 3 s and 32.5 s with link-dead 30 s; about 1 s of that is the coordinator's own detection
-   delay). Next predeclare variants (a peer that reconnects by itself, which needs a Telemetry change;
-   other fault types; the SRT-group comparison OD-15 asks for). Each variant is a new predeclaration. Do not
+   delay) and a
+   [silent transit blackhole variant](docs/qualification/g4-faulted-diamond-blackhole-2026-11-13.md)
+   (run 43381166414: indistinguishable from the kill under both timer profiles). Next predeclare variants
+   (the SRT-group comparison OD-15 asks for and a peer that reconnects by itself, both of which need a
+   Telemetry change; partial or one-way loss). Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
    on the pinned FIPS revision before using such evidence for G6. Do not enable

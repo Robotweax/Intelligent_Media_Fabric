@@ -14,7 +14,9 @@ reproduced it; both are ordering-only and do not pass G4. The
 [default-peer-idle variant](g4-faulted-diamond-default-peer-idle-2026-11-12.md) (43255432045) ran the
 same day: the session ended under both FIPS timer profiles. The
 [coordinator-driven reconnect variant](g4-faulted-diamond-reconnect-2026-11-12.md) (43280995407) followed:
-a restarted session closed the gap under both.
+a restarted session closed the gap under both. The
+[silent transit blackhole variant](g4-faulted-diamond-blackhole-2026-11-13.md) (43381166414) ran on
+2026-11-13 and matched the kill.
 
 ## Question and fixed setup
 
