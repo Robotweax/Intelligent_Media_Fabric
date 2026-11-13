@@ -18,7 +18,7 @@ any gap?
 
 | Element | Value |
 | --- | --- |
-| Pins | Robotweax SRT v0.3.2 `e45d0edd`, SRT Telemetry `21dc05b9` ([ADR-0013](../decisions/0013-telemetry-group-mode-pin.md)), FFmpeg `6.1.1-3ubuntu5`. No FIPS. |
+| Pins | Robotweax SRT v0.3.2 `e45d0edd`, SRT Telemetry `d03ca452` ([ADR-0013](../decisions/0013-telemetry-group-mode-pin.md)), FFmpeg `6.1.1-3ubuntu5`. No FIPS. |
 | Topology | Four Linux namespaces `a`, `r1`, `r2`, `b` and the diamond's four veth links, link MTU 1500. No FIPS daemon runs. `r1` and `r2` forward IPv6 in the kernel. |
 | Addresses | One IPv6 /64 per link. Static routes on `a` and `b` send each far-side link prefix through the transit on that side. Member 0 uses the two `r1`-side addresses and member 1 the two `r2`-side addresses, so each member's packets cross only its own transit in both directions. Mixed address pairs are routable but no member uses one. |
 | Path stimulus | 20 ms one-way delay on both ends of `r2`–`b`, as in the faulted diamond. The `r1` path is the faster one. |
@@ -90,7 +90,8 @@ recomputes the frame assessment and the timeline from these files and replays th
   the address row no longer claims that mixed address pairs are unroutable, and stop rule 4
   names the sample in which it is checked. Shakedown outputs are not retained and are not
   evidence; the hosted run is the first run of record, and its outcome is reported whatever
-  the shakedown showed.
+  the shakedown showed. The shakedown ran at Telemetry `21dc05b9`; the pin then moved to
+  `d03ca452`, which changes two test files and not the incident peer (ADR-0013).
 - The endpoints are single points of failure and are not faulted. One fault class, full and
   two-way; partial or one-way loss on a member is a different experiment.
 
