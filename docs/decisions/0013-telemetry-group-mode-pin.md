@@ -66,6 +66,15 @@ would make later runs fail the same way. The pin moves to `d03ca452` before anyt
 retained. The `21dc05b9` bundles are not retained: they would be historical at once, and the
 same combinations run again at the selected revision.
 
+## Outcome at `d03ca452`
+
+Both points were shown on 2026-11-13 at Fabric revision `859160d4`, all first attempts: G1 run
+43402399643, healthy pilot 43402398402 and faulted-diamond run 43402399663 passed, each job
+with the 82-test Telemetry suite passing and nothing skipped. The ten bundles are retained
+and tabulated beside the `7a6b8eff` results in the
+[requalification record](../qualification/telemetry-d03ca452-requalification-2026-11-13.md).
+The existing experiments behave as before within the recorded run-to-run spread.
+
 ## Known limits
 
 - At the time of this ADR the group mode had been built and run only against Robotweax SRT

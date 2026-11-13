@@ -1,0 +1,40 @@
+{
+  "analysis_id": "201d5f58-face-5d21-a03e-f77d9335ba41",
+  "analysis_scope": "ordering-only",
+  "clock_assessment": {
+    "basis": "shared-monotonic-domain",
+    "combined_max_error_ns": null,
+    "ordering_authorized": true,
+    "same_domain": true
+  },
+  "inputs": {
+    "peer": {
+      "clock_domain": "linux-host-monotonic-51af862b5f3e5cd57fbca2ed",
+      "event_id": "2fc8b3ff-8ce9-5a05-9f68-37e21778de10",
+      "route_epoch": 1,
+      "sha256": "77c56f976ad7d23dff379a31a2a0cc1b1ca7531823d05b946bd01f6ab5de2843",
+      "source": "media-validator"
+    },
+    "srt": {
+      "clock_domain": "linux-host-monotonic-51af862b5f3e5cd57fbca2ed",
+      "event_id": "f2488cd4-90e3-5367-8ee1-fe9d8c8c7159",
+      "route_epoch": 1,
+      "sha256": "f502c2a03cc10479e4d70e815e2a6c83582739e283aacd4f32bb87daace01799"
+    }
+  },
+  "metric_semantics_separate": true,
+  "non_claims": [
+    "Temporal ordering alone does not identify the first divergent layer or a root cause.",
+    "Peer metrics are not SRT loss, drop, or retransmission counters unless the source contract says so.",
+    "This assessment does not authorize route, SRT, encoder, or relay mutation."
+  ],
+  "ordering": "srt-before-peer",
+  "outcome": "ordered",
+  "reason": "shared-monotonic-order",
+  "schema_version": 1,
+  "supported_claims": [
+    "The declared route epochs and clock domains were evaluated without changing source data.",
+    "The peer metric namespace remains semantically separate from SRT sender and receiver counters.",
+    "The two event timestamps have the reported order under the declared clock contract."
+  ]
+}
