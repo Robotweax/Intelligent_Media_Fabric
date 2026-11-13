@@ -9,7 +9,8 @@ product, security, performance or continuity claim is released.
 ## Start on a new machine
 
 Use an authorized GitHub account with access to this repository and to the
-private SRT Telemetry and SRT Knowledge Base repositories. Robotweax SRT is public. Do not
+private SRT Knowledge Base repository. Robotweax SRT and SRT Telemetry are public (Telemetry since
+2026-11-13). Do not
 copy credentials from the old machine or put token values in this repository.
 For the commands below, install Git, `make`, Python 3.11+ and the GitHub CLI
 (`gh`), and authenticate `gh` with that account. Native local builds additionally
@@ -69,7 +70,8 @@ The historical FIPS development candidate in the manifest is research-only.
 Toolchain and action pins are in
 [`dependency-pins/toolchain.json`](dependency-pins/toolchain.json) and the
 workflows. The G4 workflow needs the repository secret `ROBOTWEAX_REPO_TOKEN`
-with read-only Contents access to SRT Telemetry (private) and SRT (public); the secret
+with read-only Contents access to SRT Telemetry and SRT (both public now, but the workflows
+still require the token); the secret
 value is neither in source nor in retained evidence. Do not expose or broaden it.
 
 ## Evidence and its limits

@@ -67,17 +67,18 @@ checked. Stage 2 is designed only after Stage 1 has run.
 **SRT:** nothing. The pinned v0.3.2 exports the Broadcast and Backup group API
 (`srt_create_group`, `srt_connect_group`, `SRTO_GROUPCONNECT`, `srt_group_data`).
 
-**SRT Telemetry (private repository, its own review rules):** the incident peer opens one
-socket today. It needs a group mode:
+**SRT Telemetry (its own repository and review rules; public since 2026-11-13):** the incident
+peer opened one socket when this draft was written. It needs a group mode, proposed in
+[Robotweax/srt_telemetry#75](https://github.com/Robotweax/srt_telemetry/pull/75):
 - caller: a group type and one local/remote address pair per member;
 - listener: accept a group connection;
 - media relay over the group socket, unchanged in what it forwards;
 - samples that identify the member they describe, and the member's group state.
 
-The last point touches the recording format. Under
-[ADR-0004](../decisions/0004-srt-telemetry-adapter-boundary.md) SRT semantics stay in
-Telemetry, so the format change is decided there and Fabric's adapter follows it. It needs a
-Telemetry pin change and an ADR here.
+The proposed change keeps the recording format: each member is recorded to its own `1alpha1`
+file, so Fabric's adapter reads member recordings as it reads single-socket ones
+([ADR-0004](../decisions/0004-srt-telemetry-adapter-boundary.md) is untouched). Using it still
+needs a Telemetry pin change and an ADR here once it is merged.
 
 **Fabric:** a new runner beside the faulted diamond that reuses its source, collector, decode,
 frame comparison and blackhole; a result contract for group runs; a workflow.

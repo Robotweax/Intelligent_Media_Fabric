@@ -96,6 +96,7 @@ and runs are not included and keep their own licenses. See
 [LICENSE_POLICY.md](LICENSE_POLICY.md), [THIRD_PARTY.md](THIRD_PARTY.md), and
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The G1 and G4 experiment workflows build Robotweax SRT Telemetry, which is a private repository.
-They run only with this repository's read token, so they do not run for pull requests from forks.
-`make check` needs nothing but Python.
+Every component the experiments build is public: Robotweax SRT, Robotweax SRT Telemetry (public
+since 2026-11-13) and FIPS. The G1 and G4 experiment workflows still check the first two out with
+this repository's read token and fail without it, so they do not yet run for pull requests from
+forks. `make check` needs nothing but Python.
