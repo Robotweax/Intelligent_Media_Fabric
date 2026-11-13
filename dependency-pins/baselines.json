@@ -15,7 +15,7 @@
     {
       "id": "robotweax-srt-telemetry",
       "repository": "https://github.com/Robotweax/srt_telemetry.git",
-      "commit": "21dc05b957855ddda270ee7fca7ab28c0d0781fe",
+      "commit": "d03ca4527b005be0cfbe542ddaac6c0ede5e7955",
       "role": "srt-observation",
       "integration": "external-versioned-c-abi",
       "evidence_class": "pre-alpha-candidate",

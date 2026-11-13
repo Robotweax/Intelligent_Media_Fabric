@@ -17,7 +17,7 @@ the current engineering decision, not a public product promise.
 | [0010](0010-srt-032-refresh.md) | accepted | SRT v0.3.2; faulted-diamond bundles at the old pins digest-locked; its Telemetry `7a6b8eff` pin is historical |
 | [0011](0011-mit-license-and-public-repository.md) | accepted | MIT license; repository made public |
 | [0012](0012-interruption-budget.md) | accepted | Interruption budget for one transit failure: hitless target, 6 s single-path floor |
-| [0013](0013-telemetry-group-mode-pin.md) | accepted | SRT Telemetry `21dc05b9` (incident-peer group mode); bundles at `7a6b8eff` digest-locked |
+| [0013](0013-telemetry-group-mode-pin.md) | accepted | SRT Telemetry `d03ca452` (incident-peer group mode and its test fix); bundles at `7a6b8eff` digest-locked |
 
 The next required ADRs cover the pilot workflow and budget, Robotweax SRT crypto profile,
 conservative MTU/payload profile, device credentials, contribution signing, CODEOWNERS, and the

@@ -1,4 +1,4 @@
-# ADR-0013: Select SRT Telemetry `21dc05b9` (incident-peer group mode)
+# ADR-0013: Select SRT Telemetry `d03ca452` (incident-peer group mode)
 
 - Status: accepted
 - Date: 2026-11-13
@@ -6,7 +6,7 @@
 
 ## Decision
 
-Pin SRT Telemetry main at `21dc05b957855ddda270ee7fca7ab28c0d0781fe` (2026-11-13) for new
+Pin SRT Telemetry main at `d03ca4527b005be0cfbe542ddaac6c0ede5e7955` (2026-11-13) for new
 Fabric experiments. Robotweax SRT stays at v0.3.2 `e45d0edd` and FIPS at v0.5.3 `f4a5b4a8`.
 
 It is a **requalification candidate**. Every retained bundle at Telemetry `7a6b8eff` stays
@@ -17,13 +17,15 @@ their same-revision baselines). A new run cannot present `7a6b8eff` as the activ
 
 ## Why this revision
 
-It is one commit after `7a6b8eff`:
-[Robotweax/srt_telemetry#75](https://github.com/Robotweax/srt_telemetry/pull/75), which gives
-the incident peer a connection-group mode. The
+It is two commits after `7a6b8eff`.
+[Robotweax/srt_telemetry#75](https://github.com/Robotweax/srt_telemetry/pull/75) (`21dc05b9`)
+gives the incident peer a connection-group mode, and
+[#76](https://github.com/Robotweax/srt_telemetry/pull/76) (`d03ca452`) fixes a port race in
+two of its tests, described below. The
 [SRT-group comparison](../qualification/srt-group-comparison-design-2026-11-13.md) that
 [ADR-0012](0012-interruption-budget.md) makes the next experiment cannot run without it.
 
-What the commit changes, read from its diff:
+What #75 changes, read from its diff:
 - only the incident peer (a test host), one new Python test, one documentation section and
   the test registration. The Telemetry library, its C ABI, the public SRT adapter and the
   `1alpha1` recording format are untouched.
@@ -42,11 +44,35 @@ observed, not assumed:
 2. the G1 control, the healthy G4 pilot and the eight faulted-diamond combinations run at
    the new pin and are retained whatever they show, beside the `7a6b8eff` results, ungraded.
 
+## The first candidate, `21dc05b9`, and why it was replaced
+
+This ADR first selected `21dc05b9`. Its hosted runs on 2026-11-13 are recorded here and not
+retained:
+
+- G1 run 43395352469 and the healthy G4 pilot 43395349816 passed.
+- Faulted-diamond run 43395352315: seven of eight jobs passed on the first attempt. The job
+  `fast-detection`, `default`, `coordinator-restart` failed before its experiment started, in
+  the pinned Telemetry suite: the new incident-peer group test failed after 0.4 s with
+  `media relay UDP input bind 127.0.0.1:58051`. A second attempt of that job passed.
+
+The failure was a defect in the test, not in the peer or in Fabric. The test probed a free
+UDP port for the caller's media input and released it; the listener then received the same
+port for SRT, and the caller's later bind was refused. #76 takes that port from below the
+range the system allocates from, in the group test and in the media relay test, which had
+the same latent race. It changes two test files and one handoff line.
+
+Because every experiment job runs that suite, a pin with a test known to fail at random
+would make later runs fail the same way. The pin moves to `d03ca452` before anything is
+retained. The `21dc05b9` bundles are not retained: they would be historical at once, and the
+same combinations run again at the selected revision.
+
 ## Known limits
 
 - At the time of this ADR the group mode had been built and run only against Robotweax SRT
-  v0.3.2 on Linux aarch64, plus Telemetry's automatic Linux smoke job. Telemetry's full
-  provider matrix, including Haivision libsrt, had not run on this commit. Fabric uses
-  Robotweax SRT only.
+  v0.3.2 (Linux aarch64 locally, x86_64 in the hosted runs above), plus Telemetry's automatic
+  Linux smoke job. Telemetry's full provider matrix, including Haivision libsrt, had not run
+  on either commit. Fabric uses Robotweax SRT only.
+- The port race was never reproduced outside the one hosted job. The fix removes its cause
+  by construction; no run demonstrates its absence.
 - This ADR selects the revision. It does not predeclare the group comparison and changes no
   gate.

@@ -50,7 +50,7 @@ from .srt_adapter import adapt_srt_telemetry_jsonl
 
 EXPECTED_SRT_COMMIT = "e45d0edd346e5c427d85e4c3b1ac605c81a23397"
 EXPECTED_SRT_VERSION = "0.3.2"
-EXPECTED_TELEMETRY_COMMIT = "21dc05b957855ddda270ee7fca7ab28c0d0781fe"
+EXPECTED_TELEMETRY_COMMIT = "d03ca4527b005be0cfbe542ddaac6c0ede5e7955"
 # Retained healthy pilots are evidence only for their own recorded revisions.
 # Each historical bundle is accepted solely when its original result manifest
 # matches the digest recorded here; a new run cannot present an old pin as the
