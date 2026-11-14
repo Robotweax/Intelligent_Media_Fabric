@@ -1,6 +1,7 @@
 # G5 SRT-group comparison, stage 2: group over two FIPS overlays — predeclared experiment contract
 
-Status: predeclared on 2026-11-14, before any run. No retained run yet. It changes no gate.
+Status: predeclared on 2026-11-14, before any run. First retained run:
+[2026-11-14](g5-srt-group-over-fips-2026-11-14.md). It changes no gate.
 
 Follows [stage 1](g5-srt-group-comparison-2026-11-14.md) and the
 [design draft](srt-group-comparison-design-2026-11-13.md). Serves OD-15, OD-11 and G5.
