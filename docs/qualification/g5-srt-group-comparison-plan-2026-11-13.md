@@ -1,6 +1,7 @@
 # G5 SRT-group comparison, stage 1 — predeclared experiment contract
 
-Status: predeclared on 2026-11-13, before any run. No retained run yet.
+Status: predeclared on 2026-11-13, before any run. First retained run:
+[2026-11-14](g5-srt-group-comparison-2026-11-14.md).
 
 Implements stage 1 of the [design draft](srt-group-comparison-design-2026-11-13.md) for OD-15
 and OD-11. [ADR-0012](../decisions/0012-interruption-budget.md) sets a hitless target for the

@@ -11,7 +11,7 @@ or an approved ADR can change a gate status.
 | G2 FIPS Connectivity | in-progress | Does the selected FIPS baseline provide the documented connectivity and telemetry? | build provenance, Linux two-node TUN, NAT and managed-transit classes, direct and heterogeneous multihop MTU boundaries, direct-link lifecycle, bounded non-hitless alternate-route recovery, fixed-delay and fixed-loss MMP responses, control-socket observations |
 | G3 Transparent SRT over FIPS | not-started | Does SRT over `fips0` meet frozen correctness and overhead budgets? | direct/FIPS scorecard, mandatory correctness, CPU/wire/timing evidence |
 | G4 Unified Observation | in-progress | Can correlation identify the first divergent layer and fault domain? | accepted SRT adapter contract, route epochs, data-quality cases, retained cross-layer golden incidents |
-| G5 SRT Group Resilience | not-started | What continuity can existing SRT groups provide across real fault domains? | broadcast/backup scorecard, downstream media gap |
+| G5 SRT Group Resilience | in-progress | What continuity can existing SRT groups provide across real fault domains? | broadcast/backup scorecard, downstream media gap |
 | G6 FIPS Reconvergence | not-started | Can a running stream survive route change within budget? | route event, socket continuity, downstream timing, MTU transition |
 | G7 Route Advisor | not-started | Are recommendations stable, explainable, and better than raw metrics? | deterministic replay, confidence, hysteresis, no mutation |
 | G8 Route Control | not-started | Is FIPS control superior enough to justify upstream work or a patch stack? | SRT-group comparison, no flapping, fork/upstream ADR |
@@ -49,6 +49,10 @@ every bundle at Telemetry `7a6b8eff` becomes digest-locked history. The G1 run, 
 eight faulted-diamond combinations at the new pin passed and are
 [retained](telemetry-d03ca452-requalification-2026-11-13.md); they reproduce the earlier behaviour and
 remain ordering-only. No gate status changes.
+G5 moves from `not-started` to `in-progress` on 2026-11-14 with the
+[first retained SRT-group run](g5-srt-group-comparison-2026-11-14.md) (run 43567524615): Broadcast and
+Backup groups on routed IPv6 without FIPS were both hitless when one member's transit was blackholed. One
+run per mode, not over FIPS; G5 is not passed.
 [ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selected SRT v0.3.0,
 SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
 Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.

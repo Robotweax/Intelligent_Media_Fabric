@@ -1,0 +1,22 @@
+{
+  "members": [
+    {
+      "caller_address": "fd00:a1::1",
+      "index": 0,
+      "listener_address": "fd00:b1::2",
+      "receiver_weight": 20,
+      "transit": "r1",
+      "weight": 20
+    },
+    {
+      "caller_address": "fd00:a2::1",
+      "index": 1,
+      "listener_address": "fd00:b2::2",
+      "receiver_weight": 10,
+      "transit": "r2",
+      "weight": 10
+    }
+  ],
+  "schema_version": 1,
+  "type": "broadcast"
+}

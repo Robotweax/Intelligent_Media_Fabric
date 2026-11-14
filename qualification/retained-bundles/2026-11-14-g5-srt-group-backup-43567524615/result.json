@@ -1,0 +1,277 @@
+{
+  "capture": {
+    "collected_datagrams": 17729,
+    "frames": {
+      "changed_frames": 0,
+      "expected_frames": 4000,
+      "max_consecutive_missing_frames": 0,
+      "missing_frames": 0,
+      "observed_frames": 4000,
+      "status": "exact",
+      "unexpected_frames": 0
+    },
+    "group_samples_per_endpoint": 328,
+    "hitless": true,
+    "member_records": {
+      "receiver": [
+        328,
+        328
+      ],
+      "sender": [
+        51,
+        328
+      ]
+    },
+    "member_wire": [
+      {
+        "index": 0,
+        "sent_packet_total": 2765,
+        "sent_wire_byte_total": 3295880,
+        "unique_sent_packet_total": 2765,
+        "unique_sent_wire_byte_total": 3295880
+      },
+      {
+        "index": 1,
+        "sent_packet_total": 15518,
+        "sent_wire_byte_total": 18497456,
+        "unique_sent_packet_total": 15518,
+        "unique_sent_wire_byte_total": 18497456
+      }
+    ],
+    "missed_sample_intervals": 0,
+    "source_datagrams": 17729
+  },
+  "classification": "experiment",
+  "cleanup": {
+    "media_processes_stopped": true,
+    "namespaces_removed": true,
+    "srt_peers_stopped": true,
+    "work_directory_removed": true
+  },
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-e365e7195c6d16cb7bdbe804",
+    "max_error_ns": null,
+    "same_host": true,
+    "synchronization": "local-only"
+  },
+  "evidence_type": "g5-srt-group",
+  "files": {
+    "fault-events.jsonl": {
+      "bytes": 2903,
+      "sha256": "7e16335a06ed6d2a8e5710669830c959ad8327d0fc84060ee86d64ec074b1755"
+    },
+    "frame-assessment.json": {
+      "bytes": 728,
+      "sha256": "b8494affd7df23a2a191e4922f48cdbae2f43ec86093755fc44285f7167c1769"
+    },
+    "group-members.json": {
+      "bytes": 425,
+      "sha256": "555bad8f4af29f60f134415de1276a06daf4c813b683171ece71c32ef50f6d5b"
+    },
+    "group-samples.jsonl": {
+      "bytes": 256273,
+      "sha256": "aa3d81f039f669d7f9d6f372e90b6fda0835aad19089a47945e263cab16c8d33"
+    },
+    "media-collector.json": {
+      "bytes": 407,
+      "sha256": "316e0329a6c75868e15c4d4ad31a67c123c9611ef2fc028da5cdd25ecf85405a"
+    },
+    "media-relay.json": {
+      "bytes": 1635,
+      "sha256": "ff49e32dfbe2232ad415a10af8efa307a79fbbde5815e218832998d337021c8e"
+    },
+    "media-source.json": {
+      "bytes": 377,
+      "sha256": "ccd0e3414d6a4b3daa6088cc7f13d2c66aa06bf0d1002f414de553e1dac4c123"
+    },
+    "observed.framehash": {
+      "bytes": 448218,
+      "sha256": "21d9e00cdf5bfe323fb5f85a8887d1c140de37a7b44646a267db4a79e1f0d074"
+    },
+    "receiver-context.member-0.json": {
+      "bytes": 705,
+      "sha256": "07aa3fadf813965ff8eb064894ecaa54e0e213881f62eb3138b4e8106e037642"
+    },
+    "receiver-context.member-1.json": {
+      "bytes": 705,
+      "sha256": "2b2a2a45d8d6729c6fcc61dcffdad3e2c717ecf1de6e17e178170bfee555c263"
+    },
+    "receiver-observations.member-0.jsonl": {
+      "bytes": 1283174,
+      "sha256": "d38c1113218d78b56d56857689bcc694e1ea57000127c8e848b0c6f6fabc7d26"
+    },
+    "receiver-observations.member-1.jsonl": {
+      "bytes": 1295856,
+      "sha256": "7bd4d6b36a9cfc4a03792e1f9800a2bc081a71cff1979e87764724a5b3ab3525"
+    },
+    "receiver-source.member-0.jsonl": {
+      "bytes": 618007,
+      "sha256": "d774f17aa61aebc470e2830366c0de4de35bd00d5fadac0881f1feca3342e6fd"
+    },
+    "receiver-source.member-1.jsonl": {
+      "bytes": 637227,
+      "sha256": "8a9c18963ce8045d78ed0f4f8c481a70abee681b1d0fe9fb73dfe5c41745777b"
+    },
+    "reference.framehash": {
+      "bytes": 448218,
+      "sha256": "21d9e00cdf5bfe323fb5f85a8887d1c140de37a7b44646a267db4a79e1f0d074"
+    },
+    "sender-context.member-0.json": {
+      "bytes": 705,
+      "sha256": "9c7e4128015443773df23b9e1ca4d96f3f1187403b62257990fc49d1961fa3d2"
+    },
+    "sender-context.member-1.json": {
+      "bytes": 705,
+      "sha256": "4fd9213068e307c76342bb53c7073c42e4589078bfd5cb7b5c98dd1645434d9e"
+    },
+    "sender-observations.member-0.jsonl": {
+      "bytes": 201056,
+      "sha256": "bc3a2d6dacebd4c6e1f7517069dee5239b164c8567b0c9aaa7eeb2de74f80478"
+    },
+    "sender-observations.member-1.jsonl": {
+      "bytes": 1292532,
+      "sha256": "c9984dfa25d800d4ff8992934affa763dda37d3d25dc29724807995417ab343d"
+    },
+    "sender-source.member-0.jsonl": {
+      "bytes": 98877,
+      "sha256": "3d3ce95cf5a7f81f26616c086a1ff6783aa6eadd37258dc2b8bbc5503ad57e2d"
+    },
+    "sender-source.member-1.jsonl": {
+      "bytes": 636284,
+      "sha256": "64f56724683da0ff1afdd418818da6cb1c3d2e2a6ae621bd283483027bcaf405"
+    }
+  },
+  "finished_at": "2026-11-14T06:55:40.424069Z",
+  "gate_conclusion": {
+    "G5": "not-passed",
+    "reason": "single faulted run; ordering-only; no budget enforced and no causal claim"
+  },
+  "gate_ids": [
+    "G5"
+  ],
+  "limitations": [
+    "One run of one topology, one group mode and one fault class (netem loss 100% on both links of transit r1). It says nothing about partial or one-way loss.",
+    "No FIPS is involved: the group runs over plain routed IPv6 with a 1500-byte link MTU.",
+    "The two paths are veth pairs on one host; they are separate fault domains for this fault only.",
+    "Each layer is observed at its own resolution (collector per datagram, SRT 500 ms); temporal ordering does not establish a cause.",
+    "The downstream decode runs after the run on the collected stream; it is not a live player."
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "7.0.0-1017-azure",
+    "system": "Linux"
+  },
+  "profile": {
+    "collector_gap_threshold_ms": 250,
+    "datagram_bytes": 1128,
+    "decode_options": [
+      "-dts_delta_threshold",
+      "1000000"
+    ],
+    "fault": "transit-blackhole",
+    "fixture": {
+      "encode": [
+        "-c:v",
+        "mpeg2video",
+        "-g",
+        "25",
+        "-bf",
+        "0",
+        "-b:v",
+        "600k",
+        "-maxrate",
+        "600k",
+        "-minrate",
+        "600k",
+        "-bufsize",
+        "600k",
+        "-flags",
+        "+bitexact",
+        "-fflags",
+        "+bitexact",
+        "-threads",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-f",
+        "mpegts",
+        "-muxrate",
+        "1000000",
+        "-pcr_period",
+        "20"
+      ],
+      "frames": 4000,
+      "generator": "testsrc2=size=320x180:rate=25:duration=160",
+      "sha256": "3b5ad5679da8d3396a3919ca962832a778d20dd8e3ca64c9807100b12b715f8d"
+    },
+    "group_type": "backup",
+    "inject_after_source_start_ms": 20000,
+    "member_stop_budget_ms": 2000,
+    "member_weights": [
+      20,
+      10
+    ],
+    "members": 2,
+    "source_rate_bps": 1000000,
+    "srt_peer_idle_timeout_ms": 5000,
+    "srt_receive_timeout_ms": 500,
+    "srt_sample_interval_ms": 500
+  },
+  "provenance": {
+    "ffmpeg_binary_sha256": "ed16af623947494a72e284b6eb8ff225f2da22b38b5d5069c2fd4b4ba3384e41",
+    "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "incident_peer_sha256": "9b8bf16a2fc409b93d2b2ebe08171fe215cdfc60463020a95d9ec9e54e07f0a6",
+    "project_revision": "79d825e9093a7c8f1953ffe62fb59bcb3ab0d4d3",
+    "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+    "srt_library_sha256": "fc72882d6d5822be7329403daf43bf5d5ebcf6f3439828a99d128e6e3e077fda",
+    "srt_repository": "https://github.com/Robotweax/srt.git",
+    "telemetry_commit": "d03ca4527b005be0cfbe542ddaac6c0ede5e7955",
+    "telemetry_repository": "https://github.com/Robotweax/srt_telemetry.git"
+  },
+  "run_id": "ba6d8e63-80e2-48d4-966b-9c0e3ce1d42e",
+  "schema_version": 1,
+  "started_at": "2026-11-14T06:52:50.465120Z",
+  "status": "passed",
+  "timeline": {
+    "causal_claim": null,
+    "fault_applied": 9,
+    "faulted_member_receiver_stall": [
+      500,
+      1000
+    ],
+    "faulted_member_unusable": {
+      "receiver": [
+        5000,
+        5500
+      ],
+      "sender": [
+        5000,
+        5500
+      ]
+    },
+    "longest_media_downstream_gap_ms": 0,
+    "media_downstream_gaps": [],
+    "origin": "blackhole-start",
+    "standby_activation": [
+      0,
+      500
+    ],
+    "units": "ms"
+  },
+  "topology": {
+    "alternate_path_one_way_delay_ms": 20,
+    "faulted_transit": "r1",
+    "fips": false,
+    "isolation": "linux-network-namespaces",
+    "link_mtu": 1500,
+    "member_transits": [
+      "r1",
+      "r2"
+    ],
+    "node_count": 4,
+    "overlay": null,
+    "underlay": "diamond-veth-ipv6-routed"
+  }
+}
