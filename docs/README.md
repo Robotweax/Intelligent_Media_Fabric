@@ -9,6 +9,8 @@
 - [ADR index](decisions/README.md)
 - [Open decisions](decisions/open-decisions.md)
 - [Proposal: pilot workflow and budgets (OD-01, OD-14)](decisions/proposal-pilot-budgets-2026-11-13.md)
+- [Proposal: response to non-hitless FIPS recovery (OD-15)](decisions/proposal-od15-resilience-response-2026-11-14.md)
+- [ADR-0014: continuity by SRT group, FIPS recovery as recovery](decisions/0014-continuity-by-srt-group.md)
 - [ADR-0001: Evidence-first project scope](decisions/0001-evidence-first-project-scope.md)
 - [ADR-0002: External pinned dependencies](decisions/0002-external-pinned-dependencies.md)
 - [ADR-0003: FIPS Phase 1 baseline](decisions/0003-fips-phase1-baseline.md)
