@@ -2975,6 +2975,10 @@ def validate_repository(root: Path) -> None:
                     from .g5_srt_group import validate_g5_srt_group_bundle
 
                     validate_g5_srt_group_bundle(bundle)
+                elif evidence_type == "g5-srt-group-fips":
+                    from .g5_srt_group_fips import validate_g5_srt_group_fips_bundle
+
+                    validate_g5_srt_group_fips_bundle(bundle)
                 else:
                     errors.append(f"{bundle.relative_to(root)}: unknown retained bundle evidence_type")
             except (ContractError, OSError, ValueError) as exc:

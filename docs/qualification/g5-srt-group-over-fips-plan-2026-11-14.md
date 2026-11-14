@@ -103,6 +103,17 @@ run records `G5: not-passed`; G5 stays `in-progress`.
   the group handshake is larger and is checked only by the run.
 - One fault class. Killing the `r1` daemon is now possible again and is left out to keep one
   change against stage 1.
+- **A local shakedown preceded the first run.** After this contract was committed
+  (`46c91b0`), the runner was exercised on 2026-11-14 in a privileged Linux aarch64 container
+  at the pinned revisions. Two attempts failed before the stream started and showed what the
+  runner needed, neither of which changes this contract:
+  the endpoint daemons answer FIPS DNS on their own local ports and the runner resolves each
+  remote identity once, as the faulted diamond does, because a FIPS node cannot send to an
+  overlay address whose identity it has not learned; and the overlay whose `a` address is the
+  lower one is numbered overlay 1, because the incident peer's listener numbers group members
+  by the caller's address. Then one run per group mode passed and produced bundles that
+  validate. Shakedown outputs are not retained and are not evidence; the hosted run is the
+  first run of record, and its outcome is reported whatever the shakedown showed.
 
 ## Owner decisions, 2026-11-14
 

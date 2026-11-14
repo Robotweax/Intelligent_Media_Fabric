@@ -178,8 +178,10 @@ clock domains, route epochs and downstream identity checks.
    SRT-group comparison OD-15 asks for. Its stage 1
    ([record](docs/qualification/g5-srt-group-comparison-2026-11-14.md)) is retained: groups on routed IPv6
    without FIPS were hitless in both modes. Open after it: whether stage 1 alone may close OD-15, or
-   stage 2 of the [design draft](docs/qualification/srt-group-comparison-design-2026-11-13.md) (a group
-   over two FIPS routes) is required; stage 2 is not predeclared. Other open variants: a peer that reconnects by itself (also a Telemetry
+   stage 2 is required. Stage 2 (a group over two FIPS overlays) is
+   [predeclared](docs/qualification/g5-srt-group-over-fips-plan-2026-11-14.md) with its runner and
+   workflow; it has no retained run yet. It depends on a lab routing workaround, because FIPS v0.5.3
+   does not support two daemons in one namespace. Other open variants: a peer that reconnects by itself (also a Telemetry
    change), partial or one-way loss. Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
