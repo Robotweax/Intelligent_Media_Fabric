@@ -1,6 +1,6 @@
 # Proposal: response to non-hitless FIPS recovery (OD-15) — 2026-11-14
 
-- Status: proposal for the repository owner. Question 1 of section 6 was decided on 2026-11-14 (answer A) and is recorded in [ADR-0014](0014-continuity-by-srt-group.md), which closes OD-15; questions 2, 3 and 4 are open. The proposal itself changes no gate and starts no run.
+- Status: proposal for the repository owner. Question 1 of section 6 was decided on 2026-11-14 (answer A) and is recorded in [ADR-0014](0014-continuity-by-srt-group.md), which closes OD-15; question 2 was answered on 2026-11-14 with a [draft request](upstream-request-fips-two-identities-per-host-2026-11-14.md) that has not been sent; questions 3 and 4 are open. The proposal itself changes no gate and starts no run.
 
 OD-15 asks for a FIPS/SRT resilience comparison and an ADR that selects **improvement**,
 **bounded workaround** or **pivot**. The comparison now exists as retained evidence. This note
