@@ -63,6 +63,7 @@
 - [Requalification at SRT Telemetry d03ca452: G1, healthy pilot and eight faulted-diamond combinations](qualification/telemetry-d03ca452-requalification-2026-11-13.md)
 - [G5 SRT-group comparison, stage 1 predeclared contract](qualification/g5-srt-group-comparison-plan-2026-11-13.md)
 - [G5 SRT-group comparison, stage 1, first retained run](qualification/g5-srt-group-comparison-2026-11-14.md)
+- [G5 SRT-group comparison, stage 2 over two FIPS overlays, predeclared contract](qualification/g5-srt-group-over-fips-plan-2026-11-14.md)
 
 Documents in this repository are pre-alpha engineering contracts unless explicitly marked otherwise.
 The internal strategy in the SRT Knowledge Base is the decision context; public Robotweax SRT

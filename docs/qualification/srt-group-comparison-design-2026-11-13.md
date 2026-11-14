@@ -59,8 +59,10 @@ own it compares two alternatives; it does not show them working together.
 The combination a product would use: FIPS for identity and reachability, a group for
 continuity. Each endpoint would run two FIPS daemons with separate identities and TUN
 devices, one mesh through `r1` and one through `r2`, and the group would have one member per
-overlay. Whether two pinned FIPS daemons can share a namespace this way has not been
-checked. Stage 2 is designed only after Stage 1 has run.
+overlay. Whether two pinned FIPS daemons can share a namespace this way had not been
+checked when this was written. Stage 1 has run; the
+[stage 2 plan](g5-srt-group-over-fips-plan-2026-11-14.md) records the check and predeclares
+the experiment.
 
 ## What has to change, and where
 
