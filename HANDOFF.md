@@ -193,8 +193,10 @@ clock domains, route epochs and downstream identity checks.
    in one namespace. [ADR-0014](docs/decisions/0014-continuity-by-srt-group.md) closed OD-15 on these
    results: continuity across a path loss is the SRT group's job, FIPS reconvergence is recovery, no
    FIPS fork. Still open, all owner decisions listed in the
-   [proposal](docs/decisions/proposal-od15-resilience-response-2026-11-14.md): drafting the FIPS
-   capability request (OD-10), whether OD-11 stays open, and what G5 needs before it can pass (repeats,
+   [proposal](docs/decisions/proposal-od15-resilience-response-2026-11-14.md): sending the FIPS
+   capability request (OD-10; a
+   [draft](docs/decisions/upstream-request-fips-two-identities-per-host-2026-11-14.md) exists and is
+   not sent), whether OD-11 stays open, and what G5 needs before it can pass (repeats,
    a member that rejoins, partial and one-way loss, the higher rate). Other open variants: a peer that reconnects by itself (also a Telemetry
    change), partial or one-way loss. Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.

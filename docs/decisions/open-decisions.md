@@ -31,7 +31,9 @@ an external contributor or distributable artifact is accepted. OD-15 is closed b
 [ADR-0014](0014-continuity-by-srt-group.md): continuity across a path loss comes from an SRT group,
 and FIPS reconvergence is judged as recovery against ADR-0012's 6 s floor. The group over FIPS rests
 on a lab routing step until FIPS offers two identities or two paths per host; the capability request
-belongs to OD-10, and OD-11 stays open.
+belongs to OD-10, and OD-11 stays open. A
+[draft of that request](upstream-request-fips-two-identities-per-host-2026-11-14.md) exists and has not
+been sent.
 OD-16 must close before a reactive path-MTU result can contribute to G6; the current stock-daemon
 limitation and acceptance contract are documented in the
 [reactive path-MTU capability-gap assessment](../qualification/fips-g2-reactive-mtu-gap-2026-08-30.md).
