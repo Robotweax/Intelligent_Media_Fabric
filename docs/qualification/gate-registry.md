@@ -53,6 +53,9 @@ G5 moves from `not-started` to `in-progress` on 2026-11-14 with the
 [first retained SRT-group run](g5-srt-group-comparison-2026-11-14.md) (run 43567524615): Broadcast and
 Backup groups on routed IPv6 without FIPS were both hitless when one member's transit was blackholed. One
 run per mode, not over FIPS; G5 is not passed.
+[Stage 2](g5-srt-group-over-fips-2026-11-14.md) (run 43574559867) repeated it with one member per FIPS
+overlay: hitless in both modes, the first retained stream over FIPS that is. It depends on a lab routing
+workaround, since FIPS v0.5.3 does not support two daemons per host. G5 stays `in-progress`.
 [ADR-0007](../decisions/0007-dependency-refresh-2026-10-22.md) selected SRT v0.3.0,
 SRT Telemetry `24475483` and FIPS v0.5.3 as new requalification candidates on 2026-10-22.
 Gate statuses remain unchanged; v0.5.1 and v0.2.6 evidence is not evidence for the new pins.

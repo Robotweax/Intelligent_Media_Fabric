@@ -1,0 +1,22 @@
+{
+  "members": [
+    {
+      "caller_address": "fd3b:bc36:f5e7:ecbc:c36b:fcbd:48be:8145",
+      "index": 0,
+      "listener_address": "fdd2:6ba3:8b66:fafa:6a02:874f:92b5:4b96",
+      "receiver_weight": 20,
+      "transit": "r1",
+      "weight": 20
+    },
+    {
+      "caller_address": "fd6b:7ffd:4cb0:6d6a:8e5f:6e2b:b9b3:6b4b",
+      "index": 1,
+      "listener_address": "fdd2:4481:5a69:e50b:2f44:be4a:2e2:38ca",
+      "receiver_weight": 10,
+      "transit": "r2",
+      "weight": 10
+    }
+  ],
+  "schema_version": 1,
+  "type": "broadcast"
+}

@@ -1,0 +1,327 @@
+{
+  "capture": {
+    "collected_datagrams": 17729,
+    "fips_observations": 162,
+    "frames": {
+      "changed_frames": 0,
+      "expected_frames": 4000,
+      "max_consecutive_missing_frames": 0,
+      "missing_frames": 0,
+      "observed_frames": 4000,
+      "status": "exact",
+      "unexpected_frames": 0
+    },
+    "group_samples_per_endpoint": 327,
+    "hitless": true,
+    "member_records": {
+      "receiver": [
+        327,
+        327
+      ],
+      "sender": [
+        51,
+        327
+      ]
+    },
+    "member_wire": [
+      {
+        "index": 0,
+        "sent_packet_total": 2764,
+        "sent_wire_byte_total": 3294688,
+        "unique_sent_packet_total": 2764,
+        "unique_sent_wire_byte_total": 3294688
+      },
+      {
+        "index": 1,
+        "sent_packet_total": 15519,
+        "sent_wire_byte_total": 18498648,
+        "unique_sent_packet_total": 15519,
+        "unique_sent_wire_byte_total": 18498648
+      }
+    ],
+    "missed_sample_intervals": 0,
+    "source_datagrams": 17729
+  },
+  "classification": "experiment",
+  "cleanup": {
+    "fips_daemons_stopped": true,
+    "media_processes_stopped": true,
+    "namespaces_removed": true,
+    "srt_peers_stopped": true,
+    "work_directory_removed": true
+  },
+  "clock": {
+    "cross_host_ordering_allowed": false,
+    "domain_id": "linux-host-monotonic-800797920ee58691fbf68bd1",
+    "max_error_ns": null,
+    "same_host": true,
+    "synchronization": "local-only"
+  },
+  "evidence_type": "g5-srt-group-fips",
+  "files": {
+    "fault-events.jsonl": {
+      "bytes": 2982,
+      "sha256": "284e833cea0c3c7f51f237425d381ef0a77ad7f91897ed664c3a07bc09af84fc"
+    },
+    "fips-observations.jsonl": {
+      "bytes": 167369,
+      "sha256": "f38fa35a280685d5f630345ec08fafe07aaabb7ecb8f40d845ea9f92868713b0"
+    },
+    "frame-assessment.json": {
+      "bytes": 728,
+      "sha256": "b8494affd7df23a2a191e4922f48cdbae2f43ec86093755fc44285f7167c1769"
+    },
+    "group-members.json": {
+      "bytes": 541,
+      "sha256": "a99b13ca9be273d84db4ef3488d6c3ac15cac8c2008aff6064157ea85a24991c"
+    },
+    "group-samples.jsonl": {
+      "bytes": 256098,
+      "sha256": "3e556755117c0595f36b8f09b67bbe82ba0200d3de1cf735ad82c6359fafbc65"
+    },
+    "media-collector.json": {
+      "bytes": 408,
+      "sha256": "2c10cacb2a26973d2fb07ffd2a7aa77868f51cd126932c62a401040d188758c4"
+    },
+    "media-relay.json": {
+      "bytes": 1637,
+      "sha256": "d0b0f8601c0d8e3c89fc68758fca8d5483f0b452878a96128e03949fab496cb8"
+    },
+    "media-source.json": {
+      "bytes": 378,
+      "sha256": "995e4c4fb7b8efe24ef2514638cc1c95b4793ed46deb5af756c9c5a61faa073d"
+    },
+    "observed.framehash": {
+      "bytes": 448218,
+      "sha256": "21d9e00cdf5bfe323fb5f85a8887d1c140de37a7b44646a267db4a79e1f0d074"
+    },
+    "receiver-context.member-0.json": {
+      "bytes": 705,
+      "sha256": "7bbb7a2648987c30b869c1859a7291a1ed549189d0f69096be4f68a50d2d3536"
+    },
+    "receiver-context.member-1.json": {
+      "bytes": 705,
+      "sha256": "643df80078ec2d172ff7ef679307db73d4ffbf2f5d286968ec6c343de8b09af8"
+    },
+    "receiver-observations.member-0.jsonl": {
+      "bytes": 1283500,
+      "sha256": "e0f28c26644e54195aae2443e921bd824671855a68acee82dfdde5823dffb92f"
+    },
+    "receiver-observations.member-1.jsonl": {
+      "bytes": 1292604,
+      "sha256": "f3800a7e8bc78b11fda4955430f741b3964258ee95629d7121ca630e4509428c"
+    },
+    "receiver-source.member-0.jsonl": {
+      "bytes": 620088,
+      "sha256": "508f7b325cca5b6878e98f1cd1c781f647b6b8b13098dbed9355b9c41220eeec"
+    },
+    "receiver-source.member-1.jsonl": {
+      "bytes": 635655,
+      "sha256": "f081a1e57f71cbd3f375aa10d0692c08132eb9b393bb39e740e286bc408a2711"
+    },
+    "reference.framehash": {
+      "bytes": 448218,
+      "sha256": "21d9e00cdf5bfe323fb5f85a8887d1c140de37a7b44646a267db4a79e1f0d074"
+    },
+    "sender-context.member-0.json": {
+      "bytes": 705,
+      "sha256": "c9963ac31d4dbe077976e5ad71f4e976c265af197c7b963942a07232ffc3cfb8"
+    },
+    "sender-context.member-1.json": {
+      "bytes": 705,
+      "sha256": "6f45b5e1633318e3c739dae3e61cab9e00f5c7022171506868556470a71e7966"
+    },
+    "sender-observations.member-0.jsonl": {
+      "bytes": 201248,
+      "sha256": "c5d6fa3e1cc93b2f551f87c4f44759bc5f534a9bc6411900014e012d7fa08317"
+    },
+    "sender-observations.member-1.jsonl": {
+      "bytes": 1289336,
+      "sha256": "0f1ca292c21262f90aa06f5377624182ffd9158e6d0ecfe0b56f8a500eb5ecd7"
+    },
+    "sender-source.member-0.jsonl": {
+      "bytes": 98922,
+      "sha256": "90e30a949f2a2c575a782f3c3e12587e5f97db33595506b846dcb81b4a559a95"
+    },
+    "sender-source.member-1.jsonl": {
+      "bytes": 634635,
+      "sha256": "a299d2f432b62c3daeeb858c936d2517a0a6b685e6e790c502b77d4b14319f57"
+    }
+  },
+  "finished_at": "2026-11-14T08:29:36.402703Z",
+  "gate_conclusion": {
+    "G5": "not-passed",
+    "reason": "single faulted run; ordering-only; no budget enforced and no causal claim"
+  },
+  "gate_ids": [
+    "G5"
+  ],
+  "limitations": [
+    "One run of one topology, one group mode and one fault class (netem loss 100% on both links of transit r1). It says nothing about partial or one-way loss.",
+    "The endpoint routing is a lab workaround: FIPS v0.5.3 does not support two daemons in one namespace, so the lab removes the fd00::/8 route FIPS installs and adds host routes. The result does not show that FIPS supports this.",
+    "Each overlay has exactly one route, so FIPS reconvergence is not exercised.",
+    "The two overlays share one host, kernel and clock, and four of the six daemons share two namespaces; they are separate fault domains for this fault only.",
+    "Each layer is observed at its own resolution (collector per datagram, SRT 500 ms, FIPS about 1 s); temporal ordering does not establish a cause.",
+    "The downstream decode runs after the run on the collected stream; it is not a live player."
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "7.0.0-1017-azure",
+    "system": "Linux"
+  },
+  "profile": {
+    "collector_gap_threshold_ms": 250,
+    "datagram_bytes": 1128,
+    "decode_options": [
+      "-dts_delta_threshold",
+      "1000000"
+    ],
+    "fault": "transit-blackhole",
+    "fips_observation_interval_ms": 1000,
+    "fips_timers": {
+      "heartbeat_interval_secs": 10,
+      "link_dead_timeout_secs": 30,
+      "name": "g2-alternate-route",
+      "tick_interval_secs": 1
+    },
+    "fixture": {
+      "encode": [
+        "-c:v",
+        "mpeg2video",
+        "-g",
+        "25",
+        "-bf",
+        "0",
+        "-b:v",
+        "600k",
+        "-maxrate",
+        "600k",
+        "-minrate",
+        "600k",
+        "-bufsize",
+        "600k",
+        "-flags",
+        "+bitexact",
+        "-fflags",
+        "+bitexact",
+        "-threads",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-f",
+        "mpegts",
+        "-muxrate",
+        "1000000",
+        "-pcr_period",
+        "20"
+      ],
+      "frames": 4000,
+      "generator": "testsrc2=size=320x180:rate=25:duration=160",
+      "sha256": "3b5ad5679da8d3396a3919ca962832a778d20dd8e3ca64c9807100b12b715f8d"
+    },
+    "group_type": "backup",
+    "inject_after_source_start_ms": 20000,
+    "member_stop_budget_ms": 2000,
+    "member_weights": [
+      20,
+      10
+    ],
+    "members": 2,
+    "packet_budget": {
+      "clear_srt_payload_budget_bytes": 1139,
+      "endpoint_effective_ipv6_mtu": [
+        1203,
+        1203,
+        1203,
+        1203
+      ],
+      "media_datagram_bytes": 1128,
+      "srt_ipv6_udp_header_bytes": 64,
+      "ts_packets_per_datagram": 6
+    },
+    "source_rate_bps": 1000000,
+    "srt_peer_idle_timeout_ms": 5000,
+    "srt_receive_timeout_ms": 500,
+    "srt_sample_interval_ms": 500
+  },
+  "provenance": {
+    "cargo_lock_sha256": "70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a",
+    "ffmpeg_binary_sha256": "ed16af623947494a72e284b6eb8ff225f2da22b38b5d5069c2fd4b4ba3384e41",
+    "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "fips_binary_sha256": "97624ca8ccb1840507eeaef1b97fd163e0f0a1dc197e1392e214e39082e6f6d1",
+    "fips_commit": "f4a5b4a8e61e340e6be7551608109a5c399f8353",
+    "fips_repository": "https://github.com/jmcorgan/fips.git",
+    "fips_source_tree_state": "clean",
+    "fipsctl_binary_sha256": "354b6a46548762dcdce5acd2b3829fdf51d55b81fc5e945cb14938385453d2d8",
+    "incident_peer_sha256": "9d290fc07e351de09f28006487a183ded20efeec37f60d3e5dd4d460eb0e73d5",
+    "project_revision": "915c8a55cf3f31163fe91d4ae37341e6e3962f12",
+    "rust_toolchain_sha256": "6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3",
+    "srt_commit": "e45d0edd346e5c427d85e4c3b1ac605c81a23397",
+    "srt_library_sha256": "fc72882d6d5822be7329403daf43bf5d5ebcf6f3439828a99d128e6e3e077fda",
+    "srt_repository": "https://github.com/Robotweax/srt.git",
+    "telemetry_commit": "d03ca4527b005be0cfbe542ddaac6c0ede5e7955",
+    "telemetry_repository": "https://github.com/Robotweax/srt_telemetry.git"
+  },
+  "run_id": "a787856b-27ff-45ec-891a-c8e20b559882",
+  "schema_version": 1,
+  "started_at": "2026-11-14T08:26:41.311684Z",
+  "status": "passed",
+  "timeline": {
+    "causal_claim": null,
+    "fault_applied": 10,
+    "faulted_member_receiver_stall": [
+      499,
+      999
+    ],
+    "faulted_member_unusable": {
+      "receiver": [
+        4999,
+        5499
+      ],
+      "sender": [
+        4499,
+        4999
+      ]
+    },
+    "faulted_overlay_link_loss": {
+      "a": [
+        31000,
+        32000
+      ],
+      "b": [
+        31000,
+        32000
+      ]
+    },
+    "longest_media_downstream_gap_ms": 0,
+    "media_downstream_gaps": [],
+    "origin": "blackhole-start",
+    "standby_activation": [
+      -1,
+      499
+    ],
+    "surviving_overlay_stable": true,
+    "units": "ms"
+  },
+  "topology": {
+    "alternate_path_one_way_delay_ms": 20,
+    "endpoint_routing": "lab-host-routes-replace-fips-prefix-route",
+    "endpoint_tun_names": [
+      "fipsg1",
+      "fipsg2"
+    ],
+    "faulted_transit": "r1",
+    "fips": true,
+    "fips_daemons": 6,
+    "isolation": "linux-network-namespaces",
+    "member_transits": [
+      "r1",
+      "r2"
+    ],
+    "node_count": 4,
+    "overlay": "srt-ipv6-over-two-fips-overlays",
+    "overlays": 2,
+    "underlay": "diamond-veth-ipv4-udp"
+  }
+}

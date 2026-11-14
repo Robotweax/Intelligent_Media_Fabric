@@ -761,7 +761,12 @@ def run_g5_srt_group(
     return result
 
 
-def group_member_record(described: dict[str, dict], group_type: str) -> dict:
+def group_member_record(
+    described: dict[str, dict],
+    group_type: str,
+    local_addresses: tuple[str, ...] = MEMBER_LOCAL_ADDRESSES,
+    remote_addresses: tuple[str, ...] = MEMBER_REMOTE_ADDRESSES,
+) -> dict:
     """Check both peers' GROUP lines against the predeclared members and keep what identifies them."""
     record: dict[str, Any] = {"schema_version": 1, "type": group_type, "members": []}
     sides = {role: described.get(role, {}) for role in ROLES}
@@ -773,17 +778,17 @@ def group_member_record(described: dict[str, dict], group_type: str) -> dict:
         receiver = sides["receiver"]["members"][member]
         # Stop rule 1: the same path is member i on both endpoints, matched by address and port.
         if (sender.get("index") != member or receiver.get("index") != member
-                or sender.get("localAddress") != MEMBER_LOCAL_ADDRESSES[member]
-                or sender.get("peerAddress") != MEMBER_REMOTE_ADDRESSES[member]
-                or receiver.get("localAddress") != MEMBER_REMOTE_ADDRESSES[member]
-                or receiver.get("peerAddress") != MEMBER_LOCAL_ADDRESSES[member]
+                or sender.get("localAddress") != local_addresses[member]
+                or sender.get("peerAddress") != remote_addresses[member]
+                or receiver.get("localAddress") != remote_addresses[member]
+                or receiver.get("peerAddress") != local_addresses[member]
                 or sender.get("localPort") != receiver.get("peerPort")
                 or sender.get("peerPort") != receiver.get("localPort")
                 or sender.get("weight") != MEMBER_WEIGHTS[member]):
             raise QualificationError("group members do not match the predeclared paths on both endpoints")
         record["members"].append({
             "index": member, "transit": MEMBER_TRANSITS[member], "weight": MEMBER_WEIGHTS[member],
-            "caller_address": MEMBER_LOCAL_ADDRESSES[member], "listener_address": MEMBER_REMOTE_ADDRESSES[member],
+            "caller_address": local_addresses[member], "listener_address": remote_addresses[member],
             "receiver_weight": receiver.get("weight"),
         })
     return record
@@ -893,6 +898,16 @@ def validate_g5_srt_group_bundle(directory: Path) -> None:
         except OSError as exc:
             raise ContractError(f"cannot read SRT-group file {name}: {exc}") from exc
         _require(actual == record, f"SRT-group file digest/size mismatch: {name}")
+    timeline = validate_group_files(directory, result)[-1]
+    _require(timeline == result["timeline"], "timeline is not reproducible from the retained files")
+
+
+def validate_group_files(directory: Path, result: dict) -> tuple[list[dict], dict, dict[str, Any]]:
+    """Validate the files every group bundle holds; return fault events, collector and timeline.
+
+    Shared by stage 1 and the group-over-FIPS stage. The caller has validated `result` and
+    the file digests, and compares the returned timeline with the stored one.
+    """
     group_type = result["profile"]["group_type"]
     faults = _read_jsonl(directory / "fault-events.jsonl")
     for envelope in faults:
@@ -954,7 +969,6 @@ def validate_g5_srt_group_bundle(directory: Path) -> None:
     collector = load_json(directory / "media-collector.json")
     timeline = compute_group_timeline(fault_events=faults, group_samples=group_samples,
                                       observations=observations, collector=collector, group_type=group_type)
-    _require(timeline == result["timeline"], "timeline is not reproducible from the retained files")
     stall = timeline["faulted_member_receiver_stall"]
     _require(stall is not None
              and stall[1] <= (MEMBER_STOP_BUDGET_NS + SRT_SAMPLE_INTERVAL_NS) // 1_000_000,
@@ -972,3 +986,4 @@ def validate_g5_srt_group_bundle(directory: Path) -> None:
              and source.get("interval_ns") == datagram_interval_ns(SOURCE_RATE_BPS, DATAGRAM_BYTES)
              and result["capture"]["source_datagrams"] == source.get("datagrams"),
              "media source record disagrees with the profile")
+    return faults, collector, timeline

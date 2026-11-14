@@ -1,0 +1,228 @@
+name: G5 SRT Group over FIPS
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/g5-srt-group-fips.yml
+      - src/rimf_lab/g5_srt_group_fips.py
+      - src/rimf_lab/g5_srt_group.py
+      - src/rimf_lab/media_stream.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g5-srt-group-fips
+  cancel-in-progress: false
+
+env:
+  FIPS_COMMIT: f4a5b4a8e61e340e6be7551608109a5c399f8353
+  FIPS_CARGO_LOCK_SHA256: 70b1e2a25c3d626f9b4c006ab46456075f1ffdde0c2fd1a7529752aaf21e5b8a
+  FIPS_RUST_TOOLCHAIN_SHA256: 6a95738ee0eea5867a071922541a1ccaac80c63ccba5c947eb78b6130e1b22d3
+  # The path is part of the FIPS build cache shared with the faulted-diamond workflow.
+  FIPS_SOURCE: /tmp/rimf-g4-fips
+  SRT_COMMIT: e45d0edd346e5c427d85e4c3b1ac605c81a23397
+  TELEMETRY_COMMIT: d03ca4527b005be0cfbe542ddaac6c0ede5e7955
+  SRT_SOURCE: ${{ github.workspace }}/dependencies/srt
+  SRT_BUILD: /tmp/rimf-g5f-srt-build
+  TELEMETRY_SOURCE: ${{ github.workspace }}/dependencies/srt_telemetry
+  TELEMETRY_BUILD: /tmp/rimf-g5f-telemetry-build
+  OUTPUT_DIR: artifacts/g5-srt-group-fips
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # Predeclared group modes; see the SRT-group-over-FIPS plan.
+        group_type: [broadcast, backup]
+    env:
+      GROUP_TYPE: ${{ matrix.group_type }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Require bounded dependency read token
+        env:
+          ROBOTWEAX_REPO_TOKEN: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+        run: |
+          test -n "$ROBOTWEAX_REPO_TOKEN" || {
+            echo "ROBOTWEAX_REPO_TOKEN must read Contents for Robotweax/srt and Robotweax/srt_telemetry" >&2
+            exit 1
+          }
+
+      - name: Checkout pinned Robotweax SRT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt
+          ref: ${{ env.SRT_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt
+          persist-credentials: false
+
+      - name: Checkout pinned SRT Telemetry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Robotweax/srt_telemetry
+          ref: ${{ env.TELEMETRY_COMMIT }}
+          token: ${{ secrets.ROBOTWEAX_REPO_TOKEN }}
+          path: dependencies/srt_telemetry
+          persist-credentials: false
+
+      - name: Install bounded Linux build and network dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake \
+            dnsutils \
+            ffmpeg \
+            g++ \
+            iproute2 \
+            iputils-ping \
+            libclang-dev \
+            libdbus-1-dev \
+            libssl-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Fetch immutable FIPS source and verify all revisions
+        run: |
+          git init "$FIPS_SOURCE"
+          git -C "$FIPS_SOURCE" remote add origin https://github.com/jmcorgan/fips.git
+          git -C "$FIPS_SOURCE" fetch --depth=1 origin "$FIPS_COMMIT"
+          git -C "$FIPS_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$FIPS_SOURCE" rev-parse HEAD)" = "$FIPS_COMMIT"
+          printf '%s  %s\n' "$FIPS_CARGO_LOCK_SHA256" "$FIPS_SOURCE/Cargo.lock" |
+            sha256sum --check --strict
+          printf '%s  %s\n' "$FIPS_RUST_TOOLCHAIN_SHA256" "$FIPS_SOURCE/rust-toolchain.toml" |
+            sha256sum --check --strict
+
+          test "$(git -C "$SRT_SOURCE" rev-parse HEAD)" = "$SRT_COMMIT"
+          test "$(git -C "$TELEMETRY_SOURCE" rev-parse HEAD)" = "$TELEMETRY_COMMIT"
+
+      - name: Prepare immutable FIPS toolchain
+        run: |
+          rustup toolchain install 1.94.1 \
+            --profile minimal \
+            --component rustfmt \
+            --component clippy \
+            --no-self-update
+
+      - name: Restore pinned FIPS build cache
+        id: fips-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-g4-fips/target
+          key: ${{ runner.os }}-fips-v0.5.3-rust-1.94.1-70b1e2a25c3d
+
+      - name: Build pinned FIPS binaries
+        working-directory: ${{ env.FIPS_SOURCE }}
+        run: cargo build --release --locked --bin fips --bin fipsctl
+
+      - name: Save pinned FIPS build cache
+        if: steps.fips-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            /tmp/rimf-g4-fips/target
+          key: ${{ steps.fips-cache.outputs.cache-primary-key }}
+
+      - name: Build pinned shared Robotweax SRT
+        run: |
+          cmake -S "$SRT_SOURCE" -B "$SRT_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DROBOTWEAX_SRT_BUILD_TESTS=OFF \
+            -DROBOTWEAX_SRT_BUILD_BENCHMARKS=OFF \
+            -DROBOTWEAX_SRT_BUILD_TOOLS=OFF
+          cmake --build "$SRT_BUILD" --parallel --target robotweax_srt
+          test -f "$SRT_BUILD/librobotweax-srt.so"
+
+      - name: Build pinned Telemetry incident peer and run its suite
+        run: |
+          cmake -S "$TELEMETRY_SOURCE" -B "$TELEMETRY_BUILD" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_TESTS=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_BUILD_PUBLIC_SRT_ADAPTER=ON \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_INCLUDE_DIR="$SRT_SOURCE/include" \
+            -DROBOTWEAX_SRT_TELEMETRY_SRT_LIBRARY="$SRT_BUILD/librobotweax-srt.so" \
+            -DROBOTWEAX_SRT_TELEMETRY_RUNTIME_TEST_PROVIDER=robotweax-srt
+          cmake --build "$TELEMETRY_BUILD" --parallel
+          ctest --test-dir "$TELEMETRY_BUILD" --output-on-failure
+          PEER_HELP="$(env LD_LIBRARY_PATH="$SRT_BUILD" \
+            "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" --help 2>&1 || true)"
+          grep --fixed-strings -- '--group broadcast|backup' <<< "$PEER_HELP"
+
+      - name: Run privileged four-node SRT-group-over-FIPS experiment
+        run: |
+          sudo env \
+            "PATH=$PATH" \
+            "PYTHONPATH=$GITHUB_WORKSPACE/src" \
+            python3 -m rimf_lab run-g5-srt-group-fips \
+              --fips-source "$FIPS_SOURCE" \
+              --fips "$FIPS_SOURCE/target/release/fips" \
+              --fipsctl "$FIPS_SOURCE/target/release/fipsctl" \
+              --srt-source "$SRT_SOURCE" \
+              --srt-library "$SRT_BUILD/librobotweax-srt.so" \
+              --telemetry-source "$TELEMETRY_SOURCE" \
+              --incident-peer "$TELEMETRY_BUILD/robotweax_srt_telemetry_public_srt_incident_peer" \
+              --library-dir "$SRT_BUILD" \
+              --ffmpeg /usr/bin/ffmpeg \
+              --output-dir "$GITHUB_WORKSPACE/$OUTPUT_DIR" \
+              --project-revision "${{ github.event.pull_request.head.sha || github.sha }}" \
+              --group-type "$GROUP_TYPE"
+
+      - name: Make the bundle readable and show a failed result
+        if: always()
+        run: |
+          if [ -d "$OUTPUT_DIR" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR"
+            if [ "$(jq -r '.status' "$OUTPUT_DIR/result.json")" = failed ]; then
+              jq '{failure_phase, failure_class, failure_detail, cleanup}' "$OUTPUT_DIR/result.json"
+              test -f "$OUTPUT_DIR/diagnostics.json" && jq -c '{fault_events, last_samples: [.group_samples[-8:][] | {role, sample_index, members}], last_fips: .fips_observations[-3:]}' "$OUTPUT_DIR/diagnostics.json" || true
+            fi
+          fi
+
+      - name: Validate fail-closed SRT-group-over-FIPS bundle
+        run: |
+          PYTHONPATH=src python3 -m rimf_lab validate-g5-srt-group-fips "$OUTPUT_DIR"
+
+      - name: Publish bounded job summary
+        if: success()
+        run: |
+          r="$OUTPUT_DIR/result.json"
+          {
+            echo "## G5 SRT group over two FIPS overlays ($GROUP_TYPE)"
+            echo
+            echo "- Experiment status: $(jq -r '.status' "$r")"
+            echo "- Faulted transit: $(jq -r '.topology.faulted_transit' "$r")"
+            echo "- Hitless (no missing and no changed frame): $(jq -r '.capture.hitless' "$r")"
+            echo "- Frames expected / observed / missing / changed: $(jq -r '.capture.frames | "\(.expected_frames) / \(.observed_frames) / \(.missing_frames) / \(.changed_frames)"' "$r")"
+            echo "- Downstream gaps after the fault ms: $(jq -c '.timeline.media_downstream_gaps' "$r") (longest $(jq -r '.timeline.longest_media_downstream_gap_ms' "$r"))"
+            echo "- Faulted member receiver stall ms: $(jq -c '.timeline.faulted_member_receiver_stall' "$r")"
+            echo "- Faulted member unusable ms: $(jq -c '.timeline.faulted_member_unusable' "$r")"
+            echo "- Standby activation ms: $(jq -c '.timeline.standby_activation // "not applicable"' "$r")"
+            echo "- Faulted overlay link loss ms: $(jq -c '.timeline.faulted_overlay_link_loss' "$r")"
+            echo "- Other overlay intact throughout: $(jq -r '.timeline.surviving_overlay_stable' "$r")"
+            echo "- Endpoint routing: $(jq -r '.topology.endpoint_routing' "$r")"
+            echo "- Member wire totals: $(jq -c '.capture.member_wire' "$r")"
+            echo "- G5 conclusion: $(jq -r '.gate_conclusion.G5' "$r")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bounded SRT-group-over-FIPS bundle
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: g5-srt-group-fips-${{ matrix.group_type }}-${{ github.run_id }}
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
