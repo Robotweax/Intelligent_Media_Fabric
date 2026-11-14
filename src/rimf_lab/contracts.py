@@ -2971,6 +2971,10 @@ def validate_repository(root: Path) -> None:
                     validate_g1_direct_srt_bundle(bundle)
                 elif evidence_type == "g4-faulted-diamond":
                     validate_g4_faulted_diamond_bundle(bundle)
+                elif evidence_type == "g5-srt-group":
+                    from .g5_srt_group import validate_g5_srt_group_bundle
+
+                    validate_g5_srt_group_bundle(bundle)
                 else:
                     errors.append(f"{bundle.relative_to(root)}: unknown retained bundle evidence_type")
             except (ContractError, OSError, ValueError) as exc:

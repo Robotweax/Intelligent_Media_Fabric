@@ -76,6 +76,14 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
 
 ## Evidence and its limits
 
+- [2026-11-14 SRT-group comparison, stage 1](docs/qualification/g5-srt-group-comparison-2026-11-14.md):
+  run 43567524615 at `79d825e9`, first attempts, under the
+  [predeclared plan](docs/qualification/g5-srt-group-comparison-plan-2026-11-13.md). One SRT group with
+  two members over separate transits of the diamond, on routed IPv6 **without FIPS**; the transit
+  carrying the stream was blackholed. Broadcast and Backup both delivered 17,729 of 17,729 datagrams
+  and 4,000 of 4,000 frames with no downstream gap: the first retained runs that are hitless by
+  ADR-0012's definition. Backup sent about 5 s of the stream on both members until the dead member
+  was removed. One run per mode; it does not show a group over FIPS. G5 is `in-progress`.
 - [2026-11-13 Telemetry `d03ca452`](docs/qualification/telemetry-d03ca452-requalification-2026-11-13.md):
   ADR-0013 moved Telemetry to `d03ca452` (incident-peer group mode and its test fix; SRT and FIPS
   unchanged). Retained at the new pin, all first attempts at `859160d4`: G1 run 43402399643 (3/3
@@ -142,7 +150,7 @@ value is neither in source nor in retained evidence. Do not expose or broaden it
   first use on a faulted network path.
 
 The [gate registry](docs/qualification/gate-registry.md) is authoritative: G1,
-G2 and G4 are in progress, G3 has not started, and G5–G9 have not started.
+G2, G4 and G5 are in progress, G3 has not started, and G6–G9 have not started.
 Do not promote a gate from green CI or a healthy pilot alone. Keep failed runs
 and unavailable measurements explicit; preserve source commits, binary hashes,
 clock domains, route epochs and downstream identity checks.
@@ -167,9 +175,11 @@ clock domains, route epochs and downstream identity checks.
    (run 43381166414: indistinguishable from the kill under both timer profiles). [ADR-0012](docs/decisions/0012-interruption-budget.md)
    now sets the budget for one transit failure: hitless as the target, 6 s with the session kept as the
    single-path floor. No retained single-session run meets the target, so the next experiment is the
-   SRT-group comparison OD-15 asks for; its
-   [design draft](docs/qualification/srt-group-comparison-design-2026-11-13.md) needs a group mode in the
-   Telemetry incident peer first. Other open variants: a peer that reconnects by itself (also a Telemetry
+   SRT-group comparison OD-15 asks for. Its stage 1
+   ([record](docs/qualification/g5-srt-group-comparison-2026-11-14.md)) is retained: groups on routed IPv6
+   without FIPS were hitless in both modes. Open after it: whether stage 1 alone may close OD-15, or
+   stage 2 of the [design draft](docs/qualification/srt-group-comparison-design-2026-11-13.md) (a group
+   over two FIPS routes) is required; stage 2 is not predeclared. Other open variants: a peer that reconnects by itself (also a Telemetry
    change), partial or one-way loss. Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)
