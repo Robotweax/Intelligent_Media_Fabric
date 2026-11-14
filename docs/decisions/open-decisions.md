@@ -18,7 +18,6 @@ replaced with an implicit implementation default.
 | OD-12 | OEM model, contribution signing, and CODEOWNERS (repository licensing closed by [ADR-0011](0011-mit-license-and-public-repository.md)) | First external contribution | Owner decision and ADR |
 | OD-13 | Software-only, appliance-near, or OEM-embedded pilot | Product pilot | Product/deployment ADR |
 | OD-14 | Design partners and frozen goodput, CPU, failover, and operations gates | G3/product pilot | Product decision and gate update |
-| OD-15 | Response to non-hitless FIPS alternate-route recovery | G6 | FIPS/SRT resilience comparison and ADR selecting improvement, bounded workaround, or pivot |
 | OD-16 | Runtime FIPS peer/path mutation surface for reactive MTU qualification | G6 | ADR selecting an upstream daemon control operation, an in-place MTU update, an embedded-library baseline, or a pivot; then pass the frozen acceptance contract |
 
 ## Immediate order
@@ -28,10 +27,11 @@ by [ADR-0004](0004-srt-telemetry-adapter-boundary.md). G4 is in progress with a 
 clock-boundary case and a [reviewed healthy live result](../qualification/g4-live-capture-2026-09-23.md). A faulted route
 transition, independent downstream media observation, and first-divergent-layer evidence are still
 required. OD-01, OD-03, OD-04, and OD-14 must close before G3 can pass. OD-12 must close before
-an external contributor or distributable artifact is accepted. OD-15 must close before G6 can pass;
-the retained v0.5.1 result proved route reparenting with a session restart, and the
-[v0.5.3 result](../qualification/fips-g2-linux-alternate-route-v0.5.3-2026-10-22.md) shows the
-session preserved with ~39 s payload recovery, still without SRT or media continuity evidence.
+an external contributor or distributable artifact is accepted. OD-15 is closed by
+[ADR-0014](0014-continuity-by-srt-group.md): continuity across a path loss comes from an SRT group,
+and FIPS reconvergence is judged as recovery against ADR-0012's 6 s floor. The group over FIPS rests
+on a lab routing step until FIPS offers two identities or two paths per host; the capability request
+belongs to OD-10, and OD-11 stays open.
 OD-16 must close before a reactive path-MTU result can contribute to G6; the current stock-daemon
 limitation and acceptance contract are documented in the
 [reactive path-MTU capability-gap assessment](../qualification/fips-g2-reactive-mtu-gap-2026-08-30.md).

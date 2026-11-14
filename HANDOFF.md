@@ -187,13 +187,15 @@ clock domains, route epochs and downstream identity checks.
    single-path floor. No retained single-session run meets the target, so the next experiment is the
    SRT-group comparison OD-15 asks for. Its stage 1
    ([record](docs/qualification/g5-srt-group-comparison-2026-11-14.md)) is retained: groups on routed IPv6
-   without FIPS were hitless in both modes. Open after it: whether stage 1 alone may close OD-15, or
-   stage 2 is required. Stage 2 (a group over two FIPS overlays,
+   without FIPS were hitless in both modes. Stage 2 (a group over two FIPS overlays,
    [record](docs/qualification/g5-srt-group-over-fips-2026-11-14.md)) is retained and was hitless in both
    modes too. It depends on a lab routing workaround, because FIPS v0.5.3 does not support two daemons
-   in one namespace. Open after it, all owner decisions: whether these two stages close OD-15 and
-   OD-11; whether to raise two identities or two paths per host with FIPS upstream (no fork without an
-   ADR); and whether G5 needs repeats or further fault classes before it can pass. Other open variants: a peer that reconnects by itself (also a Telemetry
+   in one namespace. [ADR-0014](docs/decisions/0014-continuity-by-srt-group.md) closed OD-15 on these
+   results: continuity across a path loss is the SRT group's job, FIPS reconvergence is recovery, no
+   FIPS fork. Still open, all owner decisions listed in the
+   [proposal](docs/decisions/proposal-od15-resilience-response-2026-11-14.md): drafting the FIPS
+   capability request (OD-10), whether OD-11 stays open, and what G5 needs before it can pass (repeats,
+   a member that rejoins, partial and one-way loss, the higher rate). Other open variants: a peer that reconnects by itself (also a Telemetry
    change), partial or one-way loss. Each variant is a new predeclaration. Do not
    claim causality or a first divergent layer from time ordering alone.
 3. Reassess the [reactive-MTU gap](docs/qualification/fips-g2-reactive-mtu-gap-2026-08-30.md)

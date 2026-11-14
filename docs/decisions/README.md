@@ -18,6 +18,7 @@ the current engineering decision, not a public product promise.
 | [0011](0011-mit-license-and-public-repository.md) | accepted | MIT license; repository made public |
 | [0012](0012-interruption-budget.md) | accepted | Interruption budget for one transit failure: hitless target, 6 s single-path floor |
 | [0013](0013-telemetry-group-mode-pin.md) | accepted | SRT Telemetry `d03ca452` (incident-peer group mode and its test fix); bundles at `7a6b8eff` digest-locked |
+| [0014](0014-continuity-by-srt-group.md) | accepted | Continuity across a path loss comes from an SRT group; FIPS reconvergence is recovery (closes OD-15) |
 
 The next required ADRs cover the pilot workflow and budget, Robotweax SRT crypto profile,
 conservative MTU/payload profile, device credentials, contribution signing, CODEOWNERS, and the
