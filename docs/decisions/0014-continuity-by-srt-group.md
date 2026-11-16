@@ -32,7 +32,7 @@ carrying the stream is lost), measured at an independent downstream collector.
 | --- | --- | --- | --- |
 | One session over FIPS, link-dead 30 s (stock), SRT peer idle 60 s | 31.2 to 32.5 s | 757 to 789 | 10 |
 | One session over FIPS, link-dead 3 s, SRT peer idle 60 s | 4.2 to 5.3 s | 83 to 109 | 8 |
-| One session over FIPS, both products at stock settings | media does not return | 3,501 | 8 |
+| One session over FIPS, SRT peer idle 5 s (stock), no reconnect; link-dead 30 s (stock) in 4 runs and 3 s in 4 | media does not return | 3,501 | 8 |
 | SRT group, one member per transit, routed IPv6, no FIPS ([stage 1](../qualification/g5-srt-group-comparison-2026-11-14.md)) | none | 0 | 2 |
 | SRT group, one member per FIPS overlay ([stage 2](../qualification/g5-srt-group-over-fips-2026-11-14.md)) | none | 0 | 2 |
 
@@ -44,6 +44,10 @@ Backup, with and without FIPS underneath; in stage 2 FIPS reported the lost link
 The alternatives were rejected on the same evidence. Improving FIPS recovery cannot reach the
 hitless target ADR-0012 set. Taking FIPS off the continuity path reaches it, but gives up
 identity, encryption and reachability, which a group over FIPS keeps.
+
+Correction, 2026-11-16: the third row was first labelled "both products at stock settings".
+Four of its eight runs used the 3 s link-dead timer, which is not a stock setting. Only the
+label changed; the counts, the numbers and the decision are as accepted.
 
 ## Consequences
 

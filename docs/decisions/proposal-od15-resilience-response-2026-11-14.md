@@ -17,10 +17,13 @@ at SRT v0.3.2, Telemetry `d03ca452` and, for stage 2, FIPS v0.5.3.
 | --- | --- | --- | --- | --- |
 | One session over FIPS, link-dead 30 s (stock), SRT peer idle 60 s | 31.2 to 32.5 s | 757 to 789 | 10 | [latest](../qualification/telemetry-d03ca452-requalification-2026-11-13.md) |
 | One session over FIPS, link-dead 3 s, SRT peer idle 60 s | 4.2 to 5.3 s | 83 to 109 | 8 | same |
-| One session over FIPS, both products at stock settings | media does not return | 3,501 | 8 | same |
+| One session over FIPS, SRT peer idle 5 s (stock), no reconnect; link-dead 30 s (stock) in 4 runs and 3 s in 4 | media does not return | 3,501 | 8 | same |
 | The same, session restarted by the coordinator | 6.3 to 6.4 s (link-dead 3 s) and 32.5 to 32.9 s (30 s) | 157 to 159 and 814 to 822 | 3 and 3 | same |
 | SRT group, one member per transit, routed IPv6, no FIPS | none | 0 | 2 (one per mode) | [stage 1](../qualification/g5-srt-group-comparison-2026-11-14.md) |
 | SRT group, one member per FIPS overlay | none | 0 | 2 (one per mode) | [stage 2](../qualification/g5-srt-group-over-fips-2026-11-14.md) |
+
+Correction, 2026-11-16: the third row was first labelled "both products at stock settings";
+four of its eight runs used the 3 s link-dead timer. Only the label changed.
 
 Three things follow from the table and are not in dispute between the runs:
 
